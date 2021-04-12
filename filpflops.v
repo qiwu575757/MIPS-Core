@@ -32,7 +32,7 @@ module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, ID_PC, ID_Instr);
 	always@(posedge clk or posedge rst)
 		if(rst || IF_Flush) begin
 			ID_PC <= 32'h0000_0000;
-			ID_Instr <= 32'hffff_ffff;
+			ID_Instr <= 32'h3400_0000;
 		end
 		else if(IF_IDWr) begin
 			ID_PC <= PC;
