@@ -48,7 +48,7 @@ module mycpu_top(
         inst_sram_wdata = 32'b0;
     end
 
-assign inst_sram_en = ~resetn;
+assign inst_sram_en = resetn;
 
     mips MIPS(
         clk, 

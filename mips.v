@@ -31,7 +31,7 @@ module mips(
     output [3:0] debug_wb_rf_wen  ;
     output [4:0] debug_wb_rf_wnum ;
     output [31:0] debug_wb_rf_wdata;
-	output PC;
+	output [31:0] PC;
 
 	wire PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, IF_Flush, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
 		isBD, isBranch, ID_Flush, EX_Flush, Interrupt, eret_flush, CP0WrEn, Exception;

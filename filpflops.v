@@ -16,7 +16,7 @@ module pc(clk, rst, wr, D, Q, IF_AdEL, IF_IDWr);
 	
 	always@(posedge clk)
 		if(!rst)
-			Q <= 32'h0000_3000;
+			Q <= 32'h0000_0000;
 		else if(wr)
 			Q <= D;
 
