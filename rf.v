@@ -7,10 +7,10 @@ module rf(Addr1, Addr2, Addr3, WD, RFWr, clk, rst, RD1, RD2);
 
 	integer i;
 
-	always@(posedge clk,posedge rst)
-		if(rst)
+	always@(posedge clk)
+		if(!rst)
 			for(i = 0; i <= 31; i = i + 1)
-				register[i] <= 32'h00000000;
+				register[i] <= 32'h0000_0000;
 		else if(RFWr)
 			register[Addr3] <= WD;
 
