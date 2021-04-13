@@ -6,16 +6,16 @@ module pc(clk, rst, wr, D, Q, IF_AdEL, IF_IDWr);
 	output reg [31:0] Q;
 	output reg IF_AdEL;
 
-	always @(posedge clk or posedge rst) begin
-		if (rst)
+	always @(posedge clk) begin
+		if (!rst)
 			IF_AdEL <= 1'b0;
 		else if (D[1:0] != 2'b00 && IF_IDWr) begin
 			IF_AdEL <= 1'b1;
 		end
 	end
 	
-	always@(posedge clk or posedge rst)
-		if(rst)
+	always@(posedge clk)
+		if(!rst)
 			Q <= 32'h0000_3000;
 		else if(wr)
 			Q <= D;
@@ -29,10 +29,10 @@ module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, ID_PC, ID_Instr);
 	output reg [31:0] ID_PC;
 	output reg [31:0] ID_Instr;
 
-	always@(posedge clk or posedge rst)
-		if(rst || IF_Flush) begin
+	always@(posedge clk)
+		if(!rst || IF_Flush) begin
 			ID_PC <= 32'h0000_0000;
-			ID_Instr <= 32'h3400_0000;
+			ID_Instr <= 32'h0000_0000;
 		end
 		else if(IF_IDWr) begin
 			ID_PC <= PC;
@@ -90,8 +90,8 @@ module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel
 	output reg [7:0] EX_CP0Addr;
 	output reg EX_CP0Rd;
 	
-	always@(posedge clk or posedge rst)
-		if(rst || ID_Flush) begin
+	always@(posedge clk)
+		if(!rst || ID_Flush) begin
 			EX_eret_flush <= 1'b0;
 			EX_CP0WrEn <= 1'b0;
 			EX_Exception <= 1'b0;
@@ -194,8 +194,8 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 	output reg [7:0] MEM_CP0Addr;
 	output reg MEM_CP0Rd;
 
-	always @(posedge clk or posedge rst) begin
-		if (rst || EX_Flush) begin
+	always @(posedge clk) begin
+		if (!rst || EX_Flush) begin
 			MEM_ExcCode <= 5'd15;
 			MEM_Exception <= 1'b0;
 			badvaddr <= 32'd0;
@@ -224,8 +224,8 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 		end
 	end
 
-	always@(posedge clk or posedge rst)
-		if(rst || EX_Flush) begin
+	always@(posedge clk)
+		if(!rst || EX_Flush) begin
 			MEM_DMWr <= 1'b0;
 			MEM_DMRd <= 1'b0;
 			MEM_RFWr <= 1'b0;
@@ -290,8 +290,8 @@ module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP
 	output reg[4:0] WB_RD;
 	output reg[31:0] WB_PC, WB_ALU1Out, WB_DMOut, WB_RHLOut, WB_Imm32, WB_GPR_RS, WB_CP0Out;
 	output reg[63:0] WB_ALU2Out;
-	always@(posedge clk or posedge rst)
-		if(rst) begin
+	always@(posedge clk)
+		if(!rst) begin
 			WB_RFWr <= 1'b0;
 			WB_RHLWr <= 1'b0;
 			WB_RHLSel_Wr <= 2'd0;
