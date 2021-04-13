@@ -67,8 +67,8 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Count寄存器
-    always @(posedge clk or rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             tick <= 1'b0;
         else 
             tick <= ~tick;
@@ -86,20 +86,20 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Status寄存器的bev域
-    always @(posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `status_bev <= 1'b1;
     end
 
     //Status寄存器的IM7~IM0域
-    always @(posedge clk or posedge rst) begin
+    always @(posedge clkt) begin
         if (CP0WrEn && addr == `Status_index)
             `status_im <= data_in[15:8];
     end
 
     //Status寄存器的EXL域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `status_exl <= 1'b0;
         else if (EX_MEM_Exc)
             `status_exl <= 1'b1;
@@ -110,16 +110,16 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Status寄存器的IE域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge) begin
+        if (!rst)
             `status_ie <= 1'b0;
         else if (CP0WrEn && addr == `Status_index)
             `status_ie <= data_in[0];
     end
 
     //Status寄存器的零域
-    always @(posedge rst) begin
-        if (rst) begin
+    always @(posedge clk) begin
+        if (!rst) begin
             Status[31:23] <= 9'b0;
             Status[21:16] <= 6'b0;
             Status[7:2] <= 6'b0;
@@ -127,16 +127,16 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Cause寄存器的BD域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `cause_bd <= 1'b0;
         else if (EX_MEM_Exc && !`status_exl)
             `cause_bd <= EX_MEM_bd;
     end
 
     //Cause寄存器的TI域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `cause_ti <= 1'b0;
         else if (CP0WrEn && addr == `Compare_index)
             `cause_ti <= 1'b0;
@@ -145,8 +145,8 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Cause寄存器的IP7~IP2域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `cause_ip1 <= 6'b0;
         else begin
             Cause[15] <= ext_int_in[5] | `cause_ti;
@@ -155,24 +155,24 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Cause寄存器的IP1和IP0域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `cause_ip2 <= 2'b0;
         else if (CP0WrEn && addr == `Cause_index)
             `cause_ip2 <= data_in[9:8];
     end
 
     //Cause寄存器的Excode域
-    always @(posedge clk or posedge rst) begin
-        if (rst)
+    always @(posedge clk) begin
+        if (!rst)
             `cause_excode <= 5'b0;
         else if (EX_MEM_Exc)
             `cause_excode <= EX_MEM_ExcCode;
     end
 
     //Cause寄存器的零域
-    always @(posedge clk or posedge rst) begin
-        if (rst) begin
+    always @(posedge clk) begin
+        if (!rst) begin
             Cause[29:16] <= 14'b0;
             Cause[7] <= 1'b0;
             Cause[1:0] <= 2'b0;
@@ -180,7 +180,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //EPC寄存器
-    always @(posedge clk or posedge rst) begin
+    always @(posedge clk) begin
         if (EX_MEM_Exc && !`status_exl)
             EPC <= EX_MEM_bd ? EX_MEM_PC - 4: EX_MEM_PC;
         else if (CP0WrEn && addr == `EPC_index)
