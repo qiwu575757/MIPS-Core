@@ -282,9 +282,9 @@ CP0 U_CP0(
 assign 
 	debug_wb_rf_wdata = MUX2Out;
 assign 
-	debug_wb_pc  = MEM_PC;
+	debug_wb_pc  = WB_PC;
 assign 
-	debug_wb_rf_wen  = 4'b1111;
+	debug_wb_rf_wen  = {4{WB_RFWr}};
 assign 
 	debug_wb_rf_wnum  = WB_RD[4:0];
 

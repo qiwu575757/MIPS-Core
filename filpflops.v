@@ -170,7 +170,6 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 	input Exception;
 	input [4:0] ExcCode;
 	input isBD;
-	input DMRd;
 	input[1:0] RHLSel_Wr;
 	input[2:0] DMSel, MUX2Sel;
 	input[4:0] RD;

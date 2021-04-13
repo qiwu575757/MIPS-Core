@@ -52,7 +52,7 @@ assign inst_sram_en = ~resetn;
 
     mips MIPS(
         clk, 
-        rst,
+        resetn,
         inst_sram_rdata,
         data_sram_rdata  ,
 
