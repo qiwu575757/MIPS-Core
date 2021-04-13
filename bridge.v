@@ -15,7 +15,7 @@ module bridge(
 	input[2:0] DMSel;
 	input[31:0] addr;
 	input[31:0] din;
-	output reg[31:0] dout;
+	output wire [31:0] dout;
 	reg[31:0] dmem[2047:0];//8k
 	reg[7:0] byte;
 	reg[15:0] halfword;
@@ -49,16 +49,16 @@ module bridge(
 					addr[1:0]==2'b10 ? {24'b0,data_sram_rdata[23:16]} :
 									   {24'b0,data_sram_rdata[31:24]}) :
 				DMSel==3'b100 ?
-				(   addr[1:0]==2'b00 ? {24{data_sram_rdata[ 7]},data_sram_rdata[ 7: 0]} :
-					addr[1:0]==2'b01 ? {24{data_sram_rdata[15]},data_sram_rdata[15: 8]} :
-					addr[1:0]==2'b10 ? {24{data_sram_rdata[23]},data_sram_rdata[23:16]} :
-									   {24{data_sram_rdata[31]},data_sram_rdata[31:24]}) :
+				(   addr[1:0]==2'b00 ? {{24{data_sram_rdata[ 7]}},data_sram_rdata[ 7: 0]} :
+					addr[1:0]==2'b01 ? {{24{data_sram_rdata[15]}},data_sram_rdata[15: 8]} :
+					addr[1:0]==2'b10 ? {{24{data_sram_rdata[23]}},data_sram_rdata[23:16]} :
+									   {{24{data_sram_rdata[31]}},data_sram_rdata[31:24]}) :
 				DMSel==3'b101 ?
 				( 	addr[1]==1'b0 	 ? {16'h0000,data_sram_rdata[15:0]}  :
-								 	 ? {16'h0000,data_sram_rdata[31:16]})  :
+								 	   {16'h0000,data_sram_rdata[31:16]})  :
 				DMSel==3'b110 ?
-				(	addr[1]==1'b0 	 ? {16{data_sram_rdata[15]},data_sram_rdata[15:0]}  :
-							    	   {16{data_sram_rdata[31]},data_sram_rdata[31:16]} ) :
+				(	addr[1]==1'b0 	 ? {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]}  :
+							    	   {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} ) :
 																data_sram_rdata;
 														
 
@@ -99,3 +99,5 @@ module bridge(
 // 			default:dout = word; 					//no extension
 // 		endcase
 // endmodule
+
+endmodule
