@@ -42,6 +42,16 @@
 	output reg isBranch;
 
 	wire ri;					//判断指令是否为指令集内的有效指令
+	reg rst_sign;				//判断之前是否进行了复位操作
+
+	always @(posedge clk) begin
+		if (!rst)
+			rst_sign <= 1'b1;
+		else
+			rst_sign <= 1'b0;
+		
+	end
+
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
 		(OP == `cop0);
@@ -69,8 +79,8 @@
 			Exception <= 1'b1;
 			ExcCode <= `AdEL;
 		end
-		else if (!ri && !rst && !IF_Flush) begin
-			Exception <= 1'b0;
+		else if (!ri && !rst_sign && !IF_Flush) begin
+			Exception <= 1'b1;
 			ExcCode <= `RI;
 		end
 		else if (OP == `R_type && Funct == `break) begin
