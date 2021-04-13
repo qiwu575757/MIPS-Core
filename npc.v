@@ -13,7 +13,7 @@ module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_
 
 	always@(PC,Imm,ret_addr,NPCOp, EX_MEM_eret_flush, EX_MEM_ex) begin
 		if (EX_MEM_eret_flush)
-			NPC = EPC;
+			NPC = EPC + 4;
 		else if (EX_MEM_ex)
 			NPC = 32'hBFC0_0380;
 		else begin
