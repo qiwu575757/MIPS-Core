@@ -92,7 +92,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Status寄存器的IM7~IM0域
-    always @(posedge clkt) begin
+    always @(posedge clk) begin
         if (CP0WrEn && addr == `Status_index)
             `status_im <= data_in[15:8];
     end
@@ -110,7 +110,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     end
 
     //Status寄存器的IE域
-    always @(posedge) begin
+    always @(posedge clk) begin
         if (!rst)
             `status_ie <= 1'b0;
         else if (CP0WrEn && addr == `Status_index)
