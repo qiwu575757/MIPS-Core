@@ -130,8 +130,19 @@ im U_IM(
 		.addr(PC[12:2]), .dout(Instr)
 	);
 
-dm U_DM(
-		.clk(clk), .din(MEM_GPR_RT), .DMWr(MEM_DMWr), .DMSel(MEM_DMSel), .addr(MEM_ALU1Out[12:0]), .dout(DMOut)
+// dm U_DM(
+// 		.clk(clk), .din(MEM_GPR_RT), .DMWr(MEM_DMWr), .DMSel(MEM_DMSel), .addr(MEM_ALU1Out[12:0]), .dout(DMOut)
+// 	);
+
+//===========================
+bridge bridge(
+		 .din(MEM_GPR_RT), .DMWr(MEM_DMWr), .DMSel(MEM_DMSel), .addr(MEM_ALU1Out), .dout(DMOut),
+		 .data_sram_en(data_sram_en),
+		 .data_sram_wen(data_sram_wen),
+		 .data_sram_addr(data_sram_addr),
+		 .data_sram_wdata(data_sram_wdata),
+		 .data_sram_rdata(data_sram_rdata)
+
 	);
 
 rf U_RF(
