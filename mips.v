@@ -1,5 +1,38 @@
-module mips(clk, rst);
+module mips(
+	clk, 
+	rst,
+	instr,
+    data_sram_rdata  ,
+
+	data_sram_en     ,
+    data_sram_wen    ,
+    data_sram_addr   ,
+    data_sram_wdata  ,
+    //debug
+    debug_wb_pc      ,
+    debug_wb_rf_wen  ,//默认写RF均为 4 字节
+    debug_wb_rf_wnum ,
+    debug_wb_rf_wdata,
+	PC
+	);
+
 	input clk, rst;
+	input [31:0] instr;
+    input [31:0] data_sram_rdata  ;
+
+	output data_sram_en     ;
+    output [3:0] data_sram_wen    ;
+    output [31:0] data_sram_addr   ;
+    output [31:0] data_sram_wdata  ;
+
+
+    //debug
+    output [31:0] debug_wb_pc     ;
+    output [3:0] debug_wb_rf_wen  ;
+    output [4:0] debug_wb_rf_wnum ;
+    output [31:0] debug_wb_rf_wdata;
+	output PC;
+
 	wire PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, IF_Flush, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
 		isBD, isBranch, ID_Flush, EX_Flush, Interrupt, eret_flush, CP0WrEn, Exception;
 	wire[1:0] EXTOp, NPCOp, ALU2Op, MUX1Sel, MUX4Sel,MUX5Sel,RHLSel_Wr, CMPOut2;
@@ -7,7 +40,7 @@ module mips(clk, rst);
 	wire[3:0] ALU1Op;
 	wire[2:0] MUX7Out;
 	wire[4:0] MUX1Out, ExcCode;
-	wire[31:0] PC, NPC, Instr, Imm32, ALU1Out, GPR_RS, GPR_RT, RHLOut, MUX2Out, MUX3Out, MUX4Out, MUX5Out, 
+	wire[31:0]  NPC, Imm32, ALU1Out, GPR_RS, GPR_RT, RHLOut, MUX2Out, MUX3Out, MUX4Out, MUX5Out, 
 				MUX6Out, MUX8Out, MUX9Out, MUX10Out, DMOut;
 	wire[63:0] ALU2Out;
 
@@ -126,9 +159,9 @@ MEM_WB U_MEM_WB(
 		.WB_ALU2Out(WB_ALU2Out)
 	);
 
-im U_IM(
-		.addr(PC[12:2]), .dout(Instr)
-	);
+// im U_IM(
+// 		.addr(PC[12:2]), .dout(Instr)
+// 	);
 
 // dm U_DM(
 // 		.clk(clk), .din(MEM_GPR_RT), .DMWr(MEM_DMWr), .DMSel(MEM_DMSel), .addr(MEM_ALU1Out[12:0]), .dout(DMOut)
@@ -245,5 +278,15 @@ CP0 U_CP0(
         .ext_int_in(ext_int_in), .EX_MEM_ExcCode(MEM_ExcCode), .EX_MEM_badvaddr(EX_MEM_badvaddr), 
 		.EX_MEM_PC(MEM_PC), .data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt)
 	);
+
+assign 
+	debug_wb_rf_wdata = MUX2Out;
+assign 
+	debug_wb_pc  = MEM_PC;
+assign 
+	debug_wb_rf_wen  = 4'b1111;
+assign 
+	debug_wb_rf_wnum  = WB_RD[4:0];
+
 
 endmodule
