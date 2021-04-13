@@ -4,12 +4,12 @@
 //  The module has been tested with the topmodule and testbench from the book(with a little revision)
 //  It's written by Wang Hanmo,finished at 0:13 AM ,April 12th 2021
 
-module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, data_ok, rdata, rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
+module cache(clk, resetn, valid, op, index, tag, offset, wstrb, wdata, addr_ok, data_ok, rdata, rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
     ret_last, ret_data, wr_req, wr_type, wr_addr, wr_wstrb, wr_data, wr_rdy);
 
     //clock and reset
     input clk;
-    input rst;
+    input resetn;
 
     // Cache && CPU-Pipeline
     input valid;
@@ -107,8 +107,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
             rdata = ret_data;
 
     //random counter
-    always@(posedge clk, posedge rst)
-        if(rst)
+    always@(posedge clk)
+        if(!resetn)
             counter <= 1'b0;
         else
             counter <= counter + 1;
@@ -119,8 +119,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
         {Way0_Data[index_RB][3], Way0_Data[index_RB][2], Way0_Data[index_RB][1], Way0_Data[index_RB][0]} ;
     
     //Request Buffer
-    always@(posedge clk, posedge rst)
-        if(rst) begin
+    always@(posedge clk)
+        if(!resetn) begin
             op_RB <= 1'b0;
             index_RB <= 8'd0;
             tag_RB <= 20'd0;
@@ -138,8 +138,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
         end
 
     //Miss Buffer
-    always@(posedge clk, posedge rst)
-        if(rst) begin
+    always@(posedge clk)
+        if(!resetn) begin
             replace_way_MB <= 1'b0;
             replace_data_MB <= 128'd0;
         end
@@ -147,8 +147,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
         end
-    always@(posedge clk, posedge rst)
-        if(rst)
+    always@(posedge clk, posedge resetn)
+        if(resetn)
             ret_number_MB <= 2'b00;
         else if(rd_rdy)
             ret_number_MB <= 2'b00;
@@ -156,8 +156,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
             ret_number_MB <= ret_number_MB + 1;
 
     //Write Buffer
-    always@(posedge clk, posedge rst)
-        if(rst) begin
+    always@(posedge clk)
+        if(!resetn) begin
             way_WB <= 1'b0;
             bank_WB <= 2'd0;
             index_WB <= 8'd0;
@@ -208,8 +208,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
         end
 
     //main FSM
-    always@(posedge clk, posedge rst)
-        if(rst)
+    always@(posedge clk)
+        if(!resetn)
             C_STATE_M <= IDLE_M;
         else
             C_STATE_M <= N_STATE_M;
@@ -248,8 +248,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
         endcase
 
     //writebuffer FSM
-    always@(posedge clk, posedge rst)
-        if(rst)
+    always@(posedge clk)
+        if(!resetn)
             C_STATE_WB <= IDLE_WB;
         else
             C_STATE_WB <= N_STATE_WB;
@@ -279,8 +279,8 @@ module cache(clk, rst, valid, op, index, tag, offset, wstrb, wdata, addr_ok, dat
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
-    always@(posedge clk, posedge rst)
-        if(rst)
+    always@(posedge clk)
+        if(!resetn)
             for(i=0;i<256;i=i+1) begin
                 Way0_V[i] <= 1'b0;
                 Way1_V[i] <= 1'b0;
