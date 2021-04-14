@@ -10,10 +10,10 @@ module mips(
     data_sram_wdata  ,
     //debug
     debug_wb_pc      ,
-    debug_wb_rf_wen  ,//默认写RF均为 4 字节
+    debug_wb_rf_wen  ,//榛樿鍐橰F鍧囦负 4 瀛楄妭
     debug_wb_rf_wnum ,
     debug_wb_rf_wdata,
-	PC
+	pre_PC
 	);
 
 	input clk, rst;
@@ -31,9 +31,9 @@ module mips(
     output [3:0] debug_wb_rf_wen  ;
     output [4:0] debug_wb_rf_wnum ;
     output [31:0] debug_wb_rf_wdata;
-	output [31:0] PC;
+	output [31:0] pre_PC;
 
-	wire PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, IF_Flush, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
+	wire pre_PCWr,PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, PF_AdEL, PC_Flush, IF_Flush, IF_Flush2, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
 		isBD, isBranch, ID_Flush, EX_Flush, Interrupt, eret_flush, CP0WrEn, Exception;
 	wire[1:0] EXTOp, NPCOp, ALU2Op, MUX1Sel, MUX4Sel,MUX5Sel,RHLSel_Wr, CMPOut2;
 	wire[2:0] MUX2_6Sel, DMSel, MUX10Sel;
@@ -44,6 +44,7 @@ module mips(
 				MUX6Out, MUX8Out, MUX9Out, MUX10Out, DMOut;
 	wire[63:0] ALU2Out;
 
+    wire [31:0] PC;
 	wire [31:0] ID_PC;
 	wire [31:0] ID_Instr;
 
@@ -100,18 +101,22 @@ module mips(
 	wire [31:0] CP0Out;
 	wire [31:0] EPCOut;
 
+pre_pc U_PREPC(
+        .clk(clk), .rst(rst), .wr(pre_PCWr), .NPC(NPC), .pre_PC(pre_PC),.PF_AdEL(PF_AdEl), .PCWr(PCWr)
+    );
+
 pc U_PC(
-		.clk(clk), .rst(rst), .wr(PCWr), .D(NPC), .Q(PC), .IF_AdEL(IF_AdEL), .IF_IDWr(IF_IDWr)
+		.clk(clk), .rst(rst), .wr(PCWr), .pre_PC(pre_PC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush), .IF_Flush2(IF_Flush2)
 	);
 
 npc U_NPC(
-		.PC(PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
+		.pre_PC(pre_PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
 		.EPC(EPCOut), .EX_MEM_eret_flush(MEM_ere_flush), .EX_MEM_ex(MEM_Exception), .ID_Flush(ID_Flush),
-		.EX_Flush(EX_Flush)
+		.EX_Flush(EX_Flush), .PC_Flush(PC_Flush)
 	);
 
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .PC(PC), .Instr(Instr), .ID_PC(ID_PC), 
+		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .IF_Flush2(IF_Flush2), .PC(PC), .Instr(instr), .ID_PC(ID_PC), 
 		.ID_Instr(ID_Instr)
 	);
 
@@ -268,7 +273,7 @@ bypath U_BYPATH(
 
 stall U_STALL(
 		.ID_EX_RT(MUX1Out), .EX_MEM_RT(MEM_RD), .IF_ID_RS(ID_Instr[25:21]), .IF_ID_RT(ID_Instr[20:16]), 
-		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel), .BJOp(B_JOp),
+		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .pre_PCWr(pre_PCWr), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel), .BJOp(B_JOp),
 		.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), .EX_MEM_CP0Rd(MEM_CP0Rd)
 	);
 
