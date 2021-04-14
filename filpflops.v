@@ -1,42 +1,72 @@
 `include "MacroDef.v"
 
-module pc(clk, rst, wr, D, Q, IF_AdEL, IF_IDWr);
-	input clk, rst, wr, IF_IDWr;
-	input[31:0] D;
-	output reg [31:0] Q;
-	output reg IF_AdEL;
-
+module pre_pc(clk, rst, wr, NPC, pre_PC,PF_AdEL, PCWr);
+    input clk, rst, wr, PCWr;
+    input[31:0] NPC;
+    output reg[31:0] pre_PC;
+    output reg PF_AdEL;
+    
 	always @(posedge clk) begin
 		if (!rst)
-			IF_AdEL <= 1'b0;
-		else if (D[1:0] != 2'b00 && IF_IDWr) begin
-			IF_AdEL <= 1'b1;
+			PF_AdEL <= 1'b0;
+		else if (pre_PC[1:0] != 2'b00 && PCWr) begin
+			PF_AdEL <= 1'b1;
 		end
 	end
 	
 	always@(posedge clk)
 		if(!rst)
-			Q <= 32'h0000_0000;
+			pre_PC <= 32'hbfc0_0000;
 		else if(wr)
-			Q <= D;
+			pre_PC <= NPC;
+	
+endmodule
+
+module pc(clk, rst, wr, pre_PC, PC, PF_AdEL, IF_AdEL, PC_Flush,IF_Flush2);
+	input clk, rst, wr, PF_AdEL, PC_Flush;
+	input[31:0] pre_PC;
+	output reg [31:0] PC;
+	output reg IF_AdEL;
+	output reg IF_Flush2;
+
+    always@(posedge clk)
+        if(!rst)
+            IF_Flush2 <= 1'b0;
+        else
+            IF_Flush2 <= PC_Flush;
+ 
+    always@(posedge clk)
+		if(!rst)
+			IF_AdEL <= 1'b0;
+		else if(wr)
+			IF_AdEL <= PF_AdEL;
+	
+	always@(posedge clk)
+		if(!rst)
+			PC <= 32'h0000_0000;
+		else if(wr)
+			PC <= pre_PC;
 
 endmodule
 
-module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, ID_PC, ID_Instr);
-	input clk, rst, IF_IDWr, IF_Flush;
+module IF_ID(clk, rst, IF_IDWr, IF_Flush, IF_Flush2, PC, Instr, IF_AdEL, ID_PC, ID_Instr, ID_AdEL);
+	input clk, rst, IF_IDWr, IF_Flush, IF_Flush2, IF_AdEL;
 	input[31:0] PC, Instr;
 
 	output reg [31:0] ID_PC;
 	output reg [31:0] ID_Instr;
+	output reg ID_AdEL;
 
 	always@(posedge clk)
-		if(!rst || IF_Flush) begin
+		if(!rst || IF_Flush || IF_Flush2) begin
 			ID_PC <= 32'h0000_0000;
 			ID_Instr <= 32'h0000_0000;
+			ID_AdEL <= 1'b0;
 		end
 		else if(IF_IDWr) begin
 			ID_PC <= PC;
 			ID_Instr <= Instr;
+			ID_AdEL <= IF_AdEL;
 		end
 
 endmodule
@@ -321,4 +351,3 @@ module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP
 			WB_ALU2Out <= ALU2Out;
 		end
 endmodule
-
