@@ -22,7 +22,7 @@ module mux2(ALU1Out, RHLOut, DMOut, PC, Imm32, CP0Out, MUX2Sel, WD);
 			3'b000:	WD = RHLOut;
 			3'b001:	WD = Imm32;
 			3'b010:	WD = ALU1Out;
-			3'b011:	WD = PC + 4;
+			3'b011:	WD = PC + 8;
 			3'b101: WD = CP0Out;
 			default:WD = DMOut;
 		endcase
