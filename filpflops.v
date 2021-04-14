@@ -49,6 +49,28 @@ module pc(clk, rst, wr, pre_PC, PC, PF_AdEL, IF_AdEL, PC_Flush,IF_Flush2);
 
 endmodule
 
+module IR(clk, rst, inst_sram_rdata, instr, IRWr_aid, IRWr);
+    input clk;
+    input rst;
+    input IRWr_aid;
+    input[31:0] inst_sram_rdata;
+    output reg[31:0] instr;
+    output reg IRWr;
+    
+    always@(posedge clk)
+        if(!rst)
+            IRWr <= 1'b1;
+        else
+            IRWr <= IRWr_aid;
+            
+     always@(posedge clk)
+        if(!rst)
+            instr <= 32'hbfc0_0000;
+        else
+            instr <= inst_sram_rdata;
+    
+endmodule
+
 module IF_ID(clk, rst, IF_IDWr, IF_Flush, IF_Flush2, PC, Instr, IF_AdEL, ID_PC, ID_Instr, ID_AdEL);
 	input clk, rst, IF_IDWr, IF_Flush, IF_Flush2, IF_AdEL;
 	input[31:0] PC, Instr;
@@ -351,3 +373,4 @@ module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP
 			WB_ALU2Out <= ALU2Out;
 		end
 endmodule
+
