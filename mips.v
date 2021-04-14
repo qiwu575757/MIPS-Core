@@ -1,7 +1,7 @@
 module mips(
 	clk, 
 	rst,
-	instr,
+	inst_sram_rdata  ,
     data_sram_rdata  ,
 
 	data_sram_en     ,
@@ -17,7 +17,7 @@ module mips(
 	);
 
 	input clk, rst;
-	input [31:0] instr;
+	input [31:0] inst_sram_rdata;
     input [31:0] data_sram_rdata  ;
 
 	output data_sram_en     ;
@@ -47,6 +47,10 @@ module mips(
     wire [31:0] PC;
 	wire [31:0] ID_PC;
 	wire [31:0] ID_Instr;
+	wire [31:0] instr;
+	wire [31:0] IF_Instr;
+	wire IRWr_aid;
+	wire IDWr;
 
 	wire [31:0] badvaddr;
 	wire CP0Rd;
@@ -108,7 +112,13 @@ pre_pc U_PREPC(
 pc U_PC(
 		.clk(clk), .rst(rst), .wr(PCWr), .pre_PC(pre_PC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush), .IF_Flush2(IF_Flush2)
 	);
+	
+IR U_IR(
+        .clk(clk), .rst(rst), .inst_sram_rdata(inst_sram_rdata), .instr(instr), .IRWr_aid(IRWr_aid), .IRWr(IRWr)
+    );
 
+    assign IF_Instr = IRWr ? inst_sram_rdata : instr;
+    
 npc U_NPC(
 		.pre_PC(pre_PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
 		.EPC(EPCOut), .EX_MEM_eret_flush(MEM_ere_flush), .EX_MEM_ex(MEM_Exception), .ID_Flush(ID_Flush),
@@ -116,7 +126,7 @@ npc U_NPC(
 	);
 
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .IF_Flush2(IF_Flush2), .PC(PC), .Instr(instr), .ID_PC(ID_PC), 
+		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .IF_Flush2(IF_Flush2), .PC(PC), .Instr(IF_Instr), .ID_PC(ID_PC), 
 		.ID_Instr(ID_Instr)
 	);
 
@@ -273,8 +283,9 @@ bypath U_BYPATH(
 
 stall U_STALL(
 		.ID_EX_RT(MUX1Out), .EX_MEM_RT(MEM_RD), .IF_ID_RS(ID_Instr[25:21]), .IF_ID_RT(ID_Instr[20:16]), 
-		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .pre_PCWr(pre_PCWr), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel), .BJOp(B_JOp),
-		.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), .EX_MEM_CP0Rd(MEM_CP0Rd)
+		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .pre_PCWr(pre_PCWr), .PCWr(PCWr), .IRWr_aid(IRWr_aid), 
+		.IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel), .BJOp(B_JOp),.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), 
+		.EX_MEM_CP0Rd(MEM_CP0Rd)
 	);
 
 CP0 U_CP0(
