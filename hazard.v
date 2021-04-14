@@ -54,33 +54,37 @@ module bypath(ID_EX_RS, ID_EX_RT, IF_ID_RS, IF_ID_RT, EX_MEM_RD, MEM_WB_RD, EX_M
 
 endmodule
 
-module stall(ID_EX_RT, EX_MEM_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, EX_MEM_DMRd, pre_PCWr, PCWr, IF_IDWr, MUX7Sel, BJOp, ID_EX_RFWr,
+module stall(ID_EX_RT, EX_MEM_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, EX_MEM_DMRd, pre_PCWr, PCWr, IRWr_aid, IF_IDWr, MUX7Sel, BJOp, ID_EX_RFWr,
 				ID_EX_CP0Rd, EX_MEM_CP0Rd);
 	input[4:0] ID_EX_RT, EX_MEM_RT, IF_ID_RS, IF_ID_RT;
 	input ID_EX_DMRd, EX_MEM_DMRd, BJOp, ID_EX_RFWr;
 	input ID_EX_CP0Rd, EX_MEM_CP0Rd;
-	output reg pre_PCWr,PCWr, IF_IDWr, MUX7Sel;
+	output reg pre_PCWr,PCWr, IF_IDWr, MUX7Sel, IRWr_aid;
 
 	always@(ID_EX_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, EX_MEM_RT,EX_MEM_DMRd, BJOp, ID_EX_RFWr)
 		if((ID_EX_DMRd || ID_EX_CP0Rd) && ( (ID_EX_RT == IF_ID_RS) || (ID_EX_RT == IF_ID_RT) ) ) begin
+		    IRWr_aid = 1'b0;
 		    pre_PCWr = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
 		else if (BJOp && (EX_MEM_DMRd || EX_MEM_CP0Rd) && ( (EX_MEM_RT == IF_ID_RS) || (EX_MEM_RT == IF_ID_RT) ) ) begin
+		    IRWr_aid = 1'b0;
 		    pre_PCWr = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
 		else if(BJOp && ID_EX_RFWr && ( (ID_EX_RT == IF_ID_RS) || (ID_EX_RT == IF_ID_RT) ) ) begin
+		    IRWr_aid = 1'b0;
 		    pre_PCWr = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
 		else begin
+		    IRWr_aid = 1'b1;
 		    pre_PCWr = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;
