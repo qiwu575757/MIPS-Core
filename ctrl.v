@@ -41,8 +41,8 @@
 	output isBD;
 	output reg isBranch;
 
-	wire ri;					//判断指令是否为指令集内的有效指令
-	reg rst_sign;				//判断之前是否进行了复位操作
+	wire ri;					//鍒ゆ柇鎸囦护鏄惁涓烘寚浠ら泦鍐呯殑鏈夋晥鎸囦护
+	reg rst_sign;				//鍒ゆ柇涔嬪墠鏄惁杩涜浜嗗浣嶆搷浣�
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -54,7 +54,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
-		(OP == `cop0);
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal);
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
