@@ -1,63 +1,65 @@
 module bridge(
-	din, DMWr, DMSel, addr, dout,
+	din, DMWr, DMSel1,DMSel2, addr1, addr2, dout,
 	data_sram_en,
 	data_sram_wen,
 	data_sram_addr,
 	data_sram_wdata,
 	data_sram_rdata
 	);
-	input data_sram_en;
-	input [3:0] data_sram_wen;
-	input [31:0] data_sram_addr;
-	input [31:0] data_sram_wdata;
+	output data_sram_en;
+	output [3:0] data_sram_wen;
+	output [31:0] data_sram_addr;
+	output [31:0] data_sram_wdata;
 	input [31:0] data_sram_rdata;
 	input  DMWr;
-	input[2:0] DMSel;
-	input[31:0] addr;
+	input[2:0] DMSel1;
+	input[2:0] DMSel2;
+	input[31:0] addr1;
+	input[31:0] addr2;
 	input[31:0] din;
-	output wire [31:0] dout;
-	reg[31:0] dmem[2047:0];//8k
+	output [31:0] dout;
+	// reg[31:0] dmem[2047:0];//8k
 	reg[7:0] byte;
 	reg[15:0] halfword;
 	reg[31:0] word;
 
 	assign data_sram_wdata=
-							(DMSel==3'b000)?   // btyte
+							(DMSel1==3'b000)?   // btyte
 											{4{din[7:0]}}:
-							(DMSel==3'b001)?   // sh
+							(DMSel1==3'b001)?   // sh
 											{2{din[15:0]}}:
 											din;
 	assign data_sram_en=1'b1;
 	assign data_sram_wen=(~DMWr)?4'b0:
-							(DMSel==3'b000)?
-								(addr[1:0]==2'b00 ? 4'b0001 :
-								addr[1:0]==2'b01 ? 4'b0010 :
-								addr[1:0]==2'b10 ? 4'b0100 :
+							(DMSel1==3'b000)?
+								(addr1[1:0]==2'b00 ? 4'b0001 :
+								addr1[1:0]==2'b01 ? 4'b0010 :
+								addr1[1:0]==2'b10 ? 4'b0100 :
 								 				   4'b1000) :
-							(DMSel==3'b001)?   // sh
-								addr[1]==1'b0 ? 4'b0011 :
-								  				4'b1100 :
+							(DMSel1==3'b001)?   // sh
+								(addr1[1]==1'b0 ? 4'b0011 :
+								  				4'b1100 ):
 		
 												4'b1111 ;//sw
 
 
-	assign data_sram_addr={addr[31:2],2'b0};
+	assign data_sram_addr={addr1[31:2]};
 	assign dout=
-				DMSel==3'b011 ?  // zero
-				(  	addr[1:0]==2'b00 ? {24'b0,data_sram_rdata[7:0]} :
-					addr[1:0]==2'b01 ? {24'b0,data_sram_rdata[15:8]} :
-					addr[1:0]==2'b10 ? {24'b0,data_sram_rdata[23:16]} :
+				DMSel2==3'b011 ?  // zero
+				(  	addr2[1:0]==2'b00 ? {24'b0,data_sram_rdata[7:0]} :
+					addr2[1:0]==2'b01 ? {24'b0,data_sram_rdata[15:8]} :
+					addr2[1:0]==2'b10 ? {24'b0,data_sram_rdata[23:16]} :
 									   {24'b0,data_sram_rdata[31:24]}) :
-				DMSel==3'b100 ?
-				(   addr[1:0]==2'b00 ? {{24{data_sram_rdata[ 7]}},data_sram_rdata[ 7: 0]} :
-					addr[1:0]==2'b01 ? {{24{data_sram_rdata[15]}},data_sram_rdata[15: 8]} :
-					addr[1:0]==2'b10 ? {{24{data_sram_rdata[23]}},data_sram_rdata[23:16]} :
+				DMSel2==3'b100 ?
+				(   addr2[1:0]==2'b00 ? {{24{data_sram_rdata[ 7]}},data_sram_rdata[ 7: 0]} :
+					addr2[1:0]==2'b01 ? {{24{data_sram_rdata[15]}},data_sram_rdata[15: 8]} :
+					addr2[1:0]==2'b10 ? {{24{data_sram_rdata[23]}},data_sram_rdata[23:16]} :
 									   {{24{data_sram_rdata[31]}},data_sram_rdata[31:24]}) :
-				DMSel==3'b101 ?
-				( 	addr[1]==1'b0 	 ? {16'h0000,data_sram_rdata[15:0]}  :
+				DMSel2==3'b101 ?
+				( 	addr2[1]==1'b0 	 ? {16'h0000,data_sram_rdata[15:0]}  :
 								 	   {16'h0000,data_sram_rdata[31:16]})  :
-				DMSel==3'b110 ?
-				(	addr[1]==1'b0 	 ? {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]}  :
+				DMSel2==3'b110 ?
+				(	addr2[1]==1'b0 	 ? {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]}  :
 							    	   {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} ) :
 																data_sram_rdata;
 														
