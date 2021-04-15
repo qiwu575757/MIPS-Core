@@ -48,14 +48,14 @@ module mycpu_top(
         inst_sram_wdata = 32'b0;
     end
 
-assign inst_sram_en = resetn;
-
     mips MIPS(
         clk, 
         resetn,
         inst_sram_rdata,
         data_sram_rdata  ,
 
+        inst_sram_en      ,
+        
 	    data_sram_en     ,
         data_sram_wen    ,
         data_sram_addr   ,
