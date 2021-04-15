@@ -13,7 +13,7 @@ module mips(
     debug_wb_rf_wen  ,//榛樿鍐橰F鍧囦负 4 瀛楄妭
     debug_wb_rf_wnum ,
     debug_wb_rf_wdata,
-	pre_PC
+	NPC
 	);
 
 	input clk, rst;
@@ -31,16 +31,16 @@ module mips(
     output [3:0] debug_wb_rf_wen  ;
     output [4:0] debug_wb_rf_wnum ;
     output [31:0] debug_wb_rf_wdata;
-	output [31:0] pre_PC;
+	output [31:0] NPC;
 
-	wire pre_PCWr,PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, PF_AdEL, PC_Flush, IF_Flush, IF_Flush2, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
+	wire PCWr, DMWr, DMRd, RFWr, RHLWr, IF_IDWr, PF_AdEL, PC_Flush, IF_Flush, IF_AdEL, Overflow, CMPOut1, MUX3Sel, MUX7Sel,RHLSel_Rd,B_JOp,
 		isBD, isBranch, ID_Flush, EX_Flush, Interrupt, eret_flush, CP0WrEn, Exception;
 	wire[1:0] EXTOp, NPCOp, ALU2Op, MUX1Sel, MUX4Sel,MUX5Sel,RHLSel_Wr, CMPOut2;
 	wire[2:0] MUX2_6Sel, DMSel, MUX10Sel;
 	wire[3:0] ALU1Op;
 	wire[2:0] MUX7Out;
 	wire[4:0] MUX1Out, ExcCode;
-	wire[31:0]  NPC, Imm32, ALU1Out, GPR_RS, GPR_RT, RHLOut, MUX2Out, MUX3Out, MUX4Out, MUX5Out, 
+	wire[31:0]  Imm32, ALU1Out, GPR_RS, GPR_RT, RHLOut, MUX2Out, MUX3Out, MUX4Out, MUX5Out, 
 				MUX6Out, MUX8Out, MUX9Out, MUX10Out, DMOut;
 	wire[63:0] ALU2Out;
 
@@ -105,12 +105,11 @@ module mips(
 	wire [31:0] CP0Out;
 	wire [31:0] EPCOut;
 
-pre_pc U_PREPC(
-        .clk(clk), .rst(rst), .wr(pre_PCWr), .NPC(NPC), .pre_PC(pre_PC),.PF_AdEL(PF_AdEl), .PCWr(PCWr)
-    );
+
+    assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
 
 pc U_PC(
-		.clk(clk), .rst(rst), .wr(PCWr), .pre_PC(pre_PC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush), .IF_Flush2(IF_Flush2)
+		.clk(clk), .rst(rst), .wr(PCWr), .NPC(NPC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush)
 	);
 	
 IR U_IR(
@@ -120,13 +119,13 @@ IR U_IR(
     assign IF_Instr = IRWr ? inst_sram_rdata : instr;
     
 npc U_NPC(
-		.pre_PC(pre_PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
+		.PC(PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
 		.EPC(EPCOut), .EX_MEM_eret_flush(MEM_ere_flush), .EX_MEM_ex(MEM_Exception), .ID_Flush(ID_Flush),
 		.EX_Flush(EX_Flush), .PC_Flush(PC_Flush)
 	);
 
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .IF_Flush2(IF_Flush2), .PC(PC), .Instr(IF_Instr), .ID_PC(ID_PC), 
+		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .PC(PC), .Instr(IF_Instr), .ID_PC(ID_PC), 
 		.ID_Instr(ID_Instr)
 	);
 
@@ -183,8 +182,8 @@ MEM_WB U_MEM_WB(
 // 	);
 
 //===========================
-bridge bridge(
-		 .din(MEM_GPR_RT), .DMWr(MEM_DMWr), .DMSel(MEM_DMSel), .addr(MEM_ALU1Out), .dout(DMOut),
+bridge U_BRIDGE(
+		 .din(EX_GPR_RT), .DMWr(EX_DMWr), .DMSel(EX_DMSel), .addr(ALU1Out), .dout(DMOut),
 		 .data_sram_en(data_sram_en),
 		 .data_sram_wen(data_sram_wen),
 		 .data_sram_addr(data_sram_addr),
