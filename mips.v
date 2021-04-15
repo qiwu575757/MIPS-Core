@@ -1,11 +1,9 @@
 module mips(
-	clk				, 
+	clk, 
 	rst,
 	inst_sram_rdata  ,
     data_sram_rdata  ,
-
-	inst_sram_en     ,
-	
+    inst_sram_en     ,
 	data_sram_en     ,
     data_sram_wen    ,
     data_sram_addr   ,
@@ -21,10 +19,8 @@ module mips(
 	input clk, rst;
 	input [31:0] inst_sram_rdata;
     input [31:0] data_sram_rdata  ;
-
+    output inst_sram_en      ;
 	output data_sram_en     ;
-	output inst_sram_en     ;
-
     output [3:0] data_sram_wen    ;
     output [31:0] data_sram_addr   ;
     output [31:0] data_sram_wdata  ;
@@ -51,13 +47,11 @@ module mips(
     wire [31:0] PC;
 	wire [31:0] ID_PC;
 	wire [31:0] ID_Instr;
-	wire [31:0] instr;
-	wire [31:0] IF_Instr;
-	wire IRWr_aid;
 	wire IDWr;
 
 	wire [31:0] badvaddr;
 	wire CP0Rd;
+	reg rst_sign;
 
 	wire [5:0] ext_int_in = 6'd0;
 	wire EX_eret_flush;
@@ -109,18 +103,15 @@ module mips(
 	wire [31:0] CP0Out;
 	wire [31:0] EPCOut;
 
-
+    always@(posedge clk)
+        rst_sign <= !rst;
+    
     assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
 
 pc U_PC(
 		.clk(clk), .rst(rst), .wr(PCWr), .NPC(NPC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush)
 	);
 	
-IR U_IR(
-        .clk(clk), .rst(rst), .inst_sram_rdata(inst_sram_rdata), .instr(instr), .IRWr_aid(IRWr_aid), .IRWr(IRWr)
-    );
-
-    assign IF_Instr = IRWr ? inst_sram_rdata : instr;
     
 npc U_NPC(
 		.PC(PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp), .NPC(NPC), .IF_Flush(IF_Flush), .PCWr(PCWr), 
@@ -129,7 +120,7 @@ npc U_NPC(
 	);
 
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .PC(PC), .Instr(IF_Instr), .ID_PC(ID_PC), 
+		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), .PC(PC), .Instr(inst_sram_rdata), .ID_PC(ID_PC), 
 		.ID_Instr(ID_Instr)
 	);
 
@@ -186,14 +177,13 @@ MEM_WB U_MEM_WB(
 // 	);
 
 //===========================
-bridge bridge(
-		 .din(MUX5Out), .DMWr(EX_DMWr), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(MEM_ALU1Out),.dout(DMOut),
+bridge U_BRIDGE(
+		 .din(MUX5Out), .DMWr(EX_DMWr), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(ALU1Out),.dout(DMOut),
 		 .data_sram_en(data_sram_en),
 		 .data_sram_wen(data_sram_wen),
 		 .data_sram_addr(data_sram_addr),
 		 .data_sram_wdata(data_sram_wdata),
 		 .data_sram_rdata(data_sram_rdata)
-
 	);
 
 rf U_RF(
@@ -286,9 +276,9 @@ bypath U_BYPATH(
 
 stall U_STALL(
 		.ID_EX_RT(MUX1Out), .EX_MEM_RT(MEM_RD), .IF_ID_RS(ID_Instr[25:21]), .IF_ID_RT(ID_Instr[20:16]), 
-		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .pre_PCWr(pre_PCWr), .PCWr(PCWr), .IRWr_aid(IRWr_aid), 
-		.IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel), .BJOp(B_JOp),.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), 
-		.EX_MEM_CP0Rd(MEM_CP0Rd)
+		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
+		.BJOp(B_JOp),.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), .EX_MEM_CP0Rd(MEM_CP0Rd),
+		.rst_sign(rst_sign), .inst_sram_en(inst_sram_en)
 	);
 
 CP0 U_CP0(
