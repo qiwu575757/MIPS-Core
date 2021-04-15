@@ -1,6 +1,7 @@
-module npc(pre_PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_Flush, PCWr,
+module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_Flush, PCWr,
 			ID_Flush, EX_Flush, PC_Flush);
-	input[31:0] pre_PC, ret_addr, EPC;
+
+	input[31:0] PC, ret_addr, EPC;
 	input[25:0] Imm;
 	input[1:0] NPCOp;
 	input PCWr;
@@ -11,9 +12,6 @@ module npc(pre_PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC,
 	output ID_Flush;
 	output EX_Flush;
 	output PC_Flush;
-	wire[31:0] PC;
-	
-	assign PC = pre_PC - 4;
 
 	always@(PC,Imm,ret_addr,NPCOp, EX_MEM_eret_flush, EX_MEM_ex) begin
 		if (EX_MEM_eret_flush)
@@ -22,7 +20,7 @@ module npc(pre_PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC,
 			NPC = 32'hBFC0_0380;
 		else begin
 			case(NPCOp)
-				2'b00:	NPC = PC + 8;									//sequential execution
+				2'b00:	NPC = PC + 4;									//sequential execution
 				2'b01:	if(Imm[15])									//branch
 							NPC = PC + {14'h3fff,Imm[15:0],2'b00};
 						else
