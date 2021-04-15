@@ -1,39 +1,11 @@
 `include "MacroDef.v"
 
-module pre_pc(clk, rst, wr, NPC, pre_PC,PF_AdEL, PCWr);
-    input clk, rst, wr, PCWr;
-    input[31:0] NPC;
-    output reg[31:0] pre_PC;
-    output reg PF_AdEL;
-    
-	always @(posedge clk) begin
-		if (!rst)
-			PF_AdEL <= 1'b0;
-		else if (pre_PC[1:0] != 2'b00 && PCWr) begin
-			PF_AdEL <= 1'b1;
-		end
-	end
-	
-	always@(posedge clk)
-		if(!rst)
-			pre_PC <= 32'hbfc0_0000;
-		else if(wr)
-			pre_PC <= NPC;
-	
-endmodule
-
-module pc(clk, rst, wr, pre_PC, PC, PF_AdEL, IF_AdEL, PC_Flush,IF_Flush2);
+module pc(clk, rst, wr, NPC, PC, PF_AdEL, IF_AdEL, PC_Flush);
 	input clk, rst, wr, PF_AdEL, PC_Flush;
-	input[31:0] pre_PC;
+	input[31:0] NPC;
 	output reg [31:0] PC;
 	output reg IF_AdEL;
-	output reg IF_Flush2;
 
-    always@(posedge clk)
-        if(!rst)
-            IF_Flush2 <= 1'b0;
-        else
-            IF_Flush2 <= PC_Flush;
  
     always@(posedge clk)
 		if(!rst)
@@ -43,9 +15,9 @@ module pc(clk, rst, wr, pre_PC, PC, PF_AdEL, IF_AdEL, PC_Flush,IF_Flush2);
 	
 	always@(posedge clk)
 		if(!rst)
-			PC <= 32'h0000_0000;
+			PC <= 32'hbfbf_fffc;
 		else if(wr)
-			PC <= pre_PC;
+			PC <= NPC;
 
 endmodule
 
@@ -65,14 +37,14 @@ module IR(clk, rst, inst_sram_rdata, instr, IRWr_aid, IRWr);
             
      always@(posedge clk)
         if(!rst)
-            instr <= 32'hbfc0_0000;
+            instr <= 32'h0000_0000;
         else
             instr <= inst_sram_rdata;
     
 endmodule
 
-module IF_ID(clk, rst, IF_IDWr, IF_Flush, IF_Flush2, PC, Instr, IF_AdEL, ID_PC, ID_Instr, ID_AdEL);
-	input clk, rst, IF_IDWr, IF_Flush, IF_Flush2, IF_AdEL;
+module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, ID_PC, ID_Instr, ID_AdEL);
+	input clk, rst, IF_IDWr, IF_Flush, IF_AdEL;
 	input[31:0] PC, Instr;
 
 	output reg [31:0] ID_PC;
@@ -80,7 +52,7 @@ module IF_ID(clk, rst, IF_IDWr, IF_Flush, IF_Flush2, PC, Instr, IF_AdEL, ID_PC, 
 	output reg ID_AdEL;
 
 	always@(posedge clk)
-		if(!rst || IF_Flush || IF_Flush2) begin
+		if(!rst || IF_Flush) begin
 			ID_PC <= 32'h0000_0000;
 			ID_Instr <= 32'h0000_0000;
 			ID_AdEL <= 1'b0;
