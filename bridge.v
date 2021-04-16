@@ -43,7 +43,7 @@ module bridge(
 												4'b1111 ;//sw
 
 
-	assign data_sram_addr={addr1[31:2]};
+	assign data_sram_addr={addr1[31:2], 2'b00};
 	assign dout=
 				DMSel2==3'b011 ?  // zero
 				(  	addr2[1:0]==2'b00 ? {24'b0,data_sram_rdata[7:0]} :
