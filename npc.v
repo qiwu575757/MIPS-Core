@@ -31,7 +31,7 @@ module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_
 		end
 	end
 
-	assign IF_Flush = ((NPCOp != 2'b00) && PCWr) || EX_MEM_eret_flush || EX_MEM_ex;
+	assign IF_Flush =  EX_MEM_eret_flush || EX_MEM_ex;
 	assign ID_Flush = EX_MEM_eret_flush || EX_MEM_ex;
 	assign EX_Flush = EX_MEM_eret_flush || EX_MEM_ex;
 	assign PC_Flush = ((NPCOp != 2'b00) && PCWr) || EX_MEM_eret_flush || EX_MEM_ex;
