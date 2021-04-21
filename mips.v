@@ -276,7 +276,7 @@ bypath U_BYPATH(
 
 stall U_STALL(
 		.ID_EX_RT(MUX1Out), .EX_MEM_RT(MEM_RD), .IF_ID_RS(ID_Instr[25:21]), .IF_ID_RT(ID_Instr[20:16]), 
-		.ID_EX_DMRd(EX_DMRd), .EX_MEM_DMRd(MEM_DMRd), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
+		.ID_EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .EX_MEM_DMRd(MEM_DMRd), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.BJOp(B_JOp),.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), .EX_MEM_CP0Rd(MEM_CP0Rd),
 		.rst_sign(rst_sign), .inst_sram_en(inst_sram_en)
 	);
