@@ -93,7 +93,7 @@
 		end
 		else begin
 			Exception <= 1'b0;
-			ExcCode <= 5'd15;
+			ExcCode <= 5'd0;
 		end
 	end
 
