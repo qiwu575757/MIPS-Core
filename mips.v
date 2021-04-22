@@ -103,6 +103,9 @@ module mips(
 	wire [31:0] CP0Out;
 	wire [31:0] EPCOut;
 
+	wire [7:0] EX_CP0Addr;
+	wire [7:0] MEM_CP0Addr;
+
     always@(posedge clk)
         rst_sign <= !rst;
     
@@ -154,7 +157,7 @@ EX_MEM U_EX_MEM(
 		.MEM_ExcCode(MEM_ExcCode), .MEM_isBD(MEM_isBD), .MEM_RHLSel_Wr(MEM_RHLSel_Wr), 
 		.MEM_DMSel(MEM_DMSel), .MEM_MUX2Sel(MEM_MUX2Sel), .MEM_RD(MEM_RD), .MEM_PC(MEM_PC), .MEM_RHLOut(MEM_RHLOut), 
 		.MEM_GPR_RS(MEM_GPR_RS), .MEM_ALU1Out(MEM_ALU1Out), .MEM_GPR_RT(MEM_GPR_RT), .MEM_Imm32(MEM_Imm32), 
-		.MEM_ALU2Out(MEM_ALU2Out), .badvaddr(badvaddr), .MEM_CP0Addr(MEM_CPOAddr), .MEM_CP0Rd(MEM_CP0Rd)
+		.MEM_ALU2Out(MEM_ALU2Out), .badvaddr(badvaddr), .MEM_CP0Addr(MEM_CP0Addr), .MEM_CP0Rd(MEM_CP0Rd)
 	);
 
 MEM_WB U_MEM_WB(
@@ -282,7 +285,7 @@ stall U_STALL(
 	);
 
 CP0 U_CP0(
-		.clk(clk), .rst(rst), .CP0WrEn(MEM_CP0WrEn), .addr(MEM_CPOAddr), .data_in(MEM_GPR_RT), 
+		.clk(clk), .rst(rst), .CP0WrEn(MEM_CP0WrEn), .addr(MEM_CP0Addr), .data_in(MEM_GPR_RT), 
 		.EX_MEM_Exc(MEM_Exception), .EX_MEM_eret_flush(MEM_ere_flush), .EX_MEM_bd(MEM_isBD),
         .ext_int_in(ext_int_in), .EX_MEM_ExcCode(MEM_ExcCode), .EX_MEM_badvaddr(EX_MEM_badvaddr), 
 		.EX_MEM_PC(MEM_PC), .data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt)
