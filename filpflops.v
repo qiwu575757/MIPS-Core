@@ -98,7 +98,7 @@ module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel
 			EX_eret_flush <= 1'b0;
 			EX_CP0WrEn <= 1'b0;
 			EX_Exception <= 1'b0;
-			EX_ExcCode <= 5'd15;
+			EX_ExcCode <= 5'd0;
 			EX_isBD <= 1'b0;
 			EX_isBranch <= 1'b0;
 			EX_RHLSel_Rd <= 1'b0;
@@ -198,7 +198,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 
 	always @(posedge clk) begin
 		if (!rst || EX_Flush) begin
-			MEM_ExcCode <= 5'd15;
+			MEM_ExcCode <= 5'd0;
 			MEM_Exception <= 1'b0;
 			badvaddr <= 32'd0;
 		end
