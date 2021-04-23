@@ -9,13 +9,13 @@
 
 `define status_bev          Status[22]
 `define status_im           Status[15:8]
-`define status_exl          Status[1]      //发生例外时该位被置为1
-`define status_ie           Status[0]      //全局中断使能位
-`define cause_bd            Cause[31]      //最近发生例外的指令是否处于分支延迟槽
-`define cause_ti            Cause[30]      //计时器中断指示
-`define cause_ip1           Cause[15:10]    //待处理硬件（IP7..IP2）中断标识
-`define cause_ip2           Cause[9:8]      //待处理软件（IP1..IP0）中断标识
-`define cause_excode        Cause[6:2]     //例外编码
+`define status_exl          Status[1]      //鍙戠敓渚嬪鏃惰浣嶈缃负1
+`define status_ie           Status[0]      //鍏ㄥ眬涓柇浣胯兘浣?
+`define cause_bd            Cause[31]      //鏈?杩戝彂鐢熶緥澶栫殑鎸囦护鏄惁澶勪簬鍒嗘敮寤惰繜妲?
+`define cause_ti            Cause[30]      //璁℃椂鍣ㄤ腑鏂寚绀?
+`define cause_ip1           Cause[15:10]    //寰呭鐞嗙‖浠讹紙IP7..IP2锛変腑鏂爣璇?
+`define cause_ip2           Cause[9:8]      //寰呭鐞嗚蒋浠讹紙IP1..IP0锛変腑鏂爣璇?
+`define cause_excode        Cause[6:2]     //渚嬪缂栫爜
 
 
 module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_MEM_bd,
@@ -25,17 +25,17 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     input CP0WrEn;
     input [7:0] addr;
     input [31:0] data_in;
-    input EX_MEM_Exc;           //访存阶段的例外信号
-    input EX_MEM_eret_flush;           //eret指令修改EXL域的使能信号以及返回和刷新流水线信号
-    input EX_MEM_bd;            //访存阶段的指令是否是延迟槽指令
-    input [5:0] ext_int_in;       //处理器核顶层的6个中断输入信号
-    input [4:0] EX_MEM_ExcCode;        //访存阶段的例外编码
-    input [31:0] EX_MEM_badvaddr;      //访存阶段的出错虚地址
-    input [31:0] EX_MEM_PC;             //访存阶段的PC
+    input EX_MEM_Exc;           //璁垮瓨闃舵鐨勪緥澶栦俊鍙?
+    input EX_MEM_eret_flush;           //eret鎸囦护淇敼EXL鍩熺殑浣胯兘淇″彿浠ュ強杩斿洖鍜屽埛鏂版祦姘寸嚎淇″彿
+    input EX_MEM_bd;            //璁垮瓨闃舵鐨勬寚浠ゆ槸鍚︽槸寤惰繜妲芥寚浠?
+    input [5:0] ext_int_in;       //澶勭悊鍣ㄦ牳椤跺眰鐨?6涓腑鏂緭鍏ヤ俊鍙?
+    input [4:0] EX_MEM_ExcCode;        //璁垮瓨闃舵鐨勪緥澶栫紪鐮?
+    input [31:0] EX_MEM_badvaddr;      //璁垮瓨闃舵鐨勫嚭閿欒櫄鍦板潃
+    input [31:0] EX_MEM_PC;             //璁垮瓨闃舵鐨凱C
 
     output [31:0] data_out;
     output [31:0] EPC_out;
-    output Interrupt;           //中断信号
+    output Interrupt;           //涓柇淇″彿
 
     reg [31:0] BadVAddr;
     reg [31:0] Count;
@@ -43,15 +43,15 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     reg [31:0] Status;
     reg [31:0] Cause;
     reg [31:0] EPC;
-    wire count_eq_compare;       //Count寄存器和Compare寄存器相等信号
-    reg tick;                   //时钟频率的一半
+    wire count_eq_compare;       //Count瀵勫瓨鍣ㄥ拰Compare瀵勫瓨鍣ㄧ浉绛変俊鍙?
+    reg tick;                   //鏃堕挓棰戠巼鐨勪竴鍗?
 
     assign count_eq_compare = (Compare == Count);
     assign EPC_out = EPC;
     assign Interrupt = 
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
 
-    //MFC0指令读取CP0
+    //MFC0鎸囦护璇诲彇CP0
     assign data_out = 
                 (addr == `BadVAddr_index )    ? BadVAddr :
                 (addr == `Count_index)        ? Count:
@@ -60,13 +60,13 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
                 (addr == `Cause_index )       ? Cause :
                 (addr == `EPC_index )         ? EPC :
                                     0;
-    //BadVAddr寄存器
+    //BadVAddr瀵勫瓨鍣?
     always @(posedge clk) begin
-        if (EX_MEM_Exc && EX_MEM_ExcCode == `AdEL)
+        if (EX_MEM_Exc && (EX_MEM_ExcCode == `AdEL || EX_MEM_ExcCode == `AdES))
             BadVAddr <= EX_MEM_badvaddr;
     end
 
-    //Count寄存器
+    //Count瀵勫瓨鍣?
     always @(posedge clk) begin
         if (!rst)
             tick <= 1'b0;
@@ -79,25 +79,25 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             Count <= Count + 1'b1;
     end
 
-    //Compare寄存器
+    //Compare瀵勫瓨鍣?
     always @(posedge clk) begin
         if (CP0WrEn && addr == `Compare_index)
             Compare <= data_in;
     end
 
-    //Status寄存器的bev域
+    //Status瀵勫瓨鍣ㄧ殑bev鍩?
     always @(posedge clk) begin
         if (!rst)
             `status_bev <= 1'b1;
     end
 
-    //Status寄存器的IM7~IM0域
+    //Status瀵勫瓨鍣ㄧ殑IM7~IM0鍩?
     always @(posedge clk) begin
         if (CP0WrEn && addr == `Status_index)
             `status_im <= data_in[15:8];
     end
 
-    //Status寄存器的EXL域
+    //Status瀵勫瓨鍣ㄧ殑EXL鍩?
     always @(posedge clk) begin
         if (!rst)
             `status_exl <= 1'b0;
@@ -109,7 +109,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `status_exl <= data_in[1];
     end
 
-    //Status寄存器的IE域
+    //Status瀵勫瓨鍣ㄧ殑IE鍩?
     always @(posedge clk) begin
         if (!rst)
             `status_ie <= 1'b0;
@@ -117,7 +117,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `status_ie <= data_in[0];
     end
 
-    //Status寄存器的零域
+    //Status瀵勫瓨鍣ㄧ殑闆跺煙
     always @(posedge clk) begin
         if (!rst) begin
             Status[31:23] <= 9'b0;
@@ -126,7 +126,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
         end
     end
 
-    //Cause寄存器的BD域
+    //Cause瀵勫瓨鍣ㄧ殑BD鍩?
     always @(posedge clk) begin
         if (!rst)
             `cause_bd <= 1'b0;
@@ -134,7 +134,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `cause_bd <= EX_MEM_bd;
     end
 
-    //Cause寄存器的TI域
+    //Cause瀵勫瓨鍣ㄧ殑TI鍩?
     always @(posedge clk) begin
         if (!rst)
             `cause_ti <= 1'b0;
@@ -144,7 +144,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `cause_ti <= 1'b1;
     end
 
-    //Cause寄存器的IP7~IP2域
+    //Cause瀵勫瓨鍣ㄧ殑IP7~IP2鍩?
     always @(posedge clk) begin
         if (!rst)
             `cause_ip1 <= 6'b0;
@@ -154,7 +154,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
         end
     end
 
-    //Cause寄存器的IP1和IP0域
+    //Cause瀵勫瓨鍣ㄧ殑IP1鍜孖P0鍩?
     always @(posedge clk) begin
         if (!rst)
             `cause_ip2 <= 2'b0;
@@ -162,7 +162,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `cause_ip2 <= data_in[9:8];
     end
 
-    //Cause寄存器的Excode域
+    //Cause瀵勫瓨鍣ㄧ殑Excode鍩?
     always @(posedge clk) begin
         if (!rst)
             `cause_excode <= 5'b0;
@@ -170,7 +170,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
             `cause_excode <= EX_MEM_ExcCode;
     end
 
-    //Cause寄存器的零域
+    //Cause瀵勫瓨鍣ㄧ殑闆跺煙
     always @(posedge clk) begin
         if (!rst) begin
             Cause[29:16] <= 14'b0;
@@ -179,12 +179,12 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
         end
     end
 
-    //EPC寄存器
+    //EPC瀵勫瓨鍣?
     always @(posedge clk) begin
         if (EX_MEM_Exc && !`status_exl)
-            EPC <= EX_MEM_bd ? EX_MEM_PC - 4: EX_MEM_PC;
+            EPC <= EX_MEM_bd ? EX_MEM_PC - 4 : EX_MEM_PC  ;
         else if (CP0WrEn && addr == `EPC_index)
-            EPC <= data_in;
+            EPC <= data_in - 4;
     end
 
 endmodule
