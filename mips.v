@@ -48,6 +48,7 @@ module mips(
 	wire [31:0] ID_PC;
 	wire [31:0] ID_Instr;
 	wire IDWr;
+	wire DMWen;
 
 	wire [31:0] badvaddr;
 	wire CP0Rd;
@@ -110,6 +111,9 @@ module mips(
         rst_sign <= !rst;
     
     assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
+    
+    assign DMWen = EX_DMWr && !MEM_Exception && !Overflow  && !EX_Exception  
+          && !(EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 || EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0);
 
 pc U_PC(
 		.clk(clk), .rst(rst), .wr(PCWr), .NPC(NPC), .PC(PC), .PF_AdEL(PF_AdEL), .IF_AdEL(IF_AdEL), .PC_Flush(PC_Flush)
@@ -181,7 +185,7 @@ MEM_WB U_MEM_WB(
 
 //===========================
 bridge U_BRIDGE(
-		 .din(MUX5Out), .DMWr(EX_DMWr && !MEM_Exception), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(MEM_ALU1Out),.dout(DMOut),
+		 .din(MUX5Out), .DMWr(DMWen), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(MEM_ALU1Out),.dout(DMOut),
 		 .data_sram_en(data_sram_en),
 		 .data_sram_wen(data_sram_wen),
 		 .data_sram_addr(data_sram_addr),
@@ -281,13 +285,13 @@ stall U_STALL(
 		.ID_EX_RT(MUX1Out), .EX_MEM_RT(MEM_RD), .IF_ID_RS(ID_Instr[25:21]), .IF_ID_RT(ID_Instr[20:16]), 
 		.ID_EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .EX_MEM_DMRd(MEM_DMRd), .PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.BJOp(B_JOp),.ID_EX_RFWr(EX_RFWr), .ID_EX_CP0Rd(EX_CP0Rd), .EX_MEM_CP0Rd(MEM_CP0Rd),
-		.rst_sign(rst_sign), .inst_sram_en(inst_sram_en), .EX_MEM_ex(MEM_Exception)
+		.rst_sign(rst_sign), .inst_sram_en(inst_sram_en), .EX_MEM_ex(MEM_Exception), .EX_MEM_RFWr(MEM_RFWr)
 	);
 
 CP0 U_CP0(
 		.clk(clk), .rst(rst), .CP0WrEn(MEM_CP0WrEn), .addr(MEM_CP0Addr), .data_in(MEM_GPR_RT), 
 		.EX_MEM_Exc(MEM_Exception), .EX_MEM_eret_flush(MEM_ere_flush), .EX_MEM_bd(MEM_isBD),
-        .ext_int_in(ext_int_in), .EX_MEM_ExcCode(MEM_ExcCode), .EX_MEM_badvaddr(EX_MEM_badvaddr), 
+        .ext_int_in(ext_int_in), .EX_MEM_ExcCode(MEM_ExcCode), .EX_MEM_badvaddr(badvaddr), 
 		.EX_MEM_PC(MEM_PC), .data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt)
 	);
 
