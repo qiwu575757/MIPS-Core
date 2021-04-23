@@ -181,7 +181,7 @@ MEM_WB U_MEM_WB(
 
 //===========================
 bridge U_BRIDGE(
-		 .din(MUX5Out), .DMWr(EX_DMWr), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(MEM_ALU1Out),.dout(DMOut),
+		 .din(MUX5Out), .DMWr(EX_DMWr && !MEM_Exception), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel), .addr1(ALU1Out), .addr2(MEM_ALU1Out),.dout(DMOut),
 		 .data_sram_en(data_sram_en),
 		 .data_sram_wen(data_sram_wen),
 		 .data_sram_addr(data_sram_addr),
