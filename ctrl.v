@@ -1,4 +1,4 @@
- `include "MacroDef.v"
+  `include "MacroDef.v"
 
  module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, ID_EXE_isBranch, Interrupt,
  			IF_AdEL, IF_Flush,
@@ -41,8 +41,8 @@
 	output isBD;
 	output reg isBranch;
 
-	wire ri;					//鍒ゆ柇鎸囦护鏄惁涓烘寚浠ら泦鍐呯殑鏈夋晥鎸囦护
-	reg rst_sign;				//鍒ゆ柇涔嬪墠鏄惁杩涜浜嗗浣嶆搷浣�
+	wire ri;					//閸掋倖鏌囬幐鍥︽姢閺勵垰鎯佹稉鐑樺瘹娴犮倝娉﹂崘鍛畱閺堝鏅ラ幐鍥︽姢
+	reg rst_sign;				//閸掋倖鏌囨稊瀣閺勵垰鎯佹潻娑滎攽娴滃棗顦叉担宥嗘惙娴ｏ拷
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -332,6 +332,14 @@
 			6'b001100: EXTOp <= 2'b00;			/* ANDI */
 			6'b001110: EXTOp <= 2'b00;			/* XORI */
 			6'b001111: EXTOp <= 2'b10;			/* LUI */
+			6'b101000: EXTOp <= 2'b01;	      	/* SB */
+			6'b101001: EXTOp <= 2'b01;	      	/* SH */
+			6'b101011: EXTOp <= 2'b01;	   		/* SW */
+			6'b100100: EXTOp <= 2'b01;	  		/* LBU */
+			6'b100000: EXTOp <= 2'b01;	  		/* LB */
+			6'b100101: EXTOp <= 2'b01;	   		/* LHU */
+			6'b100001: EXTOp <= 2'b01;	   		/* LH */
+			6'b100011: EXTOp <= 2'b01;	        /* LW */
 			default: EXTOp <= 2'b00;
 		endcase
 	end
