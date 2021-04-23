@@ -134,7 +134,7 @@ module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel
 			EX_isBD <= isBD;
 			EX_isBranch <= isBranch;
 			EX_RHLSel_Rd <= RHLSel_Rd;
-			EX_DMWr <= DMWr;
+			EX_DMWr <= DMWr && !EX_Exception;
 			EX_DMRd <= DMRd;
 			EX_MUX3Sel <= MUX3Sel;
 			EX_ALU1Sel <= ALU1Sel;
@@ -276,7 +276,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 endmodule
 
 module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP0Out, GPR_RS, 
-				DMOut, ALU1Out, Imm32, RD, 
+				DMOut, ALU1Out, Imm32, RD, MEM_Flush,
 				WB_RFWr, WB_RHLWr, WB_RHLSel_Wr, WB_MUX2Sel, WB_RD, WB_PC, WB_ALU1Out, WB_DMOut, 
 				WB_RHLOut, WB_Imm32, WB_GPR_RS, WB_CP0Out, WB_ALU2Out);
 	input clk, rst, RFWr, RHLWr;
@@ -285,6 +285,7 @@ module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP
 	input[4:0] RD;
 	input[31:0] PC, ALU1Out, DMOut, RHLOut, Imm32, GPR_RS, CP0Out;
 	input[63:0] ALU2Out;
+	input MEM_Flush;
 
 	output reg WB_RFWr, WB_RHLWr;
 	output reg[1:0] WB_RHLSel_Wr;
@@ -293,7 +294,7 @@ module MEM_WB(clk, rst, PC, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, ALU2Out, RHLOut, CP
 	output reg[31:0] WB_PC, WB_ALU1Out, WB_DMOut, WB_RHLOut, WB_Imm32, WB_GPR_RS, WB_CP0Out;
 	output reg[63:0] WB_ALU2Out;
 	always@(posedge clk)
-		if(!rst) begin
+		if(!rst || MEM_Flush) begin
 			WB_RFWr <= 1'b0;
 			WB_RHLWr <= 1'b0;
 			WB_RHLSel_Wr <= 2'd0;
