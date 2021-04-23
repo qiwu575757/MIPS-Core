@@ -147,8 +147,8 @@ module cache(clk, resetn, valid, op, index, tag, offset, wstrb, wdata, addr_ok, 
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
         end
-    always@(posedge clk, posedge resetn)
-        if(resetn)
+    always@(posedge clk)
+        if(!resetn)
             ret_number_MB <= 2'b00;
         else if(rd_rdy)
             ret_number_MB <= 2'b00;
