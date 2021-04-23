@@ -10,7 +10,7 @@ module mips(
     data_sram_wdata  ,
     //debug
     debug_wb_pc      ,
-    debug_wb_rf_wen  ,//姒涙顓婚崘姗癋閸у洣璐� 4 鐎涙濡�?
+    debug_wb_rf_wen  ,//姒涙顓婚崘姗癋閸у洣璐� 4 鐎涙濡�?
     debug_wb_rf_wnum ,
     debug_wb_rf_wdata,
 	NPC
@@ -219,6 +219,7 @@ alu1 U_ALU1(
 // alu2 U_ALU2(
 // 		.A(MUX4Out), .B(MUX5Out), .C(ALU2Out), .ALU2Op(EX_ALU2Op)
 // 	);
+//                ！！！！！我这里直接用RHLWr当start信号了，别把这个信号删了啊！！！
 brodge_RHL U_ALU2(
 		.aclk(clk),.aresetn(rst),.A(MUX4Out), .B(MUX5Out), .C(ALU2Out), .ALU2Op(EX_ALU2Op) ,.start(EX_RHLWr),.isBusy(EX_isBusy)
 	);

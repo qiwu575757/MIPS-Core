@@ -182,7 +182,7 @@
 		endcase
 	end
 
-
+//                ！！！！！我这里直接用RHLWr当start信号了，别把这个信号删了啊！！！
 	always @(OP or Funct) begin			/* the generation of RHLWr */
 		if (OP == 6'b000000) begin
 			case (Funct)
