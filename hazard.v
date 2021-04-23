@@ -55,22 +55,25 @@ module bypass(ID_EX_RS, ID_EX_RT, IF_ID_RS, IF_ID_RT, EX_MEM_RD, MEM_WB_RD, EX_M
 endmodule
 
 module stall(ID_EX_RT, EX_MEM_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, ID_PC, EX_PC, EX_MEM_DMRd, PCWr, IF_IDWr, MUX7Sel, BJOp, ID_EX_RFWr,
-				ID_EX_CP0Rd, EX_MEM_CP0Rd, rst_sign, inst_sram_en, EX_MEM_ex, EX_MEM_RFWr, EX_MEM_eret_flush);
+				ID_EX_CP0Rd, EX_MEM_CP0Rd, rst_sign, inst_sram_en, EX_MEM_ex, EX_MEM_RFWr,isStall);
 	input[4:0] ID_EX_RT, EX_MEM_RT, IF_ID_RS, IF_ID_RT;
 	input [31:0] ID_PC, EX_PC;
 	input ID_EX_DMRd, EX_MEM_DMRd, BJOp, ID_EX_RFWr, EX_MEM_RFWr;
-	input ID_EX_CP0Rd, EX_MEM_CP0Rd, EX_MEM_ex, EX_MEM_eret_flush;
+	input ID_EX_CP0Rd, EX_MEM_CP0Rd, EX_MEM_ex;
 	input rst_sign;
 	output reg PCWr, IF_IDWr, MUX7Sel, inst_sram_en;
+	output isStall;
+	assign isStall=~PCWr;
 
-	always@(ID_EX_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, EX_MEM_RT,EX_MEM_DMRd, BJOp, ID_EX_RFWr, EX_MEM_RFWr, rst_sign, EX_MEM_ex, EX_MEM_eret_flush)
+
+	always@(ID_EX_RT, IF_ID_RS, IF_ID_RT, ID_EX_DMRd, EX_MEM_RT,EX_MEM_DMRd, BJOp, ID_EX_RFWr, EX_MEM_RFWr, rst_sign, EX_MEM_ex)
 	    if(rst_sign) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
-		else if(EX_MEM_ex || EX_MEM_eret_flush) begin
+		else if(EX_MEM_ex) begin
 			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;

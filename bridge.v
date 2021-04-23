@@ -1,4 +1,4 @@
-module bridge(
+module bridge_dm(
 	din, DMWr, DMSel1,DMSel2, addr1, addr2, dout,
 	data_sram_en,
 	data_sram_wen,
@@ -101,5 +101,113 @@ module bridge(
 // 			default:dout = word; 					//no extension
 // 		endcase
 // endmodule
+
+endmodule
+
+
+// 这个模块用于当前与cpu与乘除器的交互。
+// 借助状态机来控制
+// * start为1时，乘除法开始计算
+// * isBusy为1时，表示正在运行
+// * 乘法单周期运算，除法多周期（34个）。
+// * C是运算结果，支持都保存，即如果没有新的start，结果会保持为上一次的运算结果
+module brodge_RHL(
+		aclk,aresetn,A, B, C, ALU2Op,start,isBusy,
+	);
+input aclk;
+input aresetn;
+input [31:0 ]A;
+input [31:0] B;
+input [1:0] ALU2Op;
+input start;
+output isBusy;
+output [63:0] C;
+wire [63:0] divider_sign_out;
+wire [63:0] divider_unsign_out;
+wire [63:0] multi_sign_out;
+wire [63:0] multi_unsign_out;
+reg [63:0] temp;
+reg present_state;
+reg next_state;
+wire m_axis_dout_tvalid1;
+wire m_axis_dout_tvalid2;
+
+wire[63:0] tempA, tempB;
+
+assign tempA = A[31] ? {32'hffffffff,A} : {32'h00000000,A};
+assign tempB = B[31] ? {32'hffffffff,B} : {32'h00000000,B};
+
+
+assign C=temp;
+assign isBusy=present_state;
+
+parameter state_free = 1'b0 ;
+parameter state_busy = 1'b1 ;
+
+    // 2'b00: C = A * B;
+    // 2'b01: C = tempA * tempB;
+    // 2'b10: C = {R1,Q1};//unsigned
+    // 2'b11: C = {R2,Q2};//signed
+assign multi_sign_out=A*B;
+assign multi_unsign_out=tempA*tempB;
+
+
+always @(posedge aclk) begin
+	if(ALU2Op==2'b00 &&start)
+		temp<=multi_sign_out;
+	else if(ALU2Op==2'b01 &&start)
+		temp<=multi_unsign_out;
+	else if(m_axis_dout_tvalid1) //sign
+		temp<=divider_sign_out;
+	else if(m_axis_dout_tvalid2 ) //unsign
+		temp<=divider_unsign_out;
+end
+
+always @(posedge aclk ) begin
+	if(aresetn)
+	begin
+		present_state=state_free;
+	end
+	else 
+	begin
+		present_state=next_state;
+	end
+end
+
+always @(posedge aclk ) begin
+	if(start&ALU2Op[1])
+	begin
+		next_state=state_busy;
+	end
+	else if (m_axis_dout_tvalid1|m_axis_dout_tvalid2)
+	begin
+		next_state=state_free;
+	end
+end
+
+
+
+Divider divider (
+  .aclk(aclk),                                      // input wire aclk
+  .aresetn(aresetn),                                // input wire aresetn
+  .s_axis_divisor_tvalid(start&ALU2Op[1]&ALU2Op[0]),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
+  .s_axis_dividend_tvalid(start&ALU2Op[1]&ALU2Op[0]),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
+  .m_axis_dout_tvalid(m_axis_dout_tvalid1),          // output wire m_axis_dout_tvalid
+  .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
+);
+Divider_Unsighed divider_unsign (
+  .aclk(aclk),                                      // input wire aclk
+  .aresetn(aresetn),                                // input wire aresetn
+  .s_axis_divisor_tvalid(start&ALU2Op[1]&~ALU2Op[0]),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
+  .s_axis_dividend_tvalid(start&ALU2Op[1]&~ALU2Op[0]),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
+  .m_axis_dout_tvalid(m_axis_dout_tvalid2),          // output wire m_axis_dout_tvalid
+  .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
+);
+
+
 
 endmodule

@@ -1,7 +1,7 @@
   `include "MacroDef.v"
 
  module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, ID_EXE_isBranch, Interrupt,
- 			ID_AdEL, IF_Flush,
+ 			IF_AdEL, IF_Flush,
 			MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch, CP0Rd);
 	input clk;
@@ -14,7 +14,7 @@
 	input [1:0] CMPOut2;
 	input ID_EXE_isBranch;
 	input Interrupt;
-	input ID_AdEL;
+	input IF_AdEL;
 	input IF_Flush;
 
 	output reg [1:0] MUX1Sel;
@@ -70,12 +70,12 @@
 			CP0WrEn <= 1'b0;
 	end
 
-	always @(OP or Funct or ri or rst or IF_Flush or ID_AdEL) begin	/* the generation of Exception and ExcCode */
+	always @(OP or Funct or ri or rst or IF_Flush) begin	/* the generation of Exception and ExcCode */
 		if (Interrupt) begin
 			Exception <= 1'b1;
 			ExcCode <= `Int;
 		end
-		else if (ID_AdEL) begin
+		else if (IF_AdEL) begin
 			Exception <= 1'b1;
 			ExcCode <= `AdEL;
 		end
@@ -104,13 +104,6 @@
 			6'b000001: isBranch <= 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
 			6'b000111: isBranch <= 1;		/* BGTZ */
 			6'b000110: isBranch <= 1;		/* BLEZ */
-			6'b000000:
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
-				isBranch <= 1;
-			else
-				isBranch <= 0;
-			6'b000010: isBranch <= 1;        /* J */
-			6'b000011: isBranch <= 1;        /* JAL */
 			default: isBranch <= 0;
 		endcase
 	end
