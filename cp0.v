@@ -45,6 +45,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
     reg [31:0] EPC;
     wire count_eq_compare;       //Count瀵勫瓨鍣ㄥ拰Compare瀵勫瓨鍣ㄧ浉绛変俊鍙?
     reg tick;                   //鏃堕挓棰戠巼鐨勪竴鍗?
+    reg epc_sign;               //epc_sign = 0,例外改写epc；epc_sign = 1,指令改写epc；
 
     assign count_eq_compare = (Compare == Count);
     assign EPC_out = EPC;
@@ -58,7 +59,7 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
                 (addr == `Compare_index)      ? Compare:
                 (addr == `Status_index )      ? Status :
                 (addr == `Cause_index )       ? Cause :
-                (addr == `EPC_index )         ? EPC :
+                (addr == `EPC_index )         ? EPC + epc_sign * 4:
                                     0;
     //BadVAddr瀵勫瓨鍣?
     always @(posedge clk) begin
@@ -181,10 +182,18 @@ module CP0(clk, rst, CP0WrEn, addr, data_in, EX_MEM_Exc, EX_MEM_eret_flush, EX_M
 
     //EPC瀵勫瓨鍣?
     always @(posedge clk) begin
-        if (EX_MEM_Exc && !`status_exl)
+        if (!rst)
+            epc_sign <= 0;
+        if (EX_MEM_Exc && !`status_exl) begin
             EPC <= EX_MEM_bd ? EX_MEM_PC - 4 : EX_MEM_PC  ;
-        else if (CP0WrEn && addr == `EPC_index)
+            epc_sign <= 0;
+        end   
+        else if (CP0WrEn && addr == `EPC_index) begin
             EPC <= data_in - 4;
+            epc_sign <= 1;
+         end  
     end
+    
+  
 
 endmodule
