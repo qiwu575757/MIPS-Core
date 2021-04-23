@@ -134,7 +134,7 @@ module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel
 			EX_isBD <= isBD;
 			EX_isBranch <= isBranch;
 			EX_RHLSel_Rd <= RHLSel_Rd;
-			EX_DMWr <= DMWr && !EX_Exception;
+			EX_DMWr <= DMWr;
 			EX_DMRd <= DMRd;
 			EX_MUX3Sel <= MUX3Sel;
 			EX_ALU1Sel <= ALU1Sel;
