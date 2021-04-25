@@ -110,21 +110,3 @@ module mux9(GPR_RT, data_MEM, MUX9Sel, out);
 	assign out = MUX9Sel ? data_MEM : GPR_RT;
 endmodule 
 
-module mux10(RHLOut, EX_MEM_ALU2Out, EX_MEM_GPR_RS, MEM_WB_ALU2Out, MEM_WB_GPR_RS, MUX10Sel, out);
-	input[31:0] RHLOut, EX_MEM_GPR_RS, MEM_WB_GPR_RS;
-	input[63:0] EX_MEM_ALU2Out, MEM_WB_ALU2Out;
-	input[2:0] MUX10Sel;
-	output reg[31:0] out;
-
-	always@(RHLOut, EX_MEM_ALU2Out, EX_MEM_GPR_RS, MEM_WB_ALU2Out, MEM_WB_GPR_RS, MUX10Sel)
-		case(MUX10Sel)
-			3'b001:	out = EX_MEM_ALU2Out[63:32];
-			3'b010:	out = EX_MEM_ALU2Out[31:0];
-			3'b011:	out = EX_MEM_GPR_RS;
-			3'b100:	out = MEM_WB_ALU2Out[63:32];
-			3'b101:	out = MEM_WB_ALU2Out[31:0];
-			3'b110:	out = MEM_WB_GPR_RS;
-			default:out = RHLOut;
-		endcase
-		
-endmodule
