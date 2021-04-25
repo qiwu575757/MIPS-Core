@@ -64,30 +64,3 @@ module alu1(A, B, C, ALU1Op, ALU1Sel, Shamt, Overflow);
 			Overflow = 1'b0;
 
 endmodule
-
-module alu2(A, B, C, ALU2Op);
-	input[31:0] A, B;
-	input[1:0] ALU2Op;
-	output reg[63:0] C;
-	wire[31:0] Q1, R1, Q2, R2, oriA,oriB;
-	wire[63:0] tempA, tempB;
-
-	assign tempA = A[31] ? {32'hffffffff,A} : {32'h00000000,A};
-	assign tempB = B[31] ? {32'hffffffff,B} : {32'h00000000,B};
-	assign oriA = A[31] ? (~ A + 1) : A;
-	assign oriB = B[31] ? (~ B + 1) : B;
-
-	assign Q1 = A / B;
-	assign R1 = A % B;
-	assign Q2 = A[31]^B[31] ? (~(oriA / oriB) + 1) : (oriA / oriB);
-	assign R2 = A[31] ? (~(oriA % oriB) + 1) : (oriA % oriB);
-
-	always@(A, B, ALU2Op, tempA, tempB, R1, Q1, R2, Q2)
-		case(ALU2Op)
-			2'b00: C = A * B;
-			2'b01: C = tempA * tempB;
-			2'b10: C = {R1,Q1};
-			2'b11: C = {R2,Q2};
-			default: C = 32'hffffffff;
-		endcase
-endmodule
