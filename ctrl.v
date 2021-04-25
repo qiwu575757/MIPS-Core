@@ -1,9 +1,10 @@
-  `include "MacroDef.v"
+ `include "MacroDef.v"
 
  module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, ID_EXE_isBranch, Interrupt,
- 			IF_AdEL, IF_Flush,
+ 			ID_AdEL, IF_Flush,
 			MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
-			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch, CP0Rd);
+			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch,
+			CP0Rd, start, RHL_visit);
 	input clk;
 	input rst;
 	input [5:0] OP;
@@ -14,7 +15,7 @@
 	input [1:0] CMPOut2;
 	input ID_EXE_isBranch;
 	input Interrupt;
-	input IF_AdEL;
+	input ID_AdEL;
 	input IF_Flush;
 
 	output reg [1:0] MUX1Sel;
@@ -40,6 +41,8 @@
 	output reg [4:0] ExcCode;
 	output isBD;
 	output reg isBranch;
+	output reg start;
+	output reg RHL_visit;
 
 	wire ri;					//閸掋倖鏌囬幐鍥︽姢閺勵垰鎯佹稉鐑樺瘹娴犮倝娉﹂崘鍛畱閺堝鏅ラ幐鍥︽姢
 	reg rst_sign;				//閸掋倖鏌囨稊瀣閺勵垰鎯佹潻娑滎攽娴滃棗顦叉担宥嗘惙娴ｏ拷
@@ -70,12 +73,12 @@
 			CP0WrEn <= 1'b0;
 	end
 
-	always @(OP or Funct or ri or rst or IF_Flush) begin	/* the generation of Exception and ExcCode */
+	always @(OP or Funct or ri or rst or IF_Flush or ID_AdEL) begin	/* the generation of Exception and ExcCode */
 		if (Interrupt) begin
 			Exception <= 1'b1;
 			ExcCode <= `Int;
 		end
-		else if (IF_AdEL) begin
+		else if (ID_AdEL) begin
 			Exception <= 1'b1;
 			ExcCode <= `AdEL;
 		end
@@ -104,6 +107,13 @@
 			6'b000001: isBranch <= 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
 			6'b000111: isBranch <= 1;		/* BGTZ */
 			6'b000110: isBranch <= 1;		/* BLEZ */
+			6'b000000:
+			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
+				isBranch <= 1;
+			else
+				isBranch <= 0;
+			6'b000010: isBranch <= 1;        /* J */
+			6'b000011: isBranch <= 1;        /* JAL */
 			default: isBranch <= 0;
 		endcase
 	end
@@ -182,7 +192,7 @@
 		endcase
 	end
 
-//                ！！！！！我这里直接用RHLWr当start信号了，别把这个信号删了啊！！！
+
 	always @(OP or Funct) begin			/* the generation of RHLWr */
 		if (OP == 6'b000000) begin
 			case (Funct)
@@ -197,6 +207,20 @@
 		end
 		else
 			RHLWr <= 0;
+	end
+	
+	always @(OP or Funct) begin			/* the generation of start */
+		if (OP == 6'b000000) begin
+			case (Funct)
+				6'b011010: start <= 1;	/* DIV */
+				6'b011011: start <= 1;	/* DIVU */
+				6'b011000: start <= 1;	/* MULT */
+				6'b011001: start <= 1;	/* MULTU */
+				default: start <= 0;
+			endcase
+		end
+		else
+			start <= 0;
 	end
 		
 	always @(OP) begin			/* the generation of DMWr */
@@ -293,7 +317,7 @@
 		else
 			ALU1Sel <= 1'b0;
 	end
-
+	
 	always @(OP or Funct) begin		/* the generation of RHLSel_Wr */
 		case (OP)
 			6'b000000:
@@ -307,6 +331,25 @@
 				default: RHLSel_Wr <= 2'b00;
 			endcase
 			default: RHLSel_Wr <= 2'b00;
+		endcase
+	end
+	
+
+	always @(OP or Funct) begin		/* the generation of RHL_visit */
+		case (OP)
+			6'b000000:
+			case (Funct)
+				6'b011001: RHL_visit <= 1'b1;		/* MULTU */
+				6'b011000: RHL_visit <= 1'b1;		/* MULT */
+				6'b011011: RHL_visit <= 1'b1;		/* DIVU */
+				6'b011010: RHL_visit <= 1'b1;		/* DIV */
+				6'b010001: RHL_visit <= 1'b1;		/* MTHI */
+				6'b010011: RHL_visit <= 1'b1;		/* MTLO */
+				6'b010000: RHL_visit <= 1'b1;		/* MFHI */
+				6'b010010: RHL_visit <= 1'b1;		/* MFLO */
+				default:   RHL_visit <= 1'b0;
+			endcase
+			default: RHL_visit <= 1'b0;
 		endcase
 	end
 
