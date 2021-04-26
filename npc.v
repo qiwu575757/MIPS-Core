@@ -1,12 +1,18 @@
-module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_Flush, PCWr,
-			ID_Flush, EX_Flush, PC_Flush, MEM_Flush);
+module npc(
+	PC, Imm, EPC, ret_addr, NPCOp, 
+	MEM_eret_flush, MEM_ex, PCWr,
+
+	NPC, IF_Flush,ID_Flush, EX_Flush, 
+	PC_Flush, MEM_Flush
+	);
 
 	input[31:0] PC, ret_addr, EPC;
 	input[25:0] Imm;
 	input[1:0] NPCOp;
 	input PCWr;
-	input EX_MEM_eret_flush;
-	input EX_MEM_ex;
+	input MEM_eret_flush;
+	input MEM_ex;
+
 	output reg[31:0] NPC;
 	output IF_Flush;
 	output ID_Flush;
@@ -14,10 +20,10 @@ module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_
 	output PC_Flush;
 	output MEM_Flush;
 
-	always@(PC,Imm,ret_addr,NPCOp, EX_MEM_eret_flush, EX_MEM_ex) begin
-		if (EX_MEM_eret_flush)
+	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex) begin
+		if (MEM_eret_flush)
 			NPC = EPC + 4;
-		else if (EX_MEM_ex)
+		else if (MEM_ex)
 			NPC = 32'hBFC0_0380;
 		else begin
 			case(NPCOp)
@@ -32,10 +38,10 @@ module npc(PC, Imm, EPC, ret_addr, NPCOp, EX_MEM_eret_flush, EX_MEM_ex, NPC, IF_
 		end
 	end
 
-	assign IF_Flush =  EX_MEM_eret_flush || EX_MEM_ex;
-	assign ID_Flush = EX_MEM_eret_flush || EX_MEM_ex;
-	assign EX_Flush = EX_MEM_eret_flush || EX_MEM_ex;
-	assign MEM_Flush = EX_MEM_eret_flush || EX_MEM_ex;
-	assign PC_Flush = ((NPCOp != 2'b00) && PCWr) || EX_MEM_eret_flush || EX_MEM_ex;
+	assign IF_Flush =  MEM_eret_flush || MEM_ex;
+	assign ID_Flush = MEM_eret_flush || MEM_ex;
+	assign EX_Flush = MEM_eret_flush || MEM_ex;
+	assign MEM_Flush = MEM_eret_flush || MEM_ex;
+	assign PC_Flush = ((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex;
 
 endmodule
