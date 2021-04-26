@@ -1,6 +1,10 @@
 `include "MacroDef.v"
 
-module pc(clk, rst, wr, NPC, PC, PF_AdEL, IF_AdEL, PC_Flush);
+module pc(
+	clk, rst, wr, NPC, PF_AdEL, PC_Flush,
+
+	IF_AdEL,PC
+);
 	input clk, rst, wr, PF_AdEL, PC_Flush;
 	input[31:0] NPC;
 	output reg [31:0] PC;
@@ -22,7 +26,11 @@ module pc(clk, rst, wr, NPC, PC, PF_AdEL, IF_AdEL, PC_Flush);
 endmodule
 
 
-module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, ID_PC, ID_Instr, ID_AdEL);
+module IF_ID(
+	clk, rst, IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, 
+
+	ID_PC, ID_Instr, ID_AdEL
+);
 	input clk, rst, IF_IDWr, IF_Flush, IF_AdEL;
 	input[31:0] PC, Instr;
 
@@ -44,13 +52,16 @@ module IF_ID(clk, rst, IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, ID_PC, ID_Instr, I
 
 endmodule
 
-module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
-			DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
-			eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,
-			EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
-	 		EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
-	 		EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
-			EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start);
+module ID_EX(
+	clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
+	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
+	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,
+
+	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
+	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
+	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
+	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start
+);
 	input clk, rst, ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
 	input CP0WrEn;
@@ -162,12 +173,14 @@ module ID_EX(clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel
 		end
 endmodule
 
-module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
-			RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,
-			CP0Rd, 
-			MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
-			MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
-			MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd);
+module EX_MEM(
+	clk, rst, EX_Flush, OverFlow, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
+	RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,CP0Rd, 
+
+	MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
+	MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
+	MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd
+	);
 	input clk, rst, EX_Flush, DMWr, DMRd, RFWr;
 	input OverFlow;
 	input eret_flush;
@@ -177,7 +190,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 	input isBD;
 	input[2:0] DMSel, MUX2Sel;
 	input[4:0] RD;
-	input[31:0] PC, RHLOut,ALU1Out, GPR_RT, Imm32;
+	input[31:0] EX_PC, RHLOut,ALU1Out, GPR_RT, Imm32;
 	input [7:0] CP0Addr;
 	input CP0Rd;
 
@@ -203,7 +216,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 		else if (OverFlow  && !Exception) begin
 			MEM_ExcCode <= `Ov;
 			MEM_Exception <= 1'b1;
-			badvaddr <= PC;
+			badvaddr <= 32'd0;
 		end
 		else if (DMWr && !Exception && (DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
 				DMSel == 3'b001 && ALU1Out[0] != 1'b0) )begin
@@ -220,7 +233,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 		else begin
 			MEM_ExcCode <= ExcCode;
 			MEM_Exception <= Exception;
-			badvaddr <= PC;
+			badvaddr <= EX_PC;
 		end
 	end
 
@@ -254,7 +267,7 @@ module EX_MEM(clk, rst, EX_Flush, OverFlow, Imm32, PC, DMWr, DMSel, DMRd, RFWr, 
 			MEM_DMSel <= DMSel;
 			MEM_MUX2Sel <= MUX2Sel;
 			MEM_RD <= RD;
-			MEM_PC <= PC;
+			MEM_PC <= EX_PC;
 			MEM_RHLOut <= RHLOut;
 			MEM_ALU1Out <= ALU1Out;
 			MEM_GPR_RT <= GPR_RT;
