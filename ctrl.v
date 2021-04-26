@@ -1,6 +1,6 @@
  `include "MacroDef.v"
 
- module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, ID_EXE_isBranch, Interrupt,
+ module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
  			ID_AdEL, IF_Flush,
 			MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch,
@@ -13,7 +13,7 @@
 	input [4:0] rt;
 	input CMPOut1;
 	input [1:0] CMPOut2;
-	input ID_EXE_isBranch;
+	input EXE_isBranch;
 	input Interrupt;
 	input ID_AdEL;
 	input IF_Flush;
@@ -44,8 +44,8 @@
 	output reg start;
 	output reg RHL_visit;
 
-	wire ri;					//閸掋倖鏌囬幐鍥︽姢閺勵垰鎯佹稉鐑樺瘹娴犮倝娉﹂崘鍛畱閺堝鏅ラ幐鍥︽姢
-	reg rst_sign;				//閸掋倖鏌囨稊瀣閺勵垰鎯佹潻娑滎攽娴滃棗顦叉担宥嗘惙娴ｏ拷
+	wire ri;			//reserved instr		
+	reg rst_sign;				
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -118,7 +118,7 @@
 		endcase
 	end
 
-	assign isBD = ID_EXE_isBranch;		/* the generation of isBD */
+	assign isBD = EXE_isBranch;		/* the generation of isBD */
 
 	always @(OP or Funct) begin		/* the genenration of B_JOp */
 		 case (OP)
