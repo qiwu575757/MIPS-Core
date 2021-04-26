@@ -1,5 +1,11 @@
-module cmp(GPR_RS, GPR_RT, CMPOut1, CMPOut2);
+module cmp(
+	GPR_RS, 
+	GPR_RT, 
+	CMPOut1, 
+	CMPOut2
+);
 	input[31:0] GPR_RS, GPR_RT;
+
 	output reg CMPOut1;
 	output reg[1:0] CMPOut2;
 
