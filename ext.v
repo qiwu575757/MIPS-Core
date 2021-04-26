@@ -1,4 +1,8 @@
-module ext(Imm16, Imm32, EXTOp);
+module ext(
+	Imm16, EXTOp,
+	
+	Imm32
+);
 	input[15:0] Imm16;
 	input[1:0] EXTOp;
 	output reg[31:0] Imm32;
