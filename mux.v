@@ -1,4 +1,8 @@
-module mux1(RT, RD, MUX1Sel, Addr3);
+module mux1(
+	RT, RD, MUX1Sel, 
+	
+	Addr3
+	);
 	input[4:0] RT, RD;
 	input[1:0] MUX1Sel;
 	output reg[4:0] Addr3;
@@ -12,7 +16,12 @@ module mux1(RT, RD, MUX1Sel, Addr3);
 
 endmodule
 
-module mux2(ALU1Out, RHLOut, DMOut, PC, Imm32, CP0Out, MUX2Sel, WD);
+module mux2(
+	ALU1Out, RHLOut, DMOut, PC, 
+	Imm32, CP0Out, MUX2Sel, 
+	
+	WD
+	);
 	input[31:0] ALU1Out, RHLOut, DMOut, PC, Imm32, CP0Out;
 	input[2:0] MUX2Sel;
 	output reg[31:0] WD;
@@ -29,7 +38,11 @@ module mux2(ALU1Out, RHLOut, DMOut, PC, Imm32, CP0Out, MUX2Sel, WD);
 
 endmodule
 
-module mux3(RD2, Imm32, MUX3Sel, B);
+module mux3(
+	RD2, Imm32, MUX3Sel, 
+	
+	B
+	);
 	input[31:0] RD2,Imm32;
 	input MUX3Sel;
 	output reg[31:0] B;
@@ -42,7 +55,12 @@ module mux3(RD2, Imm32, MUX3Sel, B);
 
 endmodule
 
-module mux4(GPR_RS, data_EX, data_MEM, MUX4Sel, out);
+module mux4(
+	GPR_RS, data_EX, 
+	data_MEM, MUX4Sel, 
+	
+	out
+	);
 	input[31:0] GPR_RS, data_EX, data_MEM;
 	input[1:0] MUX4Sel;
 	output reg[31:0] out;
@@ -56,7 +74,12 @@ module mux4(GPR_RS, data_EX, data_MEM, MUX4Sel, out);
 
 endmodule
 
-module mux5(GPR_RT, data_EX, data_MEM, MUX5Sel, out);
+module mux5(
+	GPR_RT, data_EX, 
+	data_MEM, MUX5Sel, 
+	
+	out
+	);
 	input[31:0] GPR_RT, data_EX, data_MEM;
 	input[1:0] MUX5Sel;
 	output reg[31:0] out;
@@ -70,7 +93,12 @@ module mux5(GPR_RT, data_EX, data_MEM, MUX5Sel, out);
 
 endmodule
 
-module mux6(RHLOut, ALU1Out, PC, Imm32, MUX6Sel, out);
+module mux6(
+	RHLOut, ALU1Out, PC, 
+	Imm32, MUX6Sel, 
+	
+	out
+	);
 	input[31:0] RHLOut, ALU1Out, PC, Imm32;
 	input[1:0] MUX6Sel;
 	output reg[31:0] out;
@@ -85,7 +113,11 @@ module mux6(RHLOut, ALU1Out, PC, Imm32, MUX6Sel, out);
 
 endmodule
 
-module mux7(WRSign, MUX7Sel, MUX7Out);
+module mux7(
+	WRSign, MUX7Sel,
+	 
+	MUX7Out
+	);
 	input[2:0] WRSign;
 	input MUX7Sel;
 	output[2:0] MUX7Out;
@@ -94,7 +126,11 @@ module mux7(WRSign, MUX7Sel, MUX7Out);
  
 endmodule
 
-module mux8(GPR_RS, data_MEM, MUX8Sel, out);
+module mux8(
+	GPR_RS, data_MEM, MUX8Sel, 
+	
+	out
+	);
 	input[31:0] GPR_RS, data_MEM;
 	input MUX8Sel;
 	output[31:0] out;
@@ -102,7 +138,11 @@ module mux8(GPR_RS, data_MEM, MUX8Sel, out);
 	assign out = MUX8Sel ? data_MEM : GPR_RS;
 endmodule 
 
-module mux9(GPR_RT, data_MEM, MUX9Sel, out);
+module mux9(
+	GPR_RT, data_MEM, MUX9Sel, 
+	
+	out
+	);
 	input[31:0] GPR_RT, data_MEM;
 	input MUX9Sel;
 	output[31:0] out;
