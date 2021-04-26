@@ -1,12 +1,18 @@
-module alu1(A, B, C, ALU1Op, ALU1Sel, Shamt, Overflow);
+module alu1(
+	A, B, ALU1Op, ALU1Sel, Shamt, 
+	
+	C,,Overflow
+	);
 	input[31:0] A, B;
 	input[3:0] ALU1Op;
 	input[4:0] Shamt;
 	input ALU1Sel;
-	wire Less;
+	
 	output reg Overflow;
 	output reg[31:0] C;
+
 	wire[4:0] temp;
+	wire Less;
 	
 	assign temp = ALU1Sel ? Shamt : A[4:0];
 	assign Less = ((ALU1Op == 4'b1001) && A[31]^B[31]) ? ~(A < B) : (A < B);
