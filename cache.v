@@ -55,7 +55,7 @@ module cache(       clk, resetn,
     output wr_req;                  //Cache write-request signal
     output[2:0] rd_type;            //read type, assign 3'b100
     output[2:0] wr_type;            //write type, assign 3'b100
-    output[31:0] rd_addr；          //read address
+    output[31:0] rd_addr;           //read address
     output[31:0] wr_addr;           //write address
     output[3:0] wr_wstrb;           //write code,assign 4'b1111
     output[511:0] wr_data;          //data to be replaced from Cache to AXI-Bus
