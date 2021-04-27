@@ -6,50 +6,77 @@
 //  The cache operates with single cycle,with 4 ways and 16 words per way
 //  Interface remaining to designing: addr_ok, data_ok, rd_type, wr_type, wr_wstrb.
 
-module cache(clk, resetn, valid, op, index, tag, offset, wstrb, wdata, addr_ok, data_ok, rdata, 
-rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
-    ret_last, ret_data, wr_req, wr_type, wr_addr, wr_wstrb, wr_data, wr_rdy);
+//                      MENU
+//      Interface                       Line 32
+//      Cache                           Line 63
+//      Wires and Regs                  Line 94
+//      Hit Compare                     Line 124
+//      Random Replacement              Line 132
+//      Miss Buffer                     Line 182
+//      Data : Cache -> CPU             Line 210
+//      Data : CPU   -> Cache           Line 223
+//      Data : Cache -> AXI             Line 276
+//      Data : AXI   -> Cache           Line 282
+//      Finite State Machine            Line 325
+//      Output signals                  Line 364
+
+module cache(       clk, resetn,
+        //CPU_Pipeline side
+        /*input*/   valid, op, tag, index, offset, wstrb, wdata,
+        /*output*/  addr_ok, data_ok, rdata,
+        //AXI-Bus side 
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        );
 
     //clock and reset
     input clk;
     input resetn;
 
     // Cache && CPU-Pipeline
-    input valid;
-    input op;
-    input[7:0] index;
-    input[17:0] tag;
-    input[5:0] offset;
-    input[3:0] wstrb;
-    input[31:0] wdata;
-    output addr_ok;
-    output data_ok;
-    output reg[31:0] rdata;
+    input valid;                    //CPU request signal
+    input op;                       //CPU opcode: 0 = load , 1 = store
+    input[17:0] tag;                //CPU address[31:14]
+    input[7:0] index;               //CPU address[13:6]
+    input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
+    input[3:0] wstrb;               //write code,including 0001 , 0010 , 0100, 1000, 0011 , 1100 , 1111
+    input[31:0] wdata;              //data to be stored from CPU to Cache
+    output addr_ok;                 //to show address and data is received by Cache 
+    output data_ok;                 //to show load or store operation is done
+    output reg[31:0] rdata;         //data to be loaded from Cache to CPU
 
     // Cache && AXI-Bus
-    output rd_req;
-    output rd_type;
-    output[31:0] rd_addr;
-    input rd_rdy;
-    input ret_valid;
-    input ret_last;
-    input[31:0] ret_data;
-    output wr_req;
-    output[2:0] wr_type;
-    output[31:0] wr_addr;
-    output[3:0] wr_wstrb;
-    output[511:0] wr_data;
-    input wr_rdy;
+    input rd_rdy;                   //AXI-Bus read-ready signal
+    input wr_rdy;                   //AXI-Bus write-ready signal
+    input ret_valid;                //to show the data returned from AXI-Bus is valid 
+    input ret_last;                 //to show the data returned from AXI-Bus is the last one
+    input[31:0] ret_data;           //data to be refilled from AXI-Bus to Cache
+    output rd_req;                  //Cache read-request signal
+    output wr_req;                  //Cache write-request signal
+    output[2:0] rd_type;            //read type, assign 3'b100
+    output[2:0] wr_type;            //write type, assign 3'b100
+    output[31:0] rd_addr；          //read address
+    output[31:0] wr_addr;           //write address
+    output[3:0] wr_wstrb;           //write code,assign 4'b1111
+    output[511:0] wr_data;          //data to be replaced from Cache to AXI-Bus
 
     //Cache RAM
-    reg Way0_V[255:0];
-    reg Way1_V[255:0];
-    reg Way2_V[255:0];
-    reg Way3_V[255:0];
-    reg Way0_D[255:0];
-    reg Way1_D[255:0];
-    reg Way2_D[255:0];
-    reg Way3_D[255:0];
+    /*
+    Basic information:
+        256 groups : index 0~255
+        4 ways : way 0/1/2/3
+        16 words in a block : block offset 0~15
+        Every block: 1 valid bit + 1 dirty bit + 17 tag bit + 16 * 32 data bit
+        Total memory: 64KB
+    */
+    reg Way0_Valid[255:0];
+    reg Way1_Valid[255:0];
+    reg Way2_Valid[255:0];
+    reg Way3_Valid[255:0];
+    reg Way0_Dirty[255:0];
+    reg Way1_Dirty[255:0];
+    reg Way2_Dirty[255:0];
+    reg Way3_Dirty[255:0];
     reg[17:0] Way0_Tag[255:0];
     reg[17:0] Way1_Tag[255:0];
     reg[17:0] Way2_Tag[255:0];
@@ -64,20 +91,20 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
     reg[1:0] N_STATE;
     parameter LOOKUP = 2'b00, MISS = 2'b01, REPLACE = 2'b10, REFILL = 2'b11;
 
-    //Miss Buffer
-    reg[1:0] replace_way_MB;
-    reg replace_V_MB;
-    reg replace_D_MB;
-    reg[17:0] replace_tag_old_MB;
-    reg[17:0] replace_tag_new_MB;
+    //Miss Buffer : infromation for MISS-REPLACE-REFILL use
+    reg[1:0] replace_way_MB;        //the way to be replaced and refilled
+    reg replace_Valid_MB;           
+    reg replace_Dirty_MB;
+    reg[17:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
+    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
     reg[7:0] replace_index_MB;
     reg[511:0] replace_data_MB;
-    reg[3:0] ret_number_MB;
+    reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
     //replace select
     reg[511:0] replace_data;
-    reg replace_V;
-    reg replace_D;
+    reg replace_Valid;
+    reg replace_Dirty;
     reg[17:0] replace_tag_old;
     reg[1:0] counter;
 
@@ -94,39 +121,25 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //Tag Compare (hit judgement)
-    assign way0_hit = Way0_V[index] && (Way0_Tag[index] == tag);
-    assign way1_hit = Way1_V[index] && (Way1_Tag[index] == tag);
-    assign way2_hit = Way2_V[index] && (Way2_Tag[index] == tag);
-    assign way3_hit = Way3_V[index] && (Way3_Tag[index] == tag);
+    //tag compare && hit judgement
+    assign way0_hit = Way0_Valid[index] && (Way0_Tag[index] == tag);
+    assign way1_hit = Way1_Valid[index] && (Way1_Tag[index] == tag);
+    assign way2_hit = Way2_Valid[index] && (Way2_Tag[index] == tag);
+    assign way3_hit = Way3_Valid[index] && (Way3_Tag[index] == tag);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
+    assign hit_write = (C_STATE == LOOKUP) && op && cache_hit && valid;
 
-    //Data Select (reading from cache to cpu (load) )
-    always@(*)
-        if(way0_hit)
-            rdata = Way0_Data[index][offset[5:2]];
-        else if(way1_hit)
-            rdata = Way1_Data[index][offset[5:2]];
-        else if(way2_hit)
-            rdata = Way2_Data[index][offset[5:2]];
-        else if(way3_hit)
-            rdata = Way3_Data[index][offset[5:2]];
-        else
-            rdata = ret_data;
-
-    //random counter
+    //random replacement strategy with a clock counter
     always@(posedge clk)
         if(!resetn)
             counter <= 2'b00;
         else
             counter <= counter + 1;
-
-    //replacement based on random counter
     always@(*)
         case(counter)
-            2'b00:  begin
-                    replace_V = Way0_V[index];
-                    replace_D = Way0_D[index];
+            2'b00:  begin   //choose way0
+                    replace_Valid = Way0_Valid[index];
+                    replace_Dirty = Way0_Dirty[index];
                     replace_tag_old = Way0_Tag[index];
                     replace_data = {
                         Way0_Data[index][15],Way0_Data[index][14],Way0_Data[index][13],Way0_Data[index][12],
@@ -134,9 +147,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                         Way0_Data[index][ 7],Way0_Data[index][ 6],Way0_Data[index][ 5],Way0_Data[index][ 4],
                         Way0_Data[index][ 3],Way0_Data[index][ 2],Way0_Data[index][ 1],Way0_Data[index][ 0] };
             end
-            2'b01:  begin
-                    replace_V = Way1_V[index];
-                    replace_D = Way1_D[index];
+            2'b01:  begin   //choose way1
+                    replace_Valid = Way1_Valid[index];
+                    replace_Dirty = Way1_Dirty[index];
                     replace_tag_old = Way1_Tag[index];
                     replace_data = {
                         Way1_Data[index][15],Way1_Data[index][14],Way1_Data[index][13],Way1_Data[index][12],
@@ -144,9 +157,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                         Way1_Data[index][ 7],Way1_Data[index][ 6],Way1_Data[index][ 5],Way1_Data[index][ 4],
                         Way1_Data[index][ 3],Way1_Data[index][ 2],Way1_Data[index][ 1],Way1_Data[index][ 0] };
             end
-            2'b10:  begin
-                    replace_V = Way2_V[index];
-                    replace_D = Way2_D[index];
+            2'b10:  begin   //choose way2
+                    replace_Valid = Way2_Valid[index];
+                    replace_Dirty = Way2_Dirty[index];
                     replace_tag_old = Way2_Tag[index];
                     replace_data = {
                         Way2_Data[index][15],Way2_Data[index][14],Way2_Data[index][13],Way2_Data[index][12],
@@ -154,9 +167,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                         Way2_Data[index][ 7],Way2_Data[index][ 6],Way2_Data[index][ 5],Way2_Data[index][ 4],
                         Way2_Data[index][ 3],Way2_Data[index][ 2],Way2_Data[index][ 1],Way2_Data[index][ 0] };
             end
-            default:begin
-                    replace_V = Way3_V[index];
-                    replace_D = Way3_D[index];
+            default:begin   //choose way3
+                    replace_Valid = Way3_Valid[index];
+                    replace_Dirty = Way3_Dirty[index];
                     replace_tag_old = Way3_Tag[index];
                     replace_data = {
                         Way3_Data[index][15],Way3_Data[index][14],Way3_Data[index][13],Way3_Data[index][12],
@@ -171,8 +184,8 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
         if(!resetn) begin
             replace_way_MB <= 1'b0;
             replace_data_MB <= 128'd0; 
-            replace_V_MB <= 1'b0;
-            replace_D_MB <= 1'b0;
+            replace_Valid_MB <= 1'b0;
+            replace_Dirty_MB <= 1'b0;
             replace_index_MB <= 8'd0;
             replace_tag_old_MB <= 20'd0;
             replace_tag_new_MB <= 20'd0;
@@ -180,13 +193,13 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
         else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
-            replace_V_MB <= replace_V;
-            replace_D_MB <= replace_D;
+            replace_Valid_MB <= replace_Valid;
+            replace_Dirty_MB <= replace_Dirty;
             replace_index_MB <= index;
             replace_tag_old_MB <= replace_tag_old;
             replace_tag_new_MB <= tag;
         end
-    always@(posedge clk)
+    always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
             ret_number_MB <= 4'b0000;
         else if(rd_rdy)
@@ -194,13 +207,23 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
         else if(ret_valid)
             ret_number_MB <= ret_number_MB + 1;
 
-    //hit write signal
-    assign hit_write = (C_STATE == LOOKUP) && op && cache_hit && valid;
-
+    //reading from cache to cpu (load)
+    always@(*)
+        if(way0_hit)        //read way0
+            rdata = Way0_Data[index][offset[5:2]];
+        else if(way1_hit)   //read way1
+            rdata = Way1_Data[index][offset[5:2]];
+        else if(way2_hit)   //read way2
+            rdata = Way2_Data[index][offset[5:2]];
+        else if(way3_hit)   //read way3
+            rdata = Way3_Data[index][offset[5:2]];
+        else                //read ret_data when miss
+            rdata = ret_data;
+    
     //write from cpu to cache (store)
     always@(posedge clk)
         if(hit_write) begin
-            if(way3_hit) begin
+            if(way3_hit) begin      //write way3
                 case(wstrb)
                     4'b0001:    Way3_Data[index][offset[5:2]][7:0] <= wdata[7:0];
                     4'b0010:    Way3_Data[index][offset[5:2]][15:8] <= wdata[7:0];
@@ -210,9 +233,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                     4'b1100:    Way3_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way3_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way3_D[index] <= 1'b1;
+                Way3_Dirty[index] <= 1'b1;
             end
-            else if(way2_hit) begin
+            else if(way2_hit) begin //write way2
                 case(wstrb)
                     4'b0001:    Way2_Data[index][offset[3:2]][7:0] <= wdata[7:0];
                     4'b0010:    Way2_Data[index][offset[3:2]][15:8] <= wdata[7:0];
@@ -222,9 +245,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                     4'b1100:    Way2_Data[index][offset[3:2]][31:16] <= wdata[15:0];
                     default:    Way2_Data[index][offset[3:2]] <= wdata;
                  endcase
-                Way2_D[index] <= 1'b1;
+                Way2_Dirty[index] <= 1'b1;
             end
-            else if(way1_hit) begin
+            else if(way1_hit) begin //write way1
                 case(wstrb)
                     4'b0001:    Way1_Data[index][offset[5:2]][7:0] <= wdata[7:0];
                     4'b0010:    Way1_Data[index][offset[5:2]][15:8] <= wdata[7:0];
@@ -234,9 +257,9 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                     4'b1100:    Way1_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way1_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way1_D[index] <= 1'b1;
+                Way1_Dirty[index] <= 1'b1;
             end
-            else begin
+            else begin              //write way0
                 case(wstrb)
                     4'b0001:    Way0_Data[index][offset[3:2]][7:0] <= wdata[7:0];
                     4'b0010:    Way0_Data[index][offset[3:2]][15:8] <= wdata[7:0];
@@ -246,31 +269,84 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                     4'b1100:    Way0_Data[index][offset[3:2]][31:16] <= wdata[15:0];
                     default:    Way0_Data[index][offset[3:2]] <= wdata;
                  endcase
-                Way0_D[index] <= 1'b1;
+                Way0_Dirty[index] <= 1'b1;
             end
         end
 
-    //main FSM
+    //replace from cache to mem (write memory)
+    assign wr_addr = {replace_tag_old_MB, replace_index_MB, 6'b000000} ;
+    assign wr_data = replace_data_MB;
+    assign wr_type = 3'b100;
+    assign wr_wstrb = 4'b1111;
+
+    //refill from mem to cache (read memory)
     always@(posedge clk)
         if(!resetn)
-            C_STATE <= LOOKUP;
-        else
-            C_STATE <= N_STATE;
+            for(i=0;i<256;i=i+1) begin
+                Way0_Valid[i] <= 1'b0;
+                Way1_Valid[i] <= 1'b0;
+                Way2_Valid[i] <= 1'b0;
+                Way3_Valid[i] <= 1'b0;
+                Way0_Dirty[i] <= 1'b0;
+                Way1_Dirty[i] <= 1'b0;
+                Way2_Dirty[i] <= 1'b0;
+                Way3_Dirty[i] <= 1'b0;
+            end
+        else if(ret_valid)
+            case(replace_way_MB)
+                2'b00:  begin   //write way0
+                    Way0_Valid[replace_index_MB] <= 1'b1;
+                    Way0_Dirty[replace_index_MB] <= 1'b0;
+                    Way0_Tag[replace_index_MB] <= replace_tag_new_MB;
+                    Way0_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                end
+                2'b01:  begin   //write way1
+                    Way1_Valid[replace_index_MB] <= 1'b1;
+                    Way1_Dirty[replace_index_MB] <= 1'b0;
+                    Way1_Tag[replace_index_MB] <= replace_tag_new_MB;
+                    Way1_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                end
+                2'b10:  begin   //write way2
+                    Way2_Valid[replace_index_MB] <= 1'b1;
+                    Way2_Dirty[replace_index_MB] <= 1'b0;
+                    Way2_Tag[replace_index_MB] <= replace_tag_new_MB;
+                    Way2_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                end
+                default:begin   //write way3
+                    Way3_Valid[replace_index_MB] <= 1'b1;
+                    Way3_Dirty[replace_index_MB] <= 1'b0;
+                    Way3_Tag[replace_index_MB] <= replace_tag_new_MB;
+                    Way3_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                end
+            endcase
+    assign rd_type = 3'b100;
+    assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
+
+    //main FSM
     /*
         LOOKUP: Cache checks hit (if hit,begin read/write)
         MISS: Cache doesn't hit and wait for replace
         REPLACE: Cache replaces data (writing memory)
         REFILL: Cache refills data (reading memory)
     */
-    always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, replace_D_MB)
+    always@(posedge clk)
+        if(!resetn)
+            C_STATE <= LOOKUP;
+        else
+            C_STATE <= N_STATE;
+    always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, replace_Valid_MB, replace_Dirty_MB)
         case(C_STATE)
             LOOKUP: if(!cache_hit && valid)
                         N_STATE = MISS;
                     else
                         N_STATE = LOOKUP;
-            MISS:   if(!replace_V_MB || !replace_D_MB)
-                        N_STATE = REFILL;
-                    else if(!wr_rdy)
+            MISS:   if(!replace_Valid_MB || !replace_Dirty_MB) begin    //data is not dirty
+                        if(!rd_rdy)
+                            N_STATE = MISS;
+                        else
+                            N_STATE = REFILL;
+                    end
+                    else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;
                     else
                         N_STATE = REPLACE;
@@ -284,55 +360,6 @@ rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
                         N_STATE = REFILL;
             default: N_STATE = LOOKUP;
         endcase
-
-    //replace from cache to mem (write memory)
-    assign wr_addr = {replace_tag_old_MB, replace_index_MB, 6'b000000} ;
-    assign wr_data = replace_data_MB;
-    assign wr_type = 3'b100;
-    assign wr_wstrb = 4'b1111;
-
-    //refill from mem to cache (read memory)
-    always@(posedge clk)
-        if(!resetn)
-            for(i=0;i<256;i=i+1) begin
-                Way0_V[i] <= 1'b0;
-                Way1_V[i] <= 1'b0;
-                Way2_V[i] <= 1'b0;
-                Way3_V[i] <= 1'b0;
-                Way0_D[i] <= 1'b0;
-                Way1_D[i] <= 1'b0;
-                Way2_D[i] <= 1'b0;
-                Way3_D[i] <= 1'b0;
-            end
-        else if(ret_valid)
-            case(replace_way_MB)
-                2'b00:  begin
-                    Way0_V[replace_index_MB] <= 1'b1;
-                    Way0_D[replace_index_MB] <= 1'b0;
-                    Way0_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way0_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                2'b01:  begin
-                    Way1_V[replace_index_MB] <= 1'b1;
-                    Way1_D[replace_index_MB] <= 1'b0;
-                    Way1_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way1_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                2'b10:  begin
-                    Way2_V[replace_index_MB] <= 1'b1;
-                    Way2_D[replace_index_MB] <= 1'b0;
-                    Way2_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way2_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                default:begin
-                    Way3_V[replace_index_MB] <= 1'b1;
-                    Way3_D[replace_index_MB] <= 1'b0;
-                    Way3_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way3_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-            endcase
-    assign rd_type = 3'b100;
-    assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //output signals
     assign addr_ok = ((C_STATE == LOOKUP) && (N_STATE == LOOKUP)) ;
