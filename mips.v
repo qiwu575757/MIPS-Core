@@ -1,4 +1,4 @@
-module mycpu_top(
+module mips(
     ext_int_in   ,   //high active
 
     clk      ,
@@ -55,10 +55,10 @@ module mycpu_top(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信号
+// 时钟与复位信�?
     input clk      ;
     input rst      ;   //low active
-// 读请求通道 
+// 读请求�?�道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 7:0]   arlen     ;
@@ -69,14 +69,14 @@ module mycpu_top(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应通道         
+//读相应�?�道         
     input [ 3:0]    rid       ;  
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求通道
+//写请求�?�道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 7:0]   awlen     ;
@@ -87,14 +87,14 @@ module mycpu_top(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据通道
+// 写数据�?�道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应通道
+// 写相应�?�道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;
@@ -202,6 +202,26 @@ module mycpu_top(
 	wire [31:0] CP0Out;
 	wire [31:0] EPCOut;
 	wire [7:0] MEM_CP0Addr;
+	wire [31:0] MEM_Paddr;
+	wire MEM_dCache_en;
+	wire MEM_dCache_addr_ok;
+	wire MEM_dCache_data_ok;
+	wire [31:0] MEM_dCache_rdata;
+	wire MEM_dcache_rd_req;
+	wire [2:0]MEM_dcache_rd_type;
+	wire [31:0] MEM_dcache_rd_addr;
+	wire  MEM_dcache_rd_rdy;
+	wire  MEM_dcache_ret_valid;
+	wire MEM_dcache_ret_last;
+	wire [31:0] MEM_dcache_ret_data;
+	wire MEM_dcache_wr_req;
+	wire [2:0] MEM_dcache_wr_type;
+	wire [31:0] MEM_dcache_wr_addr;
+	wire [3:0] MEM_dcache_wr_wstrb;
+	wire [127:0] MEM_dcache_wr_data;
+	wire MEM_dcache_wr_rdy;
+
+wire [3:0] MEM_dCache_wstrb;
 
 	//---------------W----------------//
 	wire [31:0] MUX2Out;
@@ -234,11 +254,11 @@ pc U_PC(
 	);
 
 
-//搁这儿写个地址转换,表示物理地址
+//搁这儿写个地�?转换,表示物理地址
 assign PPC=PC-32'ha0000000;
 
 // * cpu && cache
-// 		没收到icache_data_ok 要阻塞
+// 		没收到icache_data_ok 要阻�?
 // --------------------------------------
 // * cache && axi 
 
@@ -425,31 +445,12 @@ mux6 U_MUX6(
 		.out(MUX6Out)
 	);
 
-wire [31:0] MEM_Paddr;
+
 
 assign MEM_Paddr=MEM_ALU1Out-32'ha0000000;
-wire MEM_dCache_en;
-wire MEM_dCache_addr_ok;
-wire MEM_dCache_data_ok;
-wire [31:0] MEM_dCache_rdata;
-wire MEM_dcache_rd_req;
-wire [2:0]MEM_dcache_rd_type;
-wire [31:0] MEM_dcache_rd_addr;
-wire  MEM_dcache_rd_rdy;
-wire  MEM_dcache_ret_valid;
-wire MEM_dcache_ret_last;
-wire [31:0] MEM_dcache_ret_data;
-wire MEM_dcache_wr_req;
-wire [2:0] MEM_dcache_wr_type;
-wire [31:0] MEM_dcache_wr_addr;
-wire [3:0] MEM_dcache_wr_wstrb;
-wire [127:0] MEM_dcache_wr_data;
-wire MEM_dcache_wr_rdy;
 
-wire [3:0] MEM_dCache_wstrb;
-
-// 以下这些东西可以封装成翻译模块，或者直接用控制器生成对应信号。
-// 1.设置写使能信号
+// 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
+// 1.设置写使能信�?
 assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 							(MEM_DMSel==3'b000)?
 								(MEM_Paddr[1:0]==2'b00 ? 4'b0001 :
@@ -468,7 +469,7 @@ assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 cache dcache(.clk(clk), .resetn(rst),
 	// cpu && cache
   	.valid(MEM_dCache_en), .op(DMWen), .index(MEM_Paddr[11:4]), .tag(MEM_Paddr[31:12]), .offset(MEM_Paddr[3:0]),
-	.wstrb(MEM_dCache_wstrb), .wdata(), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(DMOut), 
+	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(DMOut), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
 	  .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last), .ret_data(MEM_dcache_ret_data),
@@ -525,7 +526,83 @@ stall U_STALL(
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.inst_sram_en(IF_iCache_read_en),.isStall(isStall)
 	);
+ axi_sram_bridge bridge(
 
+    ext_int_in   ,   //high active
+
+    clk      ,
+    rst      ,   //low active
+
+    arid      ,
+    araddr    ,
+    arlen     ,
+    arsize    ,
+    arburst   ,
+    arlock    ,
+    arcache   ,
+    arprot    ,
+    arvalid   ,
+    arready   ,
+                
+    rid       ,
+    rdata     ,
+    rresp     ,
+    rlast     ,
+    rvalid    ,
+    rready    ,
+               
+    awid      ,
+    awaddr    ,
+    awlen     ,
+    awsize    ,
+    awburst   ,
+    awlock    ,
+    awcache   ,
+    awprot    ,
+    awvalid   ,
+    awready   ,
+    
+    wid       ,
+    wdata     ,
+    wstrb     ,
+    wlast     ,
+    wvalid    ,
+    wready    ,
+    
+    bid       ,
+    bresp     ,
+    bvalid    ,
+    bready    ,
+// icache 
+	IF_icache_rd_req,
+	IF_icache_rd_type,
+	IF_icache_rd_addr,
+	IF_icache_rd_rdy,
+	IF_icache_ret_valid,
+	IF_icache_ret_last,
+	IF_icache_ret_data,
+	IF_icache_wr_req,
+	IF_icache_wr_type,
+	IF_icache_wr_addr,
+	IF_icache_wr_wstrb,
+	IF_icache_wr_data,
+	IF_icache_wr_rdy,
+//	dcache
+	MEM_dcache_rd_req,
+	MEM_dcache_rd_type,
+	MEM_dcache_rd_addr,
+	MEM_dcache_rd_rdy,
+	MEM_dcache_ret_valid,
+	MEM_dcache_ret_last,
+	MEM_dcache_ret_data,
+	MEM_dcache_wr_req,
+	MEM_dcache_wr_type,
+	MEM_dcache_wr_addr,
+	MEM_dcache_wr_wstrb,
+	MEM_dcache_wr_data,
+	MEM_dcache_wr_rdy,
+
+);
 assign 
 	debug_wb_rf_wdata = MUX2Out;
 assign 
