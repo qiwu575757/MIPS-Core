@@ -1,35 +1,110 @@
-module mips(
-	clk, 
-	rst,
-	inst_sram_rdata  ,
-    data_sram_rdata  ,
-    inst_sram_en     ,
-	data_sram_en     ,
-    data_sram_wen    ,
-    data_sram_addr   ,
-    data_sram_wdata  ,
-    //debug
+module mycpu_top(
+    ext_int_in   ,   //high active
+
+    clk      ,
+    rst      ,   //low active
+
+    arid      ,
+    araddr    ,
+    arlen     ,
+    arsize    ,
+    arburst   ,
+    arlock    ,
+    arcache   ,
+    arprot    ,
+    arvalid   ,
+    arready   ,
+                
+    rid       ,
+    rdata     ,
+    rresp     ,
+    rlast     ,
+    rvalid    ,
+    rready    ,
+               
+    awid      ,
+    awaddr    ,
+    awlen     ,
+    awsize    ,
+    awburst   ,
+    awlock    ,
+    awcache   ,
+    awprot    ,
+    awvalid   ,
+    awready   ,
+    
+    wid       ,
+    wdata     ,
+    wstrb     ,
+    wlast     ,
+    wvalid    ,
+    wready    ,
+    
+    bid       ,
+    bresp     ,
+    bvalid    ,
+    bready    ,
+
+    //debug interface
     debug_wb_pc      ,
     debug_wb_rf_wen  ,
     debug_wb_rf_wnum ,
-    debug_wb_rf_wdata,
-	NPC
-	);
-	input clk, rst;
-	input [31:0] inst_sram_rdata;
-    input [31:0] data_sram_rdata  ;
-    output inst_sram_en      ;
-	output data_sram_en     ;
-    output [3:0] data_sram_wen    ;
-    output [31:0] data_sram_addr   ;
-    output [31:0] data_sram_wdata  ;
+    debug_wb_rf_wdata
+);
+// 中断信号
+    input [5:0] ext_int_in      ;  //interrupt,high active;
+
+
+// 时钟与复位信号
+    input clk      ;
+    input rst      ;   //low active
+// 读请求通道 
+    output [ 3:0]   arid      ;
+    output [31:0]   araddr    ;
+    output [ 7:0]   arlen     ;
+    output [ 2:0]   arsize    ;
+    output [ 1:0]   arburst   ;
+    output [ 1:0]   arlock    ;
+    output [ 3:0]   arcache   ;
+    output [ 2:0]   arprot    ;
+    output          arvalid   ;
+    input           arready   ;
+//读相应通道         
+    input [ 3:0]    rid       ;  
+    input [31:0]    rdata     ;
+    input [ 1:0]    rresp     ;
+    input           rlast     ;
+    input           rvalid    ;
+    output          rready    ;
+//写请求通道
+    output [ 3:0]   awid      ;
+    output [31:0]   awaddr    ;
+    output [ 7:0]   awlen     ;
+    output [ 2:0]   awsize    ;
+    output [ 1:0]   awburst   ;
+    output [ 1:0]   awlock    ;
+    output [ 3:0]   awcache   ;
+    output [ 2:0]   awprot    ;
+    output          awvalid   ;
+    input           awready   ;
+// 写数据通道
+    output [ 3:0]   wid       ;
+    output [31:0]   wdata     ;
+    output [ 3:0]   wstrb     ;
+    output          wlast     ;
+    output          wvalid    ;
+    input           wready    ;
+// 写相应通道
+    input [3:0]     bid       ;
+    input [1:0]     bresp     ;
+    input           bvalid    ;
+    output          bready    ;
 
     //debug
-    output [31:0] debug_wb_pc     ;
-    output [3:0] debug_wb_rf_wen  ;
-    output [4:0] debug_wb_rf_wnum ;
-    output [31:0] debug_wb_rf_wdata;
-	output [31:0] NPC;
+    output  [31:0] debug_wb_pc      ;
+    output  [3:0] debug_wb_rf_wen  ;
+    output  [4:0] debug_wb_rf_wnum ;
+    output  [31:0] debug_wb_rf_wdata;
 
 
 	/*signals defination*/
@@ -38,7 +113,25 @@ module mips(
 	wire PCWr,PF_AdEL;//PF_AdEL,取址地址错误
 	wire IF_AdEL;
 	wire [31:0] PC, ID_PC;
+	wire [31:0] NPC;
+	wire IF_iCache_addr_ok;
+	wire IF_iCache_data_ok;
+	wire [31:0] IF_iCache_rdata;
+	wire [31:0] PPC;
 
+	wire IF_icache_rd_req;
+	wire [2:0]IF_icache_rd_type;
+	wire [31:0] IF_icache_rd_addr;
+	wire  IF_icache_rd_rdy;
+	wire  IF_icache_ret_valid;
+	wire IF_icache_ret_last;
+	wire [31:0] IF_icache_ret_data;
+	wire IF_icache_wr_req;
+	wire [2:0] IF_icache_wr_type;
+	wire [31:0] IF_icache_wr_addr;
+	wire [3:0] IF_icache_wr_wstrb;
+	wire [127:0] IF_icache_wr_data;
+	wire IF_icache_wr_rdy;
 	//---------------D----------------//
 	wire DMWr, DMRd, RFWr, RHLWr;
 	wire PC_Flush,IF_Flush, MEM_Flush;
@@ -125,7 +218,6 @@ module mips(
 	wire [1:0] MUX4Sel,MUX5Sel;
 
 	//---------------Outside Signals----------------//
-	wire [5:0] ext_int_in = 6'd0;
 
 
 	/**************DATA PATH***************/
@@ -141,12 +233,35 @@ pc U_PC(
 		,.IF_AdEL(IF_AdEL), .PC(PC)
 	);
 
+
+//搁这儿写个地址转换,表示物理地址
+assign PPC=PC-32'ha0000000;
+
+// * cpu && cache
+// 		没收到icache_data_ok 要阻塞
+// --------------------------------------
+// * cache && axi 
+
+ cache icache(.clk(clk), .resetn(rst),
+	// cpu && cache
+  	.valid(IF_iCache_read_en), .op(0), .index(PPC[11:4]), .tag(PPC[31:12]), .offset(PPC[3:0]),
+	.wstrb(4'b0), .wdata(32'b0), .addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
+	//cache && axi
+  	.rd_req(IF_icache_rd_req), .rd_type(IF_icache_rd_type), .rd_addr(IF_icache_rd_addr), .rd_rdy(IF_icache_rd_rdy),
+	  .ret_valid(IF_icache_ret_valid),.ret_last(IF_icache_ret_last), .ret_data(IF_icache_ret_data),
+	  .wr_req(IF_icache_wr_req), .wr_type(IF_icache_wr_type), .wr_addr(IF_icache_wr_addr), 
+	  .wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data),.wr_rdy(IF_icache_wr_rdy)
+	);
+
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst), .IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), 
-		.PC(PC), .Instr(inst_sram_rdata), .IF_AdEL(IF_AdEL),
+		.PC(PC), .Instr(IF_iCache_rdata), .IF_AdEL(IF_AdEL),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr), .ID_AdEL(ID_AdEL)
 	);
+
+
+
 
 //-----------------ID-------------------//
 rf U_RF(
@@ -269,20 +384,11 @@ alu1 U_ALU1(
 	);
 
 assign DMWen = 
-			EX_DMWr && !MEM_Exception && !Overflow  && !EX_Exception
+			MEM_DMWr && !MEM_Exception && !Overflow  && !EX_Exception
 			&& !MEM_eret_flush && 
-			!((EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00) || (EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0));
+			!((EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00) || (EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0)); 
+			//这里的alu1out将来都得改成物理地址
 
-bridge_dm U_BRIDGE(
-		 .din(MUX5Out), .DMWr(DMWen), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel),
-		 .addr1(ALU1Out), .addr2(MEM_ALU1Out),.data_sram_rdata(data_sram_rdata),
-
-		 .data_sram_en(data_sram_en),
-		 .data_sram_wen(data_sram_wen),
-		 .data_sram_addr(data_sram_addr),
-		 .data_sram_wdata(data_sram_wdata),
-		 .dout(DMOut)
-	);
 
 
 EX_MEM U_EX_MEM(
@@ -317,6 +423,67 @@ mux6 U_MUX6(
 		.Imm32(MEM_Imm32), .MUX6Sel(MEM_MUX2Sel[1:0]),
 		
 		.out(MUX6Out)
+	);
+
+wire [31:0] MEM_Paddr;
+
+assign MEM_Paddr=MEM_ALU1Out-32'ha0000000;
+wire MEM_dCache_en;
+wire MEM_dCache_addr_ok;
+wire MEM_dCache_data_ok;
+wire [31:0] MEM_dCache_rdata;
+wire MEM_dcache_rd_req;
+wire [2:0]MEM_dcache_rd_type;
+wire [31:0] MEM_dcache_rd_addr;
+wire  MEM_dcache_rd_rdy;
+wire  MEM_dcache_ret_valid;
+wire MEM_dcache_ret_last;
+wire [31:0] MEM_dcache_ret_data;
+wire MEM_dcache_wr_req;
+wire [2:0] MEM_dcache_wr_type;
+wire [31:0] MEM_dcache_wr_addr;
+wire [3:0] MEM_dcache_wr_wstrb;
+wire [127:0] MEM_dcache_wr_data;
+wire MEM_dcache_wr_rdy;
+
+wire [3:0] MEM_dCache_wstrb;
+
+// 以下这些东西可以封装成翻译模块，或者直接用控制器生成对应信号。
+// 1.设置写使能信号
+assign MEM_dCache_wstrb=(~DMWen)?4'b0:
+							(MEM_DMSel==3'b000)?
+								(MEM_Paddr[1:0]==2'b00 ? 4'b0001 :
+								MEM_Paddr[1:0]==2'b01 ? 4'b0010 :
+								MEM_Paddr[1:0]==2'b10 ? 4'b0100 :
+								 				   4'b1000) :
+							(MEM_DMSel==3'b001)?   // sh
+								(MEM_Paddr[1]==1'b0 ? 4'b0011 :
+								  				4'b1100 ):
+		
+												4'b1111 ;//sw
+
+
+
+///todo 这里还没有连入wdata
+cache dcache(.clk(clk), .resetn(rst),
+	// cpu && cache
+  	.valid(MEM_dCache_en), .op(DMWen), .index(MEM_Paddr[11:4]), .tag(MEM_Paddr[31:12]), .offset(MEM_Paddr[3:0]),
+	.wstrb(MEM_dCache_wstrb), .wdata(), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(DMOut), 
+	//cache && axi
+  	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
+	  .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last), .ret_data(MEM_dcache_ret_data),
+	  .wr_req(MEM_dcache_wr_req), .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), 
+	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data),.wr_rdy(MEM_dcache_wr_rdy)
+	);
+bridge_dm U_BRIDGE(
+		 .din(MUX5Out), .DMWr(DMWen), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel),
+		 .addr1(ALU1Out), .addr2(MEM_ALU1Out),.data_sram_rdata(data_sram_rdata),
+
+		 .data_sram_en(data_sram_en),
+		 .data_sram_wen(data_sram_wen),
+		 .data_sram_addr(data_sram_addr),
+		 .data_sram_wdata(data_sram_wdata),
+		 .dout(DMOut)
 	);
 
 
@@ -354,9 +521,9 @@ stall U_STALL(
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM_CP0Rd(MEM_CP0Rd),
 		.rst_sign(!rst), .MEM_ex(MEM_Exception), .MEM_RFWr(MEM_RFWr), 
 		.MEM_eret_flush(MEM_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
-
+		.iCahche_data_ok(IF_iCache_data_ok),
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
-		.inst_sram_en(inst_sram_en),.isStall(isStall)
+		.inst_sram_en(IF_iCache_read_en),.isStall(isStall)
 	);
 
 assign 

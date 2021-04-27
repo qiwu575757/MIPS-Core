@@ -48,6 +48,7 @@ module stall(
 	BJOp, EX_RFWr,EX_CP0Rd, MEM_CP0Rd,
 	rst_sign, MEM_ex, MEM_RFWr, 
 	MEM_eret_flush,isbusy, RHL_visit,
+	iCahche_data_ok,
 
 	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall
 	);
@@ -57,7 +58,7 @@ module stall(
 	input EX_CP0Rd, MEM_CP0Rd, MEM_ex, MEM_eret_flush;
 	input rst_sign;
 	input isbusy, RHL_visit;
-
+	input iCahche_data_ok;
 	output reg PCWr, IF_IDWr, MUX7Sel, inst_sram_en;
 	output isStall;
 	assign isStall=~PCWr;
@@ -69,6 +70,13 @@ module stall(
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
 			MUX7Sel = 1'b1;
+		end
+		else if (~iCahche_data_ok)//  如果没有读回有效指令
+		begin
+			inst_sram_en = 1'b0;  //  不能发起新的读请求
+			PCWr = 1'b0;		  //  pc不能变
+			IF_IDWr = 1'b0;  	  //  插入空泡
+			MUX7Sel = 1'b1; 
 		end
 		else if(MEM_ex || MEM_eret_flush) begin
 			inst_sram_en = 1'b1;

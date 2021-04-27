@@ -1,41 +1,106 @@
 module mycpu_top(
-    clk              ,
-    resetn           ,  //low active
-    ext_int          ,  //interrupt,high active
+    ext_int   ,   //high active
 
-    inst_sram_en     ,
-    inst_sram_wen    ,
-    inst_sram_addr   ,
-    inst_sram_wdata  ,
-    inst_sram_rdata  ,
+    aclk      ,
+    aresetn   ,   //low active
 
-    data_sram_en     ,
-    data_sram_wen    ,
-    data_sram_addr   ,
-    data_sram_wdata  ,
-    data_sram_rdata  ,
+    arid      ,
+    araddr    ,
+    arlen     ,
+    arsize    ,
+    arburst   ,
+    arlock    ,
+    arcache   ,
+    arprot    ,
+    arvalid   ,
+    arready   ,
+                
+    rid       ,
+    rdata     ,
+    rresp     ,
+    rlast     ,
+    rvalid    ,
+    rready    ,
+               
+    awid      ,
+    awaddr    ,
+    awlen     ,
+    awsize    ,
+    awburst   ,
+    awlock    ,
+    awcache   ,
+    awprot    ,
+    awvalid   ,
+    awready   ,
+    
+    wid       ,
+    wdata     ,
+    wstrb     ,
+    wlast     ,
+    wvalid    ,
+    wready    ,
+    
+    bid       ,
+    bresp     ,
+    bvalid    ,
+    bready    ,
 
-    //debug
+    //debug interface
     debug_wb_pc      ,
     debug_wb_rf_wen  ,
     debug_wb_rf_wnum ,
     debug_wb_rf_wdata
 );
-    input clk              ;
-    input resetn           ;  //low active
-    input ext_int          ;  //interrupt,high active;
 
-    output  inst_sram_en     ;
-    output  reg [3:0] inst_sram_wen    ;
-    output  [31:0] inst_sram_addr   ;
-    output  reg [31:0] inst_sram_wdata  ;
-    input [31:0] inst_sram_rdata  ;
 
-    output  data_sram_en     ;
-    output  [3:0] data_sram_wen    ;
-    output  [31:0] data_sram_addr   ;
-    output  [31:0] data_sram_wdata  ;
-    input [31:0] data_sram_rdata  ;
+// 中断信号
+    input [5:0] ext_int      ;  //interrupt,high active;
+
+
+// 时钟与复位信号
+    input aclk      ;
+    input aresetn   ;  //low active
+// 读请求通道 
+    output [ 3:0]   arid      ;
+    output [31:0]   araddr    ;
+    output [ 7:0]   arlen     ;
+    output [ 2:0]   arsize    ;
+    output [ 1:0]   arburst   ;
+    output [ 1:0]   arlock    ;
+    output [ 3:0]   arcache   ;
+    output [ 2:0]   arprot    ;
+    output          arvalid   ;
+    input           arready   ;
+//读相应通道         
+    input [ 3:0]    rid       ;  
+    input [31:0]    rdata     ;
+    input [ 1:0]    rresp     ;
+    input           rlast     ;
+    input           rvalid    ;
+    output          rready    ;
+//写请求通道
+    output [ 3:0]   awid      ;
+    output [31:0]   awaddr    ;
+    output [ 7:0]   awlen     ;
+    output [ 2:0]   awsize    ;
+    output [ 1:0]   awburst   ;
+    output [ 1:0]   awlock    ;
+    output [ 3:0]   awcache   ;
+    output [ 2:0]   awprot    ;
+    output          awvalid   ;
+    input           awready   ;
+// 写数据通道
+    output [ 3:0]   wid       ;
+    output [31:0]   wdata     ;
+    output [ 3:0]   wstrb     ;
+    output          wlast     ;
+    output          wvalid    ;
+    input           wready    ;
+// 写相应通道
+    input [3:0]     bid       ;
+    input [1:0]     bresp     ;
+    input           bvalid    ;
+    output          bready    ;
 
     //debug
     output  [31:0] debug_wb_pc      ;
@@ -43,29 +108,59 @@ module mycpu_top(
     output  [4:0] debug_wb_rf_wnum ;
     output  [31:0] debug_wb_rf_wdata;
 
-    initial begin
-        inst_sram_wen = 4'b0;//默认不会去写 iram
-        inst_sram_wdata = 32'b0;
-    end
 
-    mips MIPS(
-        clk, 
-        resetn,
-        inst_sram_rdata,
-        data_sram_rdata  ,
+mips U_MIPS(
+    ext_int   ,   //high active
 
-        inst_sram_en      ,
-        
-	    data_sram_en     ,
-        data_sram_wen    ,
-        data_sram_addr   ,
-        data_sram_wdata  ,
-        //debug
-        debug_wb_pc      ,
-        debug_wb_rf_wen  ,
-        debug_wb_rf_wnum ,
-        debug_wb_rf_wdata,
-        inst_sram_addr   
-    );
+    aclk      ,
+    aresetn   ,   //low active
+
+    arid      ,
+    araddr    ,
+    arlen     ,
+    arsize    ,
+    arburst   ,
+    arlock    ,
+    arcache   ,
+    arprot    ,
+    arvalid   ,
+    arready   ,
+                
+    rid       ,
+    rdata     ,
+    rresp     ,
+    rlast     ,
+    rvalid    ,
+    rready    ,
+               
+    awid      ,
+    awaddr    ,
+    awlen     ,
+    awsize    ,
+    awburst   ,
+    awlock    ,
+    awcache   ,
+    awprot    ,
+    awvalid   ,
+    awready   ,
+    
+    wid       ,
+    wdata     ,
+    wstrb     ,
+    wlast     ,
+    wvalid    ,
+    wready    ,
+    
+    bid       ,
+    bresp     ,
+    bvalid    ,
+    bready    ,
+
+    //debug interface
+    debug_wb_pc      ,
+    debug_wb_rf_wen  ,
+    debug_wb_rf_wnum ,
+    debug_wb_rf_wdata
+);
 
 endmodule 

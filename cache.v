@@ -5,7 +5,8 @@
 //  It's written by Wang Hanmo,finished at 23:45 PM, April 26th 2021
 //  The cache operates with single cycle,but still 2 ways and 4 words per way
 
-module cache(clk, resetn, valid, op, index, tag, offset, wstrb, wdata, addr_ok, data_ok, rdata, rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
+module cache(clk, resetn, valid, op, index, tag, offset, wstrb, wdata, addr_ok, data_ok, rdata, 
+rd_req, rd_type, rd_addr, rd_rdy,ret_valid,
     ret_last, ret_data, wr_req, wr_type, wr_addr, wr_wstrb, wr_data, wr_rdy);
 
     //clock and reset
