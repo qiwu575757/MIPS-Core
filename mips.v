@@ -55,10 +55,10 @@ module mips(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信�?
+// 时钟与复位信号
     input clk      ;
     input rst      ;   //low active
-// 读请求�?�道 
+// 读请求信号通道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 7:0]   arlen     ;
@@ -69,14 +69,14 @@ module mips(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应�?�道         
+//读相应信号通道         
     input [ 3:0]    rid       ;  
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求�?�道
+//写请求信号通道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 7:0]   awlen     ;
@@ -87,14 +87,14 @@ module mips(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据�?�道
+// 写数据信号通道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应�?�道
+// 写相应信号通道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;
@@ -130,7 +130,7 @@ module mips(
 	wire [2:0] IF_icache_wr_type;
 	wire [31:0] IF_icache_wr_addr;
 	wire [3:0] IF_icache_wr_wstrb;
-	wire [127:0] IF_icache_wr_data;
+	wire [511:0] IF_icache_wr_data;
 	wire IF_icache_wr_rdy;
 	//---------------D----------------//
 	wire DMWr, DMRd, RFWr, RHLWr;
@@ -218,7 +218,7 @@ module mips(
 	wire [2:0] MEM_dcache_wr_type;
 	wire [31:0] MEM_dcache_wr_addr;
 	wire [3:0] MEM_dcache_wr_wstrb;
-	wire [127:0] MEM_dcache_wr_data;
+	wire [511:0] MEM_dcache_wr_data;
 	wire MEM_dcache_wr_rdy;
 
 wire [3:0] MEM_dCache_wstrb;
@@ -254,23 +254,31 @@ pc U_PC(
 	);
 
 
-//搁这儿写个地�?转换,表示物理地址
+//搁这儿写个地址转换,表示物理地址
 assign PPC=PC-32'ha0000000;
 
 // * cpu && cache
-// 		没收到icache_data_ok 要阻�?
+// 		没收到icache_data_ok 要阻塞
 // --------------------------------------
 // * cache && axi 
 
- cache icache(.clk(clk), .resetn(rst),
+ cache icache(
+	.clk(clk), .resetn(rst),
 	// cpu && cache
-  	.valid(IF_iCache_read_en), .op(0), .index(PPC[11:4]), .tag(PPC[31:12]), .offset(PPC[3:0]),
-	.wstrb(4'b0), .wdata(32'b0), .addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
+	/*input*/
+  	.valid(IF_iCache_read_en & !isStall), .op(0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
+	.wstrb(4'b0), .wdata(32'b0), 
+	/*output*/
+	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
 	//cache && axi
-  	.rd_req(IF_icache_rd_req), .rd_type(IF_icache_rd_type), .rd_addr(IF_icache_rd_addr), .rd_rdy(IF_icache_rd_rdy),
-	  .ret_valid(IF_icache_ret_valid),.ret_last(IF_icache_ret_last), .ret_data(IF_icache_ret_data),
-	  .wr_req(IF_icache_wr_req), .wr_type(IF_icache_wr_type), .wr_addr(IF_icache_wr_addr), 
-	  .wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data),.wr_rdy(IF_icache_wr_rdy)
+	/*input*/
+  	.rd_rdy(IF_icache_rd_rdy),
+	.ret_valid(IF_icache_ret_valid),.ret_last(IF_icache_ret_last), 
+	.ret_data(IF_icache_ret_data),.wr_rdy(IF_icache_wr_rdy),
+	/*output*/
+	.rd_req(IF_icache_rd_req),.wr_req(IF_icache_wr_req),.rd_type(IF_icache_rd_type),
+	.wr_type(IF_icache_wr_type),.rd_addr(IF_icache_rd_addr),.wr_addr(IF_icache_wr_addr),
+	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data)
 	);
 
 IF_ID U_IF_ID(
@@ -449,8 +457,8 @@ mux6 U_MUX6(
 
 assign MEM_Paddr=MEM_ALU1Out-32'ha0000000;
 
-// 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�?
+// 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
+// 1.设置写使能信�?
 assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 							(MEM_DMSel==3'b000)?
 								(MEM_Paddr[1:0]==2'b00 ? 4'b0001 :
@@ -465,10 +473,10 @@ assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 
 
 
-///todo 这里还没有连入wdata
+
 cache dcache(.clk(clk), .resetn(rst),
 	// cpu && cache
-  	.valid(MEM_dCache_en), .op(DMWen), .index(MEM_Paddr[11:4]), .tag(MEM_Paddr[31:12]), .offset(MEM_Paddr[3:0]),
+  	.valid(MEM_dCache_en), .op(DMWen), .index(MEM_Paddr[13:6]), .tag(MEM_Paddr[31:14]), .offset(MEM_Paddr[5:0]),
 	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(DMOut), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
@@ -476,6 +484,8 @@ cache dcache(.clk(clk), .resetn(rst),
 	  .wr_req(MEM_dcache_wr_req), .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), 
 	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data),.wr_rdy(MEM_dcache_wr_rdy)
 	);
+
+//cache只能读出一个字的数据，使用bridge_dm适配lb等特殊指令
 bridge_dm U_BRIDGE(
 		 .din(MUX5Out), .DMWr(DMWen), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel),
 		 .addr1(ALU1Out), .addr2(MEM_ALU1Out),.data_sram_rdata(data_sram_rdata),
@@ -523,9 +533,11 @@ stall U_STALL(
 		.rst_sign(!rst), .MEM_ex(MEM_Exception), .MEM_RFWr(MEM_RFWr), 
 		.MEM_eret_flush(MEM_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
 		.iCahche_data_ok(IF_iCache_data_ok),
+
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.inst_sram_en(IF_iCache_read_en),.isStall(isStall)
 	);
+
  axi_sram_bridge bridge(
 
     ext_int_in   ,   //high active
