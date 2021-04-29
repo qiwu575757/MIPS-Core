@@ -411,6 +411,10 @@ reg [3:0] count16;
 
 reg arid_reg;// 寄存事务id
 
+initial begin
+	count16 = 0;
+end
+
 //Write Passway
 always @(posedge clk) begin
 	if(!rst)
@@ -423,7 +427,7 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[127:32]}};
+		temp_data={32'b0,{temp_data[127:32]}};//需要与 wdata 保持一致
 	end
 end
 
@@ -456,21 +460,29 @@ always @(*) begin
 			begin
 				next_wr_state = state_wr_req;
 			end
+			else
+				next_wr_state = next_wr_state;
 		end
 		state_wr_req:
 		begin
 			if(awvalid&awready)
 				next_wr_state=state_wr_data;
+			else
+				next_wr_state = next_wr_state;
 		end
 		state_wr_data:
 		begin
 			if(wvalid & wready & (count16==4'hf))
 				next_wr_state=state_wr_res;
+			else
+				next_wr_state = next_wr_state;
 		end
 		state_wr_res:
 		begin
 			if(bvalid&bready)
 				next_wr_state=state_wr_finish;
+			else
+				next_wr_state = next_wr_state;
 		end
 	endcase
 end
@@ -511,6 +523,8 @@ always @(*) begin
 			begin
 				next_rd_state = state_rd_req;
 			end
+			else
+				next_rd_state = next_rd_state;
 		end
 		state_rd_req:
 		begin
@@ -518,6 +532,8 @@ always @(*) begin
 			begin
 				next_rd_state=state_rd_res;
 			end
+			else
+				next_rd_state = next_rd_state;
 		end
 		state_rd_res:
 		begin
@@ -525,6 +541,8 @@ always @(*) begin
 			begin
 				next_rd_state=state_rd_finish;
 			end
+			else
+				next_rd_state = next_rd_state;
 		end
 	endcase
 end
@@ -546,12 +564,12 @@ assign arvalid = (current_rd_state==state_rd_req) ?
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 assign rready = 1;
 
-assign awaddr = arid_reg ? MEM_dcache_rd_addr : IF_icache_rd_addr;
+assign awaddr = arid_reg ? (MEM_dcache_rd_addr+count16*4) : IF_icache_rd_addr;
 assign awsize = arid_reg ? MEM_dcache_rd_type : IF_icache_rd_type;
 assign awvalid = (current_wr_state==state_wr_req) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 					
-assign wdata = arid_reg ? MEM_dcache_wr_data : IF_icache_wr_data;
+assign wdata = arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
 assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
 assign wlast = (current_wr_state==state_wr_data)&(count16==4'hf) ;
 assign wvalid = (current_wr_state==state_wr_data) ? 
