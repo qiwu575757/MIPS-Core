@@ -27,11 +27,11 @@ endmodule
 
 
 module IF_ID(
-	clk, rst, IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, 
+	clk, rst,IF_IDWr, IF_Flush, PC, Instr, IF_AdEL, 
 
 	ID_PC, ID_Instr, ID_AdEL
 );
-	input clk, rst, IF_IDWr, IF_Flush, IF_AdEL;
+	input clk, rst,IF_IDWr, IF_Flush, IF_AdEL;
 	input[31:0] PC, Instr;
 
 	output reg [31:0] ID_PC;
@@ -53,16 +53,16 @@ module IF_ID(
 endmodule
 
 module ID_EX(
-	clk, rst, ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
+	clk, rst, wr_en,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
 	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
-	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,
+	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
 	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
-	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start
+	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EXE_dcache_en
 );
-	input clk, rst, ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
+	input clk, rst, wr_en,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
 	input CP0WrEn;
 	input Exception;
@@ -77,7 +77,7 @@ module ID_EX(
 	input [7:0] CP0Addr;
 	input CP0Rd;
 	input start;
-
+	input ID_dcache_en;
 	output reg EX_eret_flush;
 	output reg EX_CP0WrEn;
 	output reg EX_Exception;
@@ -105,7 +105,7 @@ module ID_EX(
 	output reg [7:0] EX_CP0Addr;
 	output reg EX_CP0Rd;
 	output reg EX_start;
-	
+	output reg EXE_dcache_en;
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
 			EX_eret_flush <= 1'b0;
@@ -138,8 +138,10 @@ module ID_EX(
 			EX_CP0Addr <= 32'd0;
 			EX_CP0Rd <= 1'b0;
 			EX_start <= 1'b0;
+			EXE_dcache_en<=1'b0;
 		end
-		else begin
+		else if(wr_en) 
+		begin
 			EX_eret_flush <= eret_flush;
 			EX_CP0WrEn <= CP0WrEn;
 			EX_Exception <= Exception;
@@ -170,18 +172,20 @@ module ID_EX(
 			EX_CP0Addr <= CP0Addr;
 			EX_CP0Rd <= CP0Rd;
 			EX_start <= start;
+			EXE_dcache_en <= ID_dcache_en;
 		end
 endmodule
 
 module EX_MEM(
-	clk, rst, EX_Flush, OverFlow, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
+	clk, rst,wr_en, EX_Flush, OverFlow, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
 	RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,CP0Rd, 
+	EXE_dcache_en,
 
 	MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
 	MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
-	MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd
+	MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd,MEM_dCache_en
 	);
-	input clk, rst, EX_Flush, DMWr, DMRd, RFWr;
+	input clk, rst, wr_en,EX_Flush, DMWr, DMRd, RFWr;
 	input OverFlow;
 	input eret_flush;
 	input CP0WrEn;
@@ -193,6 +197,7 @@ module EX_MEM(
 	input[31:0] EX_PC, RHLOut,ALU1Out, GPR_RT, Imm32;
 	input [7:0] CP0Addr;
 	input CP0Rd;
+	input EXE_dcache_en;
 
 	output reg MEM_DMWr, MEM_DMRd, MEM_RFWr;
 	output reg  MEM_eret_flush;
@@ -206,7 +211,7 @@ module EX_MEM(
 	output reg [31:0] badvaddr;
 	output reg [7:0] MEM_CP0Addr;
 	output reg MEM_CP0Rd;
-
+	output reg MEM_dCache_en;
 	always @(posedge clk) begin
 		if (!rst || EX_Flush) begin
 			MEM_ExcCode <= 5'd0;
@@ -256,8 +261,9 @@ module EX_MEM(
 			MEM_Imm32 <= 32'd0;
 			MEM_CP0Addr <= 7'd0;
 			MEM_CP0Rd <= 1'b0;
+			MEM_dCache_en<=1'b0;
 		end
-		else begin
+		else if (wr_en) begin
 			MEM_DMWr <= DMWr;
 			MEM_DMRd <= DMRd;
 			MEM_RFWr <= RFWr;
@@ -274,6 +280,7 @@ module EX_MEM(
 			MEM_Imm32 <= Imm32;
 			MEM_CP0Addr <= CP0Addr;
 			MEM_CP0Rd <= CP0Rd;
+			MEM_dCache_en <= EXE_dcache_en;
 		end
 
 endmodule

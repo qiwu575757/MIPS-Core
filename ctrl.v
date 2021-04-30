@@ -4,7 +4,7 @@
  			ID_AdEL, IF_Flush,
 			MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch,
-			CP0Rd, start, RHL_visit);
+			CP0Rd, start, RHL_visit,dcache_en);
 	input clk;
 	input rst;
 	input [5:0] OP;
@@ -43,6 +43,7 @@
 	output reg isBranch;
 	output reg start;
 	output reg RHL_visit;
+	output reg dcache_en;
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
@@ -502,6 +503,20 @@
 			6'b100001: DMSel <= 3'b110;		/* LH */
 			default:   DMSel <= 3'b111;		/* LW */
 		endcase
+	end
+
+	always @(OP) begin
+		case(OP)
+			6'b101000: dcache_en<= 1'b1;	      	/* SB */
+			6'b101001: dcache_en<= 1'b1;	      	/* SH */
+			6'b101011: dcache_en<= 1'b1;	   		/* SW */
+			6'b100100: dcache_en<= 1'b1;	  		/* LBU */
+			6'b100000: dcache_en<= 1'b1;	  		/* LB */
+			6'b100101: dcache_en<= 1'b1;	   		/* LHU */
+			6'b100001: dcache_en<= 1'b1;	   		/* LH */
+			6'b100011: dcache_en<= 1'b1;	        /* LW */
+			default: dcache_en <= 1'b0;
+	endcase
 	end
 endmodule
 

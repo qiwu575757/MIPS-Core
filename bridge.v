@@ -478,9 +478,9 @@ always @(posedge clk) begin
 	begin
 		arid_reg=0;
 	end
-	else if(current_rd_state==state_rd_req)
+	else if(current_rd_state==state_rd_free)
 	begin
-		arid_reg=arid;
+		arid_reg <= arid;
 	end
 end
 

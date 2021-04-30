@@ -43,15 +43,18 @@ module bypass(
 endmodule
 
 module stall(
+	clk,rst ,
 	EX_RT, MEM_RT, ID_RS, ID_RT,
 	EX_DMRd, ID_PC, EX_PC, MEM_DMRd, 
 	BJOp, EX_RFWr,EX_CP0Rd, MEM_CP0Rd,
 	rst_sign, MEM_ex, MEM_RFWr, 
 	MEM_eret_flush,isbusy, RHL_visit,
-	iCahche_data_ok,
+	iCahche_data_ok,dCache_data_ok,MEM_dCache_en,
 
-	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall
+	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,
+	dcache_stall
 	);
+	input clk,rst;
 	input[4:0] EX_RT, MEM_RT, ID_RS, ID_RT;
 	input [31:0] ID_PC, EX_PC;
 	input EX_DMRd, MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr;
@@ -59,8 +62,45 @@ module stall(
 	input rst_sign;
 	input isbusy, RHL_visit;
 	input iCahche_data_ok;
+	input dCache_data_ok;
+	input MEM_dCache_en;
 	output reg PCWr, IF_IDWr, MUX7Sel, inst_sram_en;
 	output isStall;
+	output dcache_stall;
+
+	reg c_state;
+	reg n_state;
+
+	parameter state_dcache_free = 1'b0;
+	parameter state_dcache_busy = 1'b1;
+
+	always @(posedge clk) begin
+		if(!rst)
+		begin
+			c_state=1'b0;
+		end
+		else 
+			c_state=n_state;
+	end
+	always @(MEM_dCache_en,dCache_data_ok) begin
+		case (c_state)
+		state_dcache_free:
+		begin
+			if(MEM_dCache_en & ~dCache_data_ok)
+				n_state=state_dcache_busy;
+			else
+				n_state=state_dcache_free;
+		end
+		state_dcache_busy:
+		begin
+			if(dCache_data_ok)
+				n_state = state_dcache_free;
+			else
+				n_state=state_dcache_busy;
+		end
+		endcase
+	end
+	assign dcache_stall = c_state;
 	assign isStall=~PCWr;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
