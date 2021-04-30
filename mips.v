@@ -270,7 +270,7 @@ assign PPC=PC-32'ha0000000;
 	.clk(clk), .resetn(rst),
 	// cpu && cache
 	/*input*/
-  	.valid(1'b1), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
+  	.valid(IF_iCache_read_en & !isStall), .op(0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
 	.wstrb(4'b0), .wdata(32'b0), 
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
@@ -416,7 +416,9 @@ alu1 U_ALU1(
 	);
 
 assign DMWen = 
-			MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
+			MEM_DMWr && !MEM_Exception && !Overflow  && !EX_Exception
+			&& !MEM_eret_flush && 
+			!((EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00) || (EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0)); 
 			//这里的alu1out将来都得改成物理地址
 
 
@@ -489,10 +491,13 @@ cache dcache(.clk(clk), .resetn(rst),
 
 //cache只能读出一个字的数据，使用bridge_dm适配lb等特殊指令
 bridge_dm U_BRIDGE(
-		 .addr2(MEM_ALU1Out),
-		 .DMSel2(MEM_DMSel),
-		 .Din(MEM_dcache_ret_data),
+		 .din(MUX5Out), .DMWr(DMWen), .DMSel1(EX_DMSel),.DMSel2(MEM_DMSel),
+		 .addr1(ALU1Out), .addr2(MEM_ALU1Out),.data_sram_rdata(data_sram_rdata),
 
+		 .data_sram_en(data_sram_en),
+		 .data_sram_wen(data_sram_wen),
+		 .data_sram_addr(data_sram_addr),
+		 .data_sram_wdata(data_sram_wdata),
 		 .dout(DMOut)
 	);
 
