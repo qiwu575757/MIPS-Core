@@ -1,68 +1,37 @@
-module bridge_dm(
-	din, DMWr, DMSel1,DMSel2, addr1, addr2,
-	data_sram_rdata,
+module  bridge_dm(
+	addr2,
+	Din,
+	DMSel2,
 
-	data_sram_en,
-	data_sram_wen,
-	data_sram_addr,
-	data_sram_wdata,
 	dout
-	);
-	input [31:0] data_sram_rdata;
-	input  DMWr;
-	input[2:0] DMSel1;
-	input[2:0] DMSel2;
-	input[31:0] addr1;
-	input[31:0] addr2;
-	input[31:0] din;
-
-	output data_sram_en;
-	output [3:0] data_sram_wen;
-	output [31:0] data_sram_addr;
-	output [31:0] data_sram_wdata;
+);
+	input [31:0] addr2;
+	input [31:0] Din;
+	input [2:0] DMSel2;
 	output [31:0] dout;
 
-	assign data_sram_wdata=
-							(DMSel1==3'b000)?   // btyte
-											{4{din[7:0]}}:
-							(DMSel1==3'b001)?   // sh
-											{2{din[15:0]}}:
-											din;
-	assign data_sram_en=1'b1;
-	assign data_sram_wen=(~DMWr)?4'b0:
-							(DMSel1==3'b000)?
-								(addr1[1:0]==2'b00 ? 4'b0001 :
-								addr1[1:0]==2'b01 ? 4'b0010 :
-								addr1[1:0]==2'b10 ? 4'b0100 :
-								 				   4'b1000) :
-							(DMSel1==3'b001)?   // sh
-								(addr1[1]==1'b0 ? 4'b0011 :
-								  				4'b1100 ):
-		
-												4'b1111 ;//sw
-
-
-	assign data_sram_addr= {addr1[31:2],2'b0}-32'ha000_0000;
-	assign dout=
+assign dout=
 				DMSel2==3'b011 ?  // zero
-				(  	addr2[1:0]==2'b00 ? {24'b0,data_sram_rdata[7:0]} :
-					addr2[1:0]==2'b01 ? {24'b0,data_sram_rdata[15:8]} :
-					addr2[1:0]==2'b10 ? {24'b0,data_sram_rdata[23:16]} :
-									   {24'b0,data_sram_rdata[31:24]}) :
+				(  	addr2[1:0]==2'b00 ? {24'b0,Din[7:0]} :
+					addr2[1:0]==2'b01 ? {24'b0,Din[15:8]} :
+					addr2[1:0]==2'b10 ? {24'b0,Din[23:16]} :
+									   {24'b0,Din[31:24]}) :
 				DMSel2==3'b100 ?
-				(   addr2[1:0]==2'b00 ? {{24{data_sram_rdata[ 7]}},data_sram_rdata[ 7: 0]} :
-					addr2[1:0]==2'b01 ? {{24{data_sram_rdata[15]}},data_sram_rdata[15: 8]} :
-					addr2[1:0]==2'b10 ? {{24{data_sram_rdata[23]}},data_sram_rdata[23:16]} :
-									   {{24{data_sram_rdata[31]}},data_sram_rdata[31:24]}) :
+				(   addr2[1:0]==2'b00 ? {{24{Din[ 7]}},Din[ 7: 0]} :
+					addr2[1:0]==2'b01 ? {{24{Din[15]}},Din[15: 8]} :
+					addr2[1:0]==2'b10 ? {{24{Din[23]}},Din[23:16]} :
+									   {{24{Din[31]}},Din[31:24]}) :
 				DMSel2==3'b101 ?
-				( 	addr2[1]==1'b0 	 ? {16'h0000,data_sram_rdata[15:0]}  :
-								 	   {16'h0000,data_sram_rdata[31:16]})  :
+				( 	addr2[1]==1'b0 	 ? {16'h0000,Din[15:0]}  :
+								 	   {16'h0000,Din[31:16]})  :
 				DMSel2==3'b110 ?
-				(	addr2[1]==1'b0 	 ? {{16{data_sram_rdata[15]}},data_sram_rdata[15:0]}  :
-							    	   {{16{data_sram_rdata[31]}},data_sram_rdata[31:16]} ) :
-																data_sram_rdata;
-														
+				(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
+							    	   {{16{Din[31]}},Din[31:16]} ) :
+																Din;
+													
+	
 endmodule
+	
 
 
 // 这个模块用于当前与cpu与乘除器的交互。
@@ -371,13 +340,15 @@ module axi_sram_bridge(
 	output MEM_dcache_wr_rdy;
 
 //暂时用不到的信号初始化
-    
-    assign arlen    =   0;  
+
+	assign arsize   =   3'b010;
+   	assign arlen    =   4'b1111;
     assign arburst  =   1;
     assign arlock   =   0;
     assign arprot   =   0;
     assign awid     =   1;
     assign awlen    =   0;
+	assign awsize   =   3'b010;
     assign awburst  =   1;
     assign awlock   =   0;
     assign awcache  =   0;
@@ -407,12 +378,14 @@ reg [1:0] next_rd_state;
 reg [2:0] current_wr_state;
 reg [2:0] next_wr_state;
 reg [127:0] temp_data;//write buffer
-reg [3:0] count16;
+reg [3:0] count_rd16;
+reg [3:0] count_wr16;
 
 reg arid_reg;// 寄存事务id
 
 initial begin
-	count16 = 0;
+	count_rd16 = 0;
+	count_wr16 = 0;
 end
 
 //Write Passway
@@ -433,11 +406,19 @@ end
 
 always @(posedge clk) begin
 	if((current_wr_state==state_wr_data) && wready)
-		count16=count16+1;
+		count_wr16=count_wr16+1;
 	else if ((current_wr_state==state_wr_data) && !wready)
-		count16=count16;
+		count_wr16=count_wr16;
 	else
-		count16=0;
+		count_wr16=0;
+end
+always @(posedge clk) begin
+	if((current_wr_state==state_wr_data) && wready)
+		count_rd16=count_rd16+1;
+	else if ((current_wr_state==state_wr_data) && !wready)
+		count_rd16=count_rd16;
+	else
+		count_rd16=0;
 end
 
 always @(posedge clk) begin
@@ -461,28 +442,28 @@ always @(*) begin
 				next_wr_state = state_wr_req;
 			end
 			else
-				next_wr_state = next_wr_state;
+				next_wr_state = current_wr_state;
 		end
 		state_wr_req:
 		begin
 			if(awvalid&awready)
 				next_wr_state=state_wr_data;
 			else
-				next_wr_state = next_wr_state;
+				next_wr_state = current_wr_state;
 		end
 		state_wr_data:
 		begin
-			if(wvalid & wready & (count16==4'hf))
+			if(wvalid & wready & (count_wr16==4'hf))
 				next_wr_state=state_wr_res;
 			else
-				next_wr_state = next_wr_state;
+				next_wr_state = current_wr_state;
 		end
 		state_wr_res:
 		begin
 			if(bvalid&bready)
 				next_wr_state=state_wr_finish;
 			else
-				next_wr_state = next_wr_state;
+				next_wr_state = current_wr_state;
 		end
 	endcase
 end
@@ -524,7 +505,7 @@ always @(*) begin
 				next_rd_state = state_rd_req;
 			end
 			else
-				next_rd_state = next_rd_state;
+				next_rd_state = current_rd_state;
 		end
 		state_rd_req:
 		begin
@@ -533,45 +514,44 @@ always @(*) begin
 				next_rd_state=state_rd_res;
 			end
 			else
-				next_rd_state = next_rd_state;
+				next_rd_state = current_rd_state;
 		end
 		state_rd_res:
 		begin
-			if(rvalid&rready)
+			if(rvalid&rready&rlast)
 			begin
 				next_rd_state=state_rd_finish;
 			end
 			else
-				next_rd_state = next_rd_state;
+				next_rd_state = current_rd_state;
 		end
 	endcase
 end
 
-assign MEM_dcache_rd_rdy = (current_rd_state==state_rd_req)&arready;
+assign MEM_dcache_rd_rdy = arready&(current_rd_state!=state_rd_res);
 assign MEM_dcache_ret_valid = (current_rd_state==state_rd_res)&rready&(rid==1)&rvalid;
 assign MEM_dcache_ret_last = rlast;
 assign MEM_dcache_ret_data = rdata;
 assign MEM_dcache_wr_rdy = awready;
-assign IF_icache_rd_rdy = (current_rd_state==state_rd_req)&arready;
+assign IF_icache_rd_rdy = arready&(current_rd_state!=state_rd_res);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&(rid==0)&rvalid;
 assign IF_icache_ret_last = rlast;
 assign IF_icache_ret_data = rdata;
 
 // 0 -> instr   1 -> data
 assign araddr = arid_reg ? MEM_dcache_rd_addr : IF_icache_rd_addr;
-assign arsize = arid_reg ? MEM_dcache_rd_type : IF_icache_rd_type;
+
 assign arvalid = (current_rd_state==state_rd_req) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 assign rready = 1;
 
-assign awaddr = arid_reg ? (MEM_dcache_rd_addr+count16*4) : IF_icache_rd_addr;
-assign awsize = arid_reg ? MEM_dcache_rd_type : IF_icache_rd_type;
+assign awaddr = arid_reg ? (MEM_dcache_rd_addr+count_wr16*4) : IF_icache_rd_addr;
 assign awvalid = (current_wr_state==state_wr_req) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 					
 assign wdata = arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
 assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
-assign wlast = (current_wr_state==state_wr_data)&(count16==4'hf) ;
+assign wlast = (current_wr_state==state_wr_data)&(count_wr16==4'hf) ;
 assign wvalid = (current_wr_state==state_wr_data) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 assign bready = 1;
