@@ -19,7 +19,7 @@ module pc(
 	
 	always@(posedge clk)
 		if(!rst)
-			PC <= 32'hbfbf_fffc;
+			PC <= 32'hbfc0_0000;
 		else if(wr)
 			PC <= NPC;
 

@@ -82,7 +82,7 @@ module stall(
 		else 
 			c_state=n_state;
 	end
-	always @(MEM_dCache_en,dCache_data_ok) begin
+	always @(MEM_dCache_en,dCache_data_ok,c_state) begin
 		case (c_state)
 		state_dcache_free:
 		begin
@@ -104,7 +104,7 @@ module stall(
 	assign isStall=~PCWr;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
-	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit)
+	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, iCahche_data_ok)
 	    if(rst_sign) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
