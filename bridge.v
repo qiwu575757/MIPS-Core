@@ -347,7 +347,7 @@ module axi_sram_bridge(
     assign arlock   =   0;
     assign arprot   =   0;
     assign awid     =   1;
-    assign awlen    =   0;
+    assign awlen    =   4'b1111;
 	assign awsize   =   3'b010;
     assign awburst  =   1;
     assign awlock   =   0;
@@ -377,7 +377,7 @@ reg [1:0] next_rd_state;
 
 reg [2:0] current_wr_state;
 reg [2:0] next_wr_state;
-reg [127:0] temp_data;//write buffer
+reg [511:0] temp_data;//write buffer
 reg [3:0] count_rd16;
 reg [3:0] count_wr16;
 
@@ -400,7 +400,7 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[127:32]}};//需要与 wdata 保持一致
+		temp_data={32'b0,{temp_data[511:32]}};//需要与 wdata 保持一致
 	end
 end
 
