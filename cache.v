@@ -368,3 +368,90 @@ module cache(       clk, resetn,
     assign wr_req = (N_STATE == REPLACE) ;
             
 endmodule
+
+module uncache(
+        clk, resetn,
+        //CPU_Pipeline side
+        /*input*/   valid, op, addr, wstrb, wdata,
+        /*output*/  data_ok, rdata,
+        //AXI-Bus side 
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+);
+
+    input clk;
+    input resetn;
+
+    input valid;
+    input op;
+    input[31:0] addr;
+    input[3:0] wstrb;
+    input[31:0] wdata;
+
+    output data_ok;
+    output[31:0] rdata;
+
+    input rd_rdy;
+    input wr_rdy;
+    input ret_valid;
+    input ret_last;
+    input[31:0] ret_data;
+
+    output rd_req;
+    output wr_req;
+    output[2:0] rd_type;
+    output[2:0] wr_type;
+    output[31:0] rd_addr;
+    output[31:0] wr_addr;
+    output[3:0] wr_wstrb;
+    output[31:0] wr_data;
+
+    reg[1:0] C_STATE;
+    reg[1:0] N_STATE;
+
+    parameter DEFAULT = 2'b00;
+    parameter LOAD    = 2'b01;
+    parameter STORE   = 2'b10;
+
+    wire load;
+    wire store;
+
+    assign load = valid & ~op;
+    assign store = valid & op;
+
+    always@(posedge clk)
+        if(!resetn)
+            C_STATE <= DEFAULT;
+        else
+            C_STATE <= N_STATE;
+
+    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid)
+        case(C_STATE)
+            DEFAULT:    if(load && rd_rdy)
+                            N_STATE = LOAD;
+                        else if(store && wr_rdy)
+                            N_STATE = STORE;
+                        else
+                            N_STATE = DEFAULT;
+            LOAD:       if(ret_valid && ret_last)
+                            N_STATE = DEFAULT;
+                        else
+                            N_STATE = LOAD;
+            STORE:      N_STATE = DEFAULT;
+            default:    N_STATE = DEFAULT;
+        endcase
+
+    assign data_ok = 
+                    (load && (C_STATE == LOAD) && ret_valid && ret_last) ||
+                    (store && C_STATE == STORE) ;
+    assign rdata = ret_data;
+
+    assign rd_req = (N_STATE == LOAD);
+    assign wr_req = (N_STATE == STORE);
+    assign rd_type = 3'b010;
+    assign wr_type = 3'b010;
+    assign rd_addr = addr;
+    assign wr_addr = addr;
+    assign wr_wstrb = wstrb;
+    assign wr_data = wdata;
+endmodule
