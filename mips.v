@@ -250,6 +250,8 @@ module mips(
 	wire[31:0] MEM_wr_addr;
 	wire[3:0] MEM_wr_wstrb;
 
+	wire [31:0] cache_Out;
+
 
 
 	//---------------W----------------//
@@ -529,7 +531,7 @@ cache U_DCACHE(.clk(clk), .resetn(rst),
 	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy)
 	);
 
-	assign DMOut = cache_sel ? uncache_Out : dcache_Out;
+	assign cache_Out = cache_sel ? uncache_Out : dcache_Out;
 	assign MEM_data_ok = cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
 	assign MEM_rd_req = cache_sel ? MEM_uncache_rd_req : MEM_dcache_rd_req;
 	assign MEM_wr_req = cache_sel ? MEM_uncache_wr_req : MEM_dcache_wr_req;
@@ -543,7 +545,7 @@ cache U_DCACHE(.clk(clk), .resetn(rst),
 bridge_dm U_BRIDGE(
 		 .addr2(MEM_ALU1Out),
 		 .DMSel2(MEM_DMSel),
-		 .Din(MEM_dcache_ret_data),
+		 .Din(cache_Out),
 
 		 .dout(DMOut)
 	);
