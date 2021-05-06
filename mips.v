@@ -156,7 +156,6 @@ module mips(
 	wire Overflow;
 	wire [4:0] MUX1Out;
 	wire [31:0] ALU1Out, RHLOut, MUX3Out, MUX4Out, MUX5Out, DMOut;
-	wire DMWen;
 	wire EX_eret_flush;
 	wire EX_CP0WrEn;
 	wire EX_Exception;
@@ -222,10 +221,36 @@ module mips(
 	wire [3:0] MEM_dcache_wr_wstrb;
 	wire [511:0] MEM_dcache_wr_data;
 	wire MEM_dcache_wr_rdy;
-	wire MEM_dcache_en;
 	wire dcache_stall;
 
-wire [3:0] MEM_dCache_wstrb;
+	wire cache_sel;
+
+	wire DMen;
+	wire [3:0] MEM_dCache_wstrb;
+	wire dcache_valid;
+	wire uncache_valid;
+	wire DMWen;
+	wire[31:0] uncache_Out;
+	wire[31:0] dcache_Out;
+	wire MEM_unCache_data_ok;
+	wire MEM_uncache_rd_req;
+	wire MEM_uncache_wr_req;
+	wire[2:0] MEM_uncache_rd_type;
+	wire[2:0] MEM_uncache_wr_type;
+	wire[31:0] MEM_uncache_rd_addr;
+	wire[31:0] MEM_uncache_wr_addr;
+	wire[3:0] MEM_uncache_wr_wstrb;
+	wire[31:0] MEM_uncache_wr_data;
+	wire MEM_data_ok;
+	wire MEM_rd_req;
+	wire MEM_wr_req;
+	wire[2:0] MEM_rd_type;
+	wire[2:0] MEM_wr_type;
+	wire[31:0] MEM_rd_addr;
+	wire[31:0] MEM_wr_addr;
+	wire[3:0] MEM_wr_wstrb;
+
+
 
 	//---------------W----------------//
 	wire [31:0] MUX2Out;
@@ -237,6 +262,7 @@ wire [3:0] MEM_dCache_wstrb;
 	//---------------Stall----------------//
 	wire IF_IDWr,MUX7Sel;
 	wire isStall;
+
 
 	//---------------Bypass----------------//
 	wire [1:0] MUX4Sel,MUX5Sel;
@@ -259,14 +285,14 @@ pc U_PC(
 
 
 //搁这儿写个地址转换,表示物理地址
-assign PPC=PC-32'ha0000000;
+assign PPC={3'b000,PC[28:0]};
 
 // * cpu && cache
 // 		没收到icache_data_ok 要阻塞
 // --------------------------------------
 // * cache && axi 
 
- cache icache(
+ cache U_ICACHE(
 	.clk(clk), .resetn(rst),
 	// cpu && cache
 	/*input*/
@@ -415,10 +441,6 @@ alu1 U_ALU1(
 		.C(ALU1Out),.Overflow(Overflow)
 	);
 
-assign DMWen = 
-			MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
-			//这里的alu1out将来都得改成物理地址
-
 
 
 EX_MEM U_EX_MEM(
@@ -459,6 +481,14 @@ mux6 U_MUX6(
 
 assign MEM_Paddr=MEM_ALU1Out-32'ha0000000;
 
+assign DMen = cache_sel ? uncache_valid : dcache_valid;
+assign DMWen = 
+			MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
+			//这里的alu1out将来都得改成物理地址
+
+assign dcache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && ~cache_sel;
+assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && cache_sel;
+
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
 // 1.设置写使能信�?
 assign MEM_dCache_wstrb=(~DMWen)?4'b0:
@@ -474,18 +504,40 @@ assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 												4'b1111 ;//sw
 
 
+	assign cache_sel = (MEM_Paddr[31:16] == 16'h1faf);
+	// 1 表示uncache， 0 表示cache
 
+uncache U_UNCACHE(
+        .clk(clk), .resetn(resetn),
+        .valid(uncache_valid), .op(DMWen), .addr(MEM_Paddr), .wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT),
+        .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
+        .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last),
+		.ret_data(MEM_dcache_ret_data),
+        .rd_req(MEM_uncache_rd_req), .wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
+		.wr_type(MEM_uncache_wr_type), .rd_addr(MEM_uncache_rd_addr), .wr_addr(MEM_uncache_wr_addr), 
+		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
+);
 
-cache dcache(.clk(clk), .resetn(rst),
+cache U_DCACHE(.clk(clk), .resetn(rst),
 	// cpu && cache
-  	.valid(MEM_dCache_en), .op(DMWen), .index(MEM_Paddr[13:6]), .tag(MEM_Paddr[31:14]), .offset(MEM_Paddr[5:0]),
-	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(DMOut), 
+  	.valid(dcache_valid), .op(DMWen), .index(MEM_Paddr[13:6]), .tag(MEM_Paddr[31:14]), .offset(MEM_Paddr[5:0]),
+	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
-	  .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last), .ret_data(MEM_dcache_ret_data),
+	  .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last), .ret_data(MEM_dcache_ret_data),
 	  .wr_req(MEM_dcache_wr_req), .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), 
-	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data),.wr_rdy(MEM_dcache_wr_rdy)
+	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy)
 	);
+
+	assign DMOut = cache_sel ? uncache_Out : dcache_Out;
+	assign MEM_data_ok = cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
+	assign MEM_rd_req = cache_sel ? MEM_uncache_rd_req : MEM_dcache_rd_req;
+	assign MEM_wr_req = cache_sel ? MEM_uncache_wr_req : MEM_dcache_wr_req;
+	assign MEM_rd_type = cache_sel ? MEM_uncache_rd_type : MEM_dcache_rd_type;
+	assign MEM_wr_type = cache_sel ? MEM_uncache_wr_type : MEM_dcache_wr_type;
+	assign MEM_rd_addr = cache_sel ? MEM_uncache_rd_addr : MEM_dcache_rd_addr;
+	assign MEM_wr_addr = cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
+	assign MEM_wr_wstrb = cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
 
 //cache只能读出一个字的数据，使用bridge_dm适配lb等特殊指令
 bridge_dm U_BRIDGE(
@@ -498,7 +550,7 @@ bridge_dm U_BRIDGE(
 
 
 MEM_WB U_MEM_WB(
-		.clk(clk), .rst(rst), .PC(MEM_PC), .RFWr(MEM_RFWr),.MUX2Sel(MEM_MUX2Sel),
+		.clk(clk), .rst(rst), .PC(MEM_PC), .RFWr(~dcache_stall & MEM_RFWr),.MUX2Sel(MEM_MUX2Sel),
 		.RHLOut(MEM_RHLOut), .DMOut(DMOut), .ALU1Out(MEM_ALU1Out), 
 		.Imm32(MEM_Imm32), .RD(MEM_RD), .MEM_Flush(MEM_Flush), .CP0Out(CP0Out),
 
@@ -532,14 +584,16 @@ stall U_STALL(
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM_CP0Rd(MEM_CP0Rd),
 		.rst_sign(!rst), .MEM_ex(MEM_Exception), .MEM_RFWr(MEM_RFWr), 
 		.MEM_eret_flush(MEM_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
-		.iCahche_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_dCache_data_ok),.MEM_dCache_en(MEM_dCache_en),
+		.iCahche_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM_dCache_en(DMen),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.inst_sram_en(IF_iCache_read_en),.isStall(isStall),
 		.dcache_stall(dcache_stall)
 	);
 
- axi_sram_bridge bridge(
+
+
+ axi_sram_bridge U_AXI_SRAM_BRIDGE(
 
     ext_int_in   ,   //high active
 
@@ -601,17 +655,17 @@ stall U_STALL(
 	IF_icache_wr_data,
 	IF_icache_wr_rdy,
 //	dcache
-	MEM_dcache_rd_req,
-	MEM_dcache_rd_type,
-	MEM_dcache_rd_addr,
+	MEM_rd_req,
+	MEM_rd_type,
+	MEM_rd_addr,
 	MEM_dcache_rd_rdy,
 	MEM_dcache_ret_valid,
 	MEM_dcache_ret_last,
 	MEM_dcache_ret_data,
-	MEM_dcache_wr_req,
-	MEM_dcache_wr_type,
-	MEM_dcache_wr_addr,
-	MEM_dcache_wr_wstrb,
+	MEM_wr_req,
+	MEM_wr_type,
+	MEM_wr_addr,
+	MEM_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
 
