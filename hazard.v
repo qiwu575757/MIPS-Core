@@ -100,8 +100,8 @@ module stall(
 		end
 		endcase
 	end
-	assign dcache_stall = c_state|(~dCache_data_ok&MEM_dCache_en);
-	assign isStall=~PCWr;
+	assign dcache_stall = (~dCache_data_ok&MEM_dCache_en);
+	assign isStall=~PCWr || dcache_stall;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
 	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, iCahche_data_ok)
