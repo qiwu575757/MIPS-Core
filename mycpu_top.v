@@ -63,7 +63,7 @@ module mycpu_top(
 // 读请求通道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
-    output [ 7:0]   arlen     ;
+    output [ 3:0]   arlen     ;
     output [ 2:0]   arsize    ;
     output [ 1:0]   arburst   ;
     output [ 1:0]   arlock    ;
@@ -81,7 +81,7 @@ module mycpu_top(
 //写请求通道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
-    output [ 7:0]   awlen     ;
+    output [ 3:0]   awlen     ;
     output [ 2:0]   awsize    ;
     output [ 1:0]   awburst   ;
     output [ 1:0]   awlock    ;

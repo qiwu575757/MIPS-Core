@@ -61,7 +61,7 @@ module mips(
 // 读请求信号通道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
-    output [ 7:0]   arlen     ;
+    output [ 3:0]   arlen     ;
     output [ 2:0]   arsize    ;
     output [ 1:0]   arburst   ;
     output [ 1:0]   arlock    ;
@@ -79,7 +79,7 @@ module mips(
 //写请求信号通道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
-    output [ 7:0]   awlen     ;
+    output [ 3:0]   awlen     ;
     output [ 2:0]   awsize    ;
     output [ 1:0]   awburst   ;
     output [ 1:0]   awlock    ;
@@ -248,7 +248,7 @@ wire [3:0] MEM_dCache_wstrb;
 
 // ---------------IF---------------------//
 assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
-    
+    // assign PF_AdEL = 0;
 pc U_PC(
 		//input
 		.clk(clk), .rst(rst), .wr(PCWr&~dcache_stall), .NPC(NPC),  .PF_AdEL(PF_AdEL),.PC_Flush(PC_Flush) 
@@ -532,7 +532,7 @@ stall U_STALL(
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM_CP0Rd(MEM_CP0Rd),
 		.rst_sign(!rst), .MEM_ex(MEM_Exception), .MEM_RFWr(MEM_RFWr), 
 		.MEM_eret_flush(MEM_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
-		.iCahche_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_dCache_data_ok),.MEM_dCache_en(MEM_dcache_rd_req|MEM_dcache_wr_req),
+		.iCahche_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_dCache_data_ok),.MEM_dCache_en(MEM_dCache_en),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.inst_sram_en(IF_iCache_read_en),.isStall(isStall),

@@ -271,7 +271,7 @@ module axi_sram_bridge(
 // 读请求通道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
-    output [ 7:0]   arlen     ;
+    output [ 3:0]   arlen     ;
     output [ 2:0]   arsize    ;
     output [ 1:0]   arburst   ;
     output [ 1:0]   arlock    ;
@@ -289,7 +289,7 @@ module axi_sram_bridge(
 //写请求通道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
-    output [ 7:0]   awlen     ;
+    output [ 3:0]   awlen     ;
     output [ 2:0]   awsize    ;
     output [ 1:0]   awburst   ;
     output [ 1:0]   awlock    ;
@@ -340,11 +340,12 @@ module axi_sram_bridge(
 	output MEM_dcache_wr_rdy;
 
 //暂时用不到的信号初始化
-
-	assign arsize   =   3'b010;
+	assign arid = 4'b0;
    	assign arlen    =   4'b1111;
+	assign arsize   =   3'b010;
     assign arburst  =   1;
     assign arlock   =   0;
+	assign arcache  =  	0;
     assign arprot   =   0;
     assign awid     =   1;
     assign awlen    =   4'b1111;
@@ -469,9 +470,9 @@ always @(*) begin
 end
 
 //Read Passway
-//设置读id
-assign arid = MEM_dcache_rd_req ? 1:
-			 IF_icache_rd_req  ? 0 : 0;
+// 设置读id
+// assign arid = MEM_dcache_rd_req ? 1:
+// 			 IF_icache_rd_req  ? 0 : 0;
 
 always @(posedge clk) begin
 	if(!rst)
@@ -481,7 +482,8 @@ always @(posedge clk) begin
 	else if(current_rd_state==state_rd_free
 	||current_rd_state==state_rd_finish)
 	begin
-		arid_reg <= arid;
+		arid_reg <=MEM_dcache_rd_req ? 1:
+			 IF_icache_rd_req  ? 0 : 0;
 	end
 end
 
@@ -530,12 +532,12 @@ always @(*) begin
 end
 
 assign MEM_dcache_rd_rdy = arready&(current_rd_state!=state_rd_res);
-assign MEM_dcache_ret_valid = (current_rd_state==state_rd_res)&rready&(rid==1)&rvalid;
+assign MEM_dcache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid&(arid_reg);
 assign MEM_dcache_ret_last = rlast;
 assign MEM_dcache_ret_data = rdata;
 assign MEM_dcache_wr_rdy = awready;
 assign IF_icache_rd_rdy = arready&(current_rd_state!=state_rd_res);
-assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&(rid==0)&rvalid;
+assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid&(~arid_reg);
 assign IF_icache_ret_last = rlast;
 assign IF_icache_ret_data = rdata;
 
