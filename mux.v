@@ -118,11 +118,11 @@ module mux7(
 	 
 	MUX7Out
 	);
-	input[2:0] WRSign;
+	input[3:0] WRSign;
 	input MUX7Sel;
-	output[2:0] MUX7Out;
+	output[3:0] MUX7Out;
 
-	assign MUX7Out = MUX7Sel ? 3'b000 : WRSign;
+	assign MUX7Out = MUX7Sel ? 4'b0000 : WRSign;
  
 endmodule
 
