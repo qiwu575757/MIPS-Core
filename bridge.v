@@ -78,8 +78,8 @@ wire [63:0] multi_unsign_out;
 reg [63:0] RHL;
 reg present_state;
 reg next_state;
-wire m_axis_dout_tvalid1;
-wire m_axis_dout_tvalid2;
+wire m_axis_dout_tvalid_sign;
+wire m_axis_dout_tvalid_unsign;
 wire[63:0] tempA, tempB;
 
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
@@ -96,7 +96,10 @@ parameter state_busy = 1'b1 ;
 
 assign multi_unsign_out=A*B;
 assign multi_sign_out=tempA*tempB;
-
+				// 6'b011001: ALU2Op <= 2'b00;		/* MULTU */
+				// 6'b011000: ALU2Op <= 2'b01;		/* MULT */
+				// 6'b011011: ALU2Op <= 2'b10;		/* DIVU */
+				// 6'b011010: ALU2Op <= 2'b11;		/* DIV */
 
 always @(posedge aclk) begin
     if(!aresetn)
@@ -105,9 +108,9 @@ always @(posedge aclk) begin
 		RHL <= multi_unsign_out;
 	else if(ALU2Op==2'b01 && start && !MEM_Exception && !MEM_eret_flush)
 		RHL <= multi_sign_out;
-	else if(m_axis_dout_tvalid1) //sign
+	else if(m_axis_dout_tvalid_sign) //sign
 		RHL <= {divider_sign_out[31:0],divider_sign_out[63:32]};
-	else if(m_axis_dout_tvalid2 ) //unsign
+	else if(m_axis_dout_tvalid_unsign ) //unsign
 		RHL <= {divider_unsign_out[31:0],divider_unsign_out[63:32]};
 	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01)
 	    RHL <= {A,RHL[31:0]};
@@ -126,7 +129,7 @@ always @(posedge aclk ) begin
 	end
 end
 
-always @(present_state, start, ALU2Op, m_axis_dout_tvalid1, m_axis_dout_tvalid2) begin
+always @(present_state, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign) begin
 	if(present_state == state_free) begin
 	   if(start && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush)
 	       next_state=state_busy;
@@ -134,7 +137,7 @@ always @(present_state, start, ALU2Op, m_axis_dout_tvalid1, m_axis_dout_tvalid2)
 	       next_state=state_free;
 	end
 	else begin
-	   if (m_axis_dout_tvalid1|m_axis_dout_tvalid2)
+	   if (m_axis_dout_tvalid_sign|m_axis_dout_tvalid_unsign)
 		   next_state=state_free;
 	   else
 	       next_state=state_busy;
@@ -143,25 +146,26 @@ always @(present_state, start, ALU2Op, m_axis_dout_tvalid1, m_axis_dout_tvalid2)
 end
 
 
-
+wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
 Divider divider (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_sign_valid),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_sign_valid),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
-  .m_axis_dout_tvalid(m_axis_dout_tvalid1),          // output wire m_axis_dout_tvalid
+  .m_axis_dout_tvalid(m_axis_dout_tvalid_sign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
+wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
 Divider_Unsighed divider_unsign (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_unsign_valid),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_unsign_valid),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
-  .m_axis_dout_tvalid(m_axis_dout_tvalid2),          // output wire m_axis_dout_tvalid
+  .m_axis_dout_tvalid(m_axis_dout_tvalid_unsign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
