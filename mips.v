@@ -142,9 +142,9 @@ module mips(
 	wire eret_flush,CP0WrEn,Exception;
 
 	wire[1:0] EXTOp, NPCOp, ALU2Op, MUX1Sel, RHLSel_Wr, CMPOut2;
-	wire[2:0] MUX2_6Sel,DMSel,MUX7Out;
+	wire[2:0] MUX2_6Sel,DMSel;
 	wire[31:0] MUX8Out, MUX9Out;
-	wire[3:0] ALU1Op;
+	wire[3:0] ALU1Op, MUX7Out;
 	wire[4:0] ExcCode;
 	wire [31:0] Imm32, GPR_RS, GPR_RT;//GPR_RS --> RS DATA
 	wire [31:0] ID_Instr;
@@ -338,7 +338,7 @@ ext U_EXT(
 );
 
 mux7 U_MUX7(
-		.WRSign({DMWr, RFWr, RHLWr}), .MUX7Sel(MUX7Sel),
+		.WRSign({ID_dcache_en, DMWr, RFWr, RHLWr}), .MUX7Sel(MUX7Sel),
 
 		.MUX7Out(MUX7Out)
 	);
@@ -389,7 +389,7 @@ ID_EX U_ID_EX(
 		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out), .RS(ID_Instr[25:21]),.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), 
 		.Imm32(Imm32), .shamt(ID_Instr[10:6]), .eret_flush(eret_flush), .ID_Flush(ID_Flush), .CP0WrEn(CP0WrEn), 
 		.Exception(Exception), .ExcCode(ExcCode), .isBD(isBD), .isBranch(isBranch), 
-		.CP0Addr({ID_Instr[15:11], ID_Instr[2:0]}), .CP0Rd(CP0Rd), .start(start&~EX_isBusy),.ID_dcache_en(ID_dcache_en),
+		.CP0Addr({ID_Instr[15:11], ID_Instr[2:0]}), .CP0Rd(CP0Rd), .start(start&~EX_isBusy),.ID_dcache_en(MUX7Out[3]),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception), 
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -481,7 +481,7 @@ mux6 U_MUX6(
 
 
 
-assign MEM_Paddr=MEM_ALU1Out-32'ha0000000;
+assign MEM_Paddr= {3'b000,MEM_ALU1Out[28:0]};
 
 assign DMen = cache_sel ? uncache_valid : dcache_valid;
 assign DMWen = 
