@@ -1,6 +1,6 @@
 module npc(
 	PC, Imm, EPC, ret_addr, NPCOp, 
-	MEM_eret_flush, MEM_ex, PCWr,
+	MEM_eret_flush, MEM_ex, PCWr, dcache_stall,
 
 	NPC, IF_Flush,ID_Flush, EX_Flush, 
 	PC_Flush, MEM_Flush
@@ -12,6 +12,7 @@ module npc(
 	input PCWr;
 	input MEM_eret_flush;
 	input MEM_ex;
+	input dcache_stall;
 
 	output reg[31:0] NPC;
 	output IF_Flush;
@@ -38,10 +39,10 @@ module npc(
 		end
 	end
 
-	assign IF_Flush =  MEM_eret_flush || MEM_ex;
-	assign ID_Flush = MEM_eret_flush || MEM_ex;
-	assign EX_Flush = MEM_eret_flush || MEM_ex;
-	assign MEM_Flush = MEM_eret_flush || MEM_ex;
-	assign PC_Flush = ((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex;
+	assign IF_Flush =  (MEM_eret_flush || MEM_ex) && ~dcache_stall;
+	assign ID_Flush = (MEM_eret_flush || MEM_ex) && ~dcache_stall;
+	assign EX_Flush = (MEM_eret_flush || MEM_ex) && ~dcache_stall;
+	assign MEM_Flush = (MEM_eret_flush || MEM_ex) && ~dcache_stall;
+	assign PC_Flush = (((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex) && ~dcache_stall;
 
 endmodule
