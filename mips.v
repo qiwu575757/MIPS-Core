@@ -552,9 +552,9 @@ bridge_dm U_BRIDGE(
 
 
 MEM_WB U_MEM_WB(
-		.clk(clk), .rst(rst), .PC(MEM_PC), .RFWr(~dcache_stall & MEM_RFWr),.MUX2Sel(MEM_MUX2Sel),
+		.clk(clk), .rst(rst), .PC(MEM_PC), .RFWr(MEM_RFWr),.MUX2Sel(MEM_MUX2Sel),
 		.RHLOut(MEM_RHLOut), .DMOut(DMOut), .ALU1Out(MEM_ALU1Out), 
-		.Imm32(MEM_Imm32), .RD(MEM_RD), .MEM_Flush(MEM_Flush), .CP0Out(CP0Out),
+		.Imm32(MEM_Imm32), .RD(MEM_RD), .MEM_Flush(MEM_Flush), .CP0Out(CP0Out), .dcache_stall(dcache_stall),
 
 		.WB_RFWr(WB_RFWr),.WB_MUX2Sel(WB_MUX2Sel), 
 		.WB_RD(WB_RD), .WB_PC(WB_PC), .WB_ALU1Out(WB_ALU1Out), .WB_DMOut(WB_DMOut), 
@@ -573,7 +573,7 @@ mux2 U_MUX2(
 bypass U_BYPASS(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .ID_RS(ID_Instr[25:21]), 
 		.ID_RT(ID_Instr[20:16]),.MEM_RD(MEM_RD), .WB_RD(WB_RD), 
-		.MEM_RFWr(MEM_RFWr), .WB_RFWr(WB_RFWr),.BJOp(B_JOp),
+		.MEM_RFWr(MEM_RFWr), .WB_RFWr(WB_RFWr),.BJOp(B_JOp), .dcache_stall(dcache_stall),
 		
 		.MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel), 
 		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel)
