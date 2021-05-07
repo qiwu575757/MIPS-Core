@@ -287,7 +287,7 @@ module EX_MEM(
 endmodule
 
 module MEM_WB(clk, rst, PC, RFWr, MUX2Sel, RHLOut, CP0Out,
-				DMOut, ALU1Out, Imm32, RD, MEM_Flush,
+				DMOut, ALU1Out, Imm32, RD, MEM_Flush, dcache_stall,
 				WB_RFWr, WB_MUX2Sel, WB_RD, WB_PC, WB_ALU1Out, WB_DMOut, 
 				WB_RHLOut, WB_Imm32, WB_CP0Out);
 	input clk, rst, RFWr;
@@ -295,6 +295,7 @@ module MEM_WB(clk, rst, PC, RFWr, MUX2Sel, RHLOut, CP0Out,
 	input[4:0] RD;
 	input[31:0] PC, ALU1Out, DMOut, RHLOut, Imm32, CP0Out;
 	input MEM_Flush;
+	input dcache_stall;
 
 	output reg WB_RFWr;
 	output reg[2:0] WB_MUX2Sel;
@@ -311,6 +312,9 @@ module MEM_WB(clk, rst, PC, RFWr, MUX2Sel, RHLOut, CP0Out,
 			WB_RHLOut <= 32'd0;
 			WB_Imm32 <= 32'd0;
 			WB_CP0Out <= 32'd0;
+		end
+		else if(dcache_stall) begin
+			WB_RFWr <= 0;
 		end
 		else begin
 			WB_RFWr <= RFWr;
