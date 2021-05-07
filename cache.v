@@ -237,13 +237,13 @@ module cache(       clk, resetn,
             end
             else if(way2_hit) begin //write way2
                 case(wstrb)
-                    4'b0001:    Way2_Data[index][offset[3:2]][7:0] <= wdata[7:0];
-                    4'b0010:    Way2_Data[index][offset[3:2]][15:8] <= wdata[7:0];
-                    4'b0100:    Way2_Data[index][offset[3:2]][23:16] <= wdata[7:0];
-                    4'b1000:    Way2_Data[index][offset[3:2]][31:24] <= wdata[7:0];
-                    4'b0011:    Way2_Data[index][offset[3:2]][15:0] <= wdata[15:0];
-                    4'b1100:    Way2_Data[index][offset[3:2]][31:16] <= wdata[15:0];
-                    default:    Way2_Data[index][offset[3:2]] <= wdata;
+                    4'b0001:    Way2_Data[index][offset[5:2]][7:0] <= wdata[7:0];
+                    4'b0010:    Way2_Data[index][offset[5:2]][15:8] <= wdata[7:0];
+                    4'b0100:    Way2_Data[index][offset[5:2]][23:16] <= wdata[7:0];
+                    4'b1000:    Way2_Data[index][offset[5:2]][31:24] <= wdata[7:0];
+                    4'b0011:    Way2_Data[index][offset[5:2]][15:0] <= wdata[15:0];
+                    4'b1100:    Way2_Data[index][offset[5:2]][31:16] <= wdata[15:0];
+                    default:    Way2_Data[index][offset[5:2]] <= wdata;
                  endcase
                 Way2_Dirty[index] <= 1'b1;
             end
@@ -261,13 +261,13 @@ module cache(       clk, resetn,
             end
             else begin              //write way0
                 case(wstrb)
-                    4'b0001:    Way0_Data[index][offset[3:2]][7:0] <= wdata[7:0];
-                    4'b0010:    Way0_Data[index][offset[3:2]][15:8] <= wdata[7:0];
-                    4'b0100:    Way0_Data[index][offset[3:2]][23:16] <= wdata[7:0];
-                    4'b1000:    Way0_Data[index][offset[3:2]][31:24] <= wdata[7:0];
-                    4'b0011:    Way0_Data[index][offset[3:2]][15:0] <= wdata[15:0];
-                    4'b1100:    Way0_Data[index][offset[3:2]][31:16] <= wdata[15:0];
-                    default:    Way0_Data[index][offset[3:2]] <= wdata;
+                    4'b0001:    Way0_Data[index][offset[5:2]][7:0] <= wdata[7:0];
+                    4'b0010:    Way0_Data[index][offset[5:2]][15:8] <= wdata[7:0];
+                    4'b0100:    Way0_Data[index][offset[5:2]][23:16] <= wdata[7:0];
+                    4'b1000:    Way0_Data[index][offset[5:2]][31:24] <= wdata[7:0];
+                    4'b0011:    Way0_Data[index][offset[5:2]][15:0] <= wdata[15:0];
+                    4'b1100:    Way0_Data[index][offset[5:2]][31:16] <= wdata[15:0];
+                    default:    Way0_Data[index][offset[5:2]] <= wdata;
                  endcase
                 Way0_Dirty[index] <= 1'b1;
             end
