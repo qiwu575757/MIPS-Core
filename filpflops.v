@@ -219,27 +219,29 @@ module EX_MEM(
 			MEM_Exception <= 1'b0;
 			badvaddr <= 32'd0;
 		end
-		else if (OverFlow  && !Exception) begin
+		else if(wr_en) begin
+			if (OverFlow  && !Exception) begin
 			MEM_ExcCode <= `Ov;
 			MEM_Exception <= 1'b1;
 			badvaddr <= 32'd0;
-		end
-		else if (DMWr && !Exception && (DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
+			end
+			else if (DMWr && !Exception && (DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
 				DMSel == 3'b001 && ALU1Out[0] != 1'b0) )begin
 			MEM_ExcCode <= `AdES;
 			MEM_Exception <= 1'b1;
 			badvaddr <= ALU1Out;
-		end
-		else if (DMRd && !Exception && (DMSel == 3'b111 && ALU1Out[1:0] != 2'b00 ||
+			end
+			else if (DMRd && !Exception && (DMSel == 3'b111 && ALU1Out[1:0] != 2'b00 ||
 				(DMSel == 3'b101 || DMSel == 3'b110) && ALU1Out[0] != 1'b0) ) begin
 			MEM_ExcCode <= `AdEL;
 			MEM_Exception <= 1'b1;
 			badvaddr <= ALU1Out;
-		end
-		else begin
+			end
+			else  begin
 			MEM_ExcCode <= ExcCode;
 			MEM_Exception <= Exception;
 			badvaddr <= EX_PC;
+			end
 		end
 	end
 
