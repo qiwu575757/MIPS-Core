@@ -596,7 +596,7 @@ stall U_STALL(
 
 
  axi_sram_bridge U_AXI_SRAM_BRIDGE(
-
+	 cache_sel,
     ext_int_in   ,   //high active
 
     clk      ,
@@ -670,6 +670,7 @@ stall U_STALL(
 	MEM_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
+	MEM_uncache_wr_data,
 
 );
 assign 

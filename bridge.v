@@ -190,6 +190,7 @@ endmodule
 //  4.如果icache和dcache同时缺失，优先响应read dcache
 module axi_sram_bridge(
 
+	conf_sel,
     ext_int_in   ,   //high active
 
     clk      ,
@@ -263,8 +264,10 @@ module axi_sram_bridge(
 	MEM_dcache_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
+	MEM_uncache_wr_data,
 
 );
+	input conf_sel;
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
@@ -342,23 +345,29 @@ module axi_sram_bridge(
 	input [3:0] MEM_dcache_wr_wstrb;
 	input [511:0] MEM_dcache_wr_data;
 	output MEM_dcache_wr_rdy;
+	input [31:0]MEM_uncache_wr_data;
 
 //暂时用不到的信号初始化
 	assign arid = 4'b0;
    	assign arlen    =   4'b1111;
 	assign arsize   =   3'b010;
-    assign arburst  =   1;
+    assign arburst  =   conf_sel&MEM_dcache_rd_req? 0:1;
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
     assign awid     =   1;
-    assign awlen    =   4'b1111;
+	assign rready   =   1;
+
+    assign awlen    =   4'b0;
 	assign awsize   =   3'b010;
-    assign awburst  =   1;
+    assign awburst  =   conf_sel&MEM_dcache_wr_req? 0:1;
     assign awlock   =   0;
     assign awcache  =   0;
     assign awprot   =   0;
+	assign wlast    =   1;
     assign wid      =   1;
+	assign bready   =   1;
+
     // assign wlast    =   1;
 
 //状态定义
@@ -550,17 +559,12 @@ assign araddr = arid_reg ? MEM_dcache_rd_addr : IF_icache_rd_addr;
 
 assign arvalid = (current_rd_state==state_rd_req) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
-assign rready = 1;
 
-assign awaddr = arid_reg ? (MEM_dcache_rd_addr+count_wr16*4) : IF_icache_rd_addr;
-assign awvalid = (current_wr_state==state_wr_req) ? 
-						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
+assign awaddr =conf_sel&MEM_dcache_wr_req? MEM_dcache_rd_addr: arid_reg ? (MEM_dcache_rd_addr+count_wr16*4) : IF_icache_rd_addr;
+assign awvalid =   MEM_dcache_wr_req ;
 					
-assign wdata = arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
+assign wdata = conf_sel&MEM_dcache_wr_req? MEM_uncache_wr_data: arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
 assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
-assign wlast = (current_wr_state==state_wr_data)&(count_wr16==4'hf) ;
-assign wvalid = (current_wr_state==state_wr_data) ? 
-						MEM_dcache_rd_req : IF_icache_rd_req;
-assign bready = 1;
+assign wvalid = MEM_dcache_wr_req ;
 
 endmodule
