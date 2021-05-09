@@ -678,7 +678,7 @@ assign
 assign 
 	debug_wb_pc  = WB_PC;
 assign 
-	debug_wb_rf_wen  = {4{WB_RFWr}};
+	debug_wb_rf_wen  = {4{WB_RFWr&~dcache_stall}};
 assign 
 	debug_wb_rf_wnum  = WB_RD[4:0];
 

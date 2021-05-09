@@ -15,7 +15,7 @@ module bypass(
 	always@(MEM_RFWr, WB_RFWr, EX_RS, MEM_RD, WB_RD)
 		if(MEM_RFWr && (MEM_RD != 5'd0) && (MEM_RD == EX_RS))
 			MUX4Sel = 2'b01; 	// MEM bypath for RS
-		else if((WB_RFWr || dcache_stall) && (WB_RD != 5'd0) && (WB_RD == EX_RS))
+		else if((WB_RFWr ) && (WB_RD != 5'd0) && (WB_RD == EX_RS))
 			MUX4Sel = 2'b10;	// WB bypath for RS
 		else
 			MUX4Sel = 2'b00;	// NO bypath for RS
@@ -23,7 +23,7 @@ module bypass(
 	always@(MEM_RFWr, WB_RFWr, EX_RT, MEM_RD, WB_RD)
 		if(MEM_RFWr && (MEM_RD != 5'd0) && (MEM_RD == EX_RT))
 			MUX5Sel = 2'b01; 	// MEM bypath for RT
-		else if((WB_RFWr || dcache_stall) && (WB_RD != 5'd0) && (WB_RD == EX_RT))
+		else if((WB_RFWr ) && (WB_RD != 5'd0) && (WB_RD == EX_RT))
 			MUX5Sel = 2'b10;	// WB bypath for RT
 		else
 			MUX5Sel = 2'b00;	// NO bypath for RT

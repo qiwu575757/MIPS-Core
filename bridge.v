@@ -351,7 +351,7 @@ module axi_sram_bridge(
 	assign arid = 4'b0;
    	assign arlen    =   4'b1111;
 	assign arsize   =   3'b010;
-    assign arburst  =   conf_sel&MEM_dcache_rd_req? 0:1;
+    assign arburst  =   IF_icache_rd_req? 1:0;
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
@@ -495,8 +495,8 @@ always @(posedge clk) begin
 	else if(current_rd_state==state_rd_free
 	||current_rd_state==state_rd_finish)
 	begin
-		arid_reg <=MEM_dcache_rd_req ? 1:
-			 IF_icache_rd_req  ? 0 : 0;
+		arid_reg <=IF_icache_rd_req? 0:
+			   MEM_dcache_rd_req ? 1 : 0;
 	end
 end
 

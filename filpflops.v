@@ -315,10 +315,8 @@ module MEM_WB(clk, rst, PC, RFWr, MUX2Sel, RHLOut, CP0Out,
 			WB_Imm32 <= 32'd0;
 			WB_CP0Out <= 32'd0;
 		end
-		else if(dcache_stall) begin
-			WB_RFWr <= 0;
-		end
-		else begin
+		else if(~dcache_stall) begin
+			
 			WB_RFWr <= RFWr;
 			WB_MUX2Sel <= MUX2Sel;
 			WB_RD <= RD;
