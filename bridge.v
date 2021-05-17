@@ -560,7 +560,7 @@ assign araddr = arid_reg ? MEM_dcache_rd_addr : IF_icache_rd_addr;
 assign arvalid = (current_rd_state==state_rd_req) ? 
 						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
 
-assign awaddr =conf_sel&MEM_dcache_wr_req? MEM_dcache_rd_addr: arid_reg ? (MEM_dcache_rd_addr+count_wr16*4) : IF_icache_rd_addr;
+assign awaddr =conf_sel&MEM_dcache_wr_req? MEM_dcache_wr_addr: (MEM_dcache_wr_addr+count_wr16*4);
 assign awvalid =   MEM_dcache_wr_req ;
 					
 assign wdata = conf_sel&MEM_dcache_wr_req? MEM_uncache_wr_data: arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
