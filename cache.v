@@ -36,8 +36,8 @@ module cache(       clk, resetn,
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
     input op;                       //CPU opcode: 0 = load , 1 = store
-    input[17:0] tag;                //CPU address[31:14]
-    input[7:0] index;               //CPU address[13:6]
+    input[20:0] tag;                //CPU address[31:14]
+    input[4:0] index;               //CPU address[13:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     input[3:0] wstrb;               //write code,including 0001 , 0010 , 0100, 1000, 0011 , 1100 , 1111
     input[31:0] wdata;              //data to be stored from CPU to Cache
@@ -69,22 +69,22 @@ module cache(       clk, resetn,
         Every block: 1 valid bit + 1 dirty bit + 17 tag bit + 16 * 32 data bit
         Total memory: 64KB
     */
-    reg Way0_Valid[255:0];
-    reg Way1_Valid[255:0];
-    reg Way2_Valid[255:0];
-    reg Way3_Valid[255:0];
-    reg Way0_Dirty[255:0];
-    reg Way1_Dirty[255:0];
-    reg Way2_Dirty[255:0];
-    reg Way3_Dirty[255:0];
-    reg[17:0] Way0_Tag[255:0];
-    reg[17:0] Way1_Tag[255:0];
-    reg[17:0] Way2_Tag[255:0];
-    reg[17:0] Way3_Tag[255:0];
-    reg[31:0] Way0_Data[255:0][15:0];
-    reg[31:0] Way1_Data[255:0][15:0];
-    reg[31:0] Way2_Data[255:0][15:0];
-    reg[31:0] Way3_Data[255:0][15:0];
+    reg Way0_Valid[31:0];
+    reg Way1_Valid[31:0];
+    reg Way2_Valid[31:0];
+    reg Way3_Valid[31:0];
+    reg Way0_Dirty[31:0];
+    reg Way1_Dirty[31:0];
+    reg Way2_Dirty[31:0];
+    reg Way3_Dirty[31:0];
+    reg[20:0] Way0_Tag[31:0];
+    reg[20:0] Way1_Tag[31:0];
+    reg[20:0] Way2_Tag[31:0];
+    reg[20:0] Way3_Tag[31:0];
+    reg[31:0] Way0_Data[31:0][15:0];
+    reg[31:0] Way1_Data[31:0][15:0];
+    reg[31:0] Way2_Data[31:0][15:0];
+    reg[31:0] Way3_Data[31:0][15:0];
 
     //FINITE STATE MACHINE
     reg[1:0] C_STATE;
@@ -95,9 +95,9 @@ module cache(       clk, resetn,
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
     reg replace_Valid_MB;           
     reg replace_Dirty_MB;
-    reg[17:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
-    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
-    reg[7:0] replace_index_MB;
+    reg[20:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
+    reg[20:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
+    reg[4:0] replace_index_MB;
     reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
@@ -105,7 +105,7 @@ module cache(       clk, resetn,
     reg[511:0] replace_data;
     reg replace_Valid;
     reg replace_Dirty;
-    reg[17:0] replace_tag_old;
+    reg[20:0] replace_tag_old;
     reg[1:0] counter;
 
     //hit
@@ -186,7 +186,7 @@ module cache(       clk, resetn,
             replace_data_MB <= 128'd0; 
             replace_Valid_MB <= 1'b0;
             replace_Dirty_MB <= 1'b0;
-            replace_index_MB <= 8'd0;
+            replace_index_MB <= 5'd0;
             replace_tag_old_MB <= 20'd0;
             replace_tag_new_MB <= 20'd0;
         end
@@ -282,7 +282,7 @@ module cache(       clk, resetn,
     //refill from mem to cache (read memory)
     always@(posedge clk)
         if(!resetn)
-            for(i=0;i<256;i=i+1) begin
+            for(i=0;i<32;i=i+1) begin
                 Way0_Valid[i] <= 1'b0;
                 Way1_Valid[i] <= 1'b0;
                 Way2_Valid[i] <= 1'b0;
