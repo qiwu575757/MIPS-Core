@@ -55,10 +55,10 @@ module mips(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信号
+// 时钟与复位信�?
     input clk      ;
     input rst      ;   //low active
-// 读请求信号通道 
+// 读请求信号�?�道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -69,14 +69,14 @@ module mips(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应信号通道         
+//读相应信号�?�道         
     input [ 3:0]    rid       ;  
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求信号通道
+//写请求信号�?�道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 3:0]   awlen     ;
@@ -87,14 +87,14 @@ module mips(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据信号通道
+// 写数据信号�?�道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应信号通道
+// 写相应信号�?�道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;
@@ -286,11 +286,11 @@ pc U_PC(
 	);
 
 
-//搁这儿写个地址转换,表示物理地址
+//搁这儿写个地�?转换,表示物理地址
 assign PPC={3'b000,PC[28:0]};
 
 // * cpu && cache
-// 		没收到icache_data_ok 要阻塞
+// 		没收到icache_data_ok 要阻�?
 // --------------------------------------
 // * cache && axi 
 
@@ -298,7 +298,7 @@ assign PPC={3'b000,PC[28:0]};
 	.clk(clk), .resetn(rst),
 	// cpu && cache
 	/*input*/
-  	.valid(1'b1), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
+  	.valid(1'b1), .op(1'b0), .index(PPC[10:6]), .tag(PPC[31:11]), .offset(PPC[5:0]),
 	.wstrb(4'b0), .wdata(32'b0), 
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
@@ -492,7 +492,7 @@ assign dcache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && ~cac
 assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && cache_sel;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�?
+// 1.设置写使能信�??
 assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 							(MEM_DMSel==3'b000)?
 								(MEM_Paddr[1:0]==2'b00 ? 4'b0001 :
@@ -507,7 +507,7 @@ assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 
 
 	assign cache_sel = (MEM_Paddr[31:16] == 16'h1faf);
-	// 1 表示uncache， 0 表示cache
+	// 1 表示uncache�? 0 表示cache
 
 uncache U_UNCACHE(
         .clk(clk), .resetn(resetn),
@@ -522,7 +522,7 @@ uncache U_UNCACHE(
 
 cache U_DCACHE(.clk(clk), .resetn(rst),
 	// cpu && cache
-  	.valid(dcache_valid), .op(DMWen), .index(MEM_Paddr[13:6]), .tag(MEM_Paddr[31:14]), .offset(MEM_Paddr[5:0]),
+  	.valid(dcache_valid), .op(DMWen), .index(MEM_Paddr[10:6]), .tag(MEM_Paddr[31:11]), .offset(MEM_Paddr[5:0]),
 	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
@@ -541,7 +541,7 @@ cache U_DCACHE(.clk(clk), .resetn(rst),
 	assign MEM_wr_addr = cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
 	assign MEM_wr_wstrb = cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
 
-//cache只能读出一个字的数据，使用bridge_dm适配lb等特殊指令
+//cache只能读出�?个字的数据，使用bridge_dm适配lb等特殊指�?
 bridge_dm U_BRIDGE(
 		 .addr2(MEM_ALU1Out),
 		 .DMSel2(MEM_DMSel),
@@ -643,7 +643,7 @@ stall U_STALL(
     bvalid    ,
     bready    ,
 // icache 
-	IF_icache_rd_req,// icache 和 dcache 同时缺失怎么办
+	IF_icache_rd_req,// icache �? dcache 同时缺失怎么�?
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,
