@@ -374,7 +374,7 @@ ctrl U_CTRL(
 	);
 
 npc U_NPC(
-		.PC(PC), .Imm(ID_Instr), .ret_addr(MUX8Out), .NPCOp(NPCOp),.PCWr(PCWr), 
+		.PC(PC), .Imm(ID_Instr[25:0]), .ret_addr(MUX8Out), .NPCOp(NPCOp),.PCWr(PCWr), 
 		.EPC(EPCOut), .MEM_eret_flush(MEM_eret_flush), .MEM_ex(MEM_Exception), .dcache_stall(dcache_stall),
 
 		.NPC(NPC), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
@@ -670,8 +670,8 @@ stall U_STALL(
 	MEM_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
-	MEM_uncache_wr_data,
-
+	MEM_uncache_wr_data
+	
 );
 assign 
 	debug_wb_rf_wdata = MUX2Out;
