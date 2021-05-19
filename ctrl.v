@@ -74,7 +74,7 @@
 			CP0WrEn <= 1'b0;
 	end
 
-	always @(OP or Funct or ri or rst or IF_Flush or ID_AdEL) begin	/* the generation of Exception and ExcCode */
+	always @(OP or Funct or ri or rst or IF_Flush or ID_AdEL or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
 		if (Interrupt) begin
 			Exception <= 1'b1;
 			ExcCode <= `Int;
