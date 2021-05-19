@@ -21,7 +21,7 @@ module npc(
 	output PC_Flush;
 	output MEM_Flush;
 
-	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex) begin
+	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)
 			NPC = EPC + 4;
 		else if (MEM_ex)
