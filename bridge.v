@@ -129,7 +129,7 @@ always @(posedge aclk ) begin
 	end
 end
 
-always @(present_state, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign) begin
+always @(present_state, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign, MEM_Exception, MEM_eret_flush) begin
 	if(present_state == state_free) begin
 	   if(start && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush)
 	       next_state=state_busy;
@@ -264,7 +264,7 @@ module axi_sram_bridge(
 	MEM_dcache_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
-	MEM_uncache_wr_data,
+	MEM_uncache_wr_data
 
 );
 	input conf_sel;
@@ -479,6 +479,8 @@ always @(*) begin
 			else
 				next_wr_state = current_wr_state;
 		end
+		default:
+			next_wr_state = state_wr_free;
 	endcase
 end
 
