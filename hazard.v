@@ -105,7 +105,7 @@ module stall(
 	assign isStall=~PCWr || dcache_stall ;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
-	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit)
+	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, EX_CP0Rd, ID_PC, EX_PC, MEM_CP0Rd)
 	    if(rst_sign) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
