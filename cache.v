@@ -6,20 +6,6 @@
 //  The cache operates with single cycle,with 4 ways and 16 words per way
 //  Interface remaining to designing: addr_ok, data_ok, rd_type, wr_type, wr_wstrb.
 
-//                      MENU
-//      Interface                       Line 32
-//      Cache                           Line 63
-//      Wires and Regs                  Line 94
-//      Hit Compare                     Line 124
-//      Random Replacement              Line 132
-//      Miss Buffer                     Line 182
-//      Data : Cache -> CPU             Line 210
-//      Data : CPU   -> Cache           Line 223
-//      Data : Cache -> AXI             Line 276
-//      Data : AXI   -> Cache           Line 282
-//      Finite State Machine            Line 325
-//      Output signals                  Line 364
-
 module cache(       clk, resetn,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
@@ -233,7 +219,6 @@ module cache(       clk, resetn,
                     4'b1100:    Way3_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way3_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way3_Dirty[index] <= 1'b1;
             end
             else if(way2_hit) begin //write way2
                 case(wstrb)
@@ -245,7 +230,6 @@ module cache(       clk, resetn,
                     4'b1100:    Way2_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way2_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way2_Dirty[index] <= 1'b1;
             end
             else if(way1_hit) begin //write way1
                 case(wstrb)
@@ -257,7 +241,6 @@ module cache(       clk, resetn,
                     4'b1100:    Way1_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way1_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way1_Dirty[index] <= 1'b1;
             end
             else begin              //write way0
                 case(wstrb)
@@ -269,8 +252,19 @@ module cache(       clk, resetn,
                     4'b1100:    Way0_Data[index][offset[5:2]][31:16] <= wdata[15:0];
                     default:    Way0_Data[index][offset[5:2]] <= wdata;
                  endcase
-                Way0_Dirty[index] <= 1'b1;
             end
+        end
+        else if(ret_valid) begin
+            case(replace_way_MB)
+                2'b00:  //write way0
+                    Way0_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                2'b01:  //write way1
+                    Way1_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                2'b10:  //write way2
+                    Way2_Data[replace_index_MB][ret_number_MB] <= ret_data;
+                default://write way3
+                    Way3_Data[replace_index_MB][ret_number_MB] <= ret_data;
+            endcase
         end
 
     //replace from cache to mem (write memory)
@@ -287,37 +281,59 @@ module cache(       clk, resetn,
                 Way1_Valid[i] <= 1'b0;
                 Way2_Valid[i] <= 1'b0;
                 Way3_Valid[i] <= 1'b0;
+            end
+        else if(ret_valid) begin
+            case(replace_way_MB)
+                2'b00:  //write way0
+                    Way0_Valid[replace_index_MB] <= 1'b1;
+                2'b01:  //write way1
+                    Way1_Valid[replace_index_MB] <= 1'b1;
+                2'b10:  //write way2
+                    Way2_Valid[replace_index_MB] <= 1'b1;
+                default://write way3
+                    Way3_Valid[replace_index_MB] <= 1'b1;
+            endcase
+        end
+    always@(posedge clk)
+        if(!resetn)
+            for(i=0;i<32;i=i+1) begin
                 Way0_Dirty[i] <= 1'b0;
                 Way1_Dirty[i] <= 1'b0;
                 Way2_Dirty[i] <= 1'b0;
                 Way3_Dirty[i] <= 1'b0;
             end
+        else if(hit_write) begin
+            if(way3_hit)        //write way3
+                Way3_Dirty[index] <= 1'b1;
+            else if(way2_hit)   //write way2
+                Way2_Dirty[index] <= 1'b1;
+            else if(way1_hit)   //write way1
+                Way1_Dirty[index] <= 1'b1;
+            else               //write way0
+                Way0_Dirty[index] <= 1'b1;
+        end
         else if(ret_valid)
             case(replace_way_MB)
-                2'b00:  begin   //write way0
-                    Way0_Valid[replace_index_MB] <= 1'b1;
+                2'b00:  //write way0
                     Way0_Dirty[replace_index_MB] <= 1'b0;
-                    Way0_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way0_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                2'b01:  begin   //write way1
-                    Way1_Valid[replace_index_MB] <= 1'b1;
+                2'b01:  //write way1
                     Way1_Dirty[replace_index_MB] <= 1'b0;
-                    Way1_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way1_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                2'b10:  begin   //write way2
-                    Way2_Valid[replace_index_MB] <= 1'b1;
+                2'b10:  //write way2
                     Way2_Dirty[replace_index_MB] <= 1'b0;
-                    Way2_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way2_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
-                default:begin   //write way3
-                    Way3_Valid[replace_index_MB] <= 1'b1;
+                default://write way3
                     Way3_Dirty[replace_index_MB] <= 1'b0;
+            endcase
+    always@(posedge clk)
+        if(ret_valid)
+            case(replace_way_MB)
+                2'b00:  //write way0
+                    Way0_Tag[replace_index_MB] <= replace_tag_new_MB;
+                2'b01:  //write way1
+                    Way1_Tag[replace_index_MB] <= replace_tag_new_MB;
+                2'b10:  //write way2
+                    Way2_Tag[replace_index_MB] <= replace_tag_new_MB;
+                default://write way3
                     Way3_Tag[replace_index_MB] <= replace_tag_new_MB;
-                    Way3_Data[replace_index_MB][ret_number_MB] <= ret_data;
-                end
             endcase
     assign rd_type = 3'b100;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
@@ -425,7 +441,7 @@ module uncache(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid)
+    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last)
         case(C_STATE)
             DEFAULT:    if(load && rd_rdy)
                             N_STATE = LOAD;
