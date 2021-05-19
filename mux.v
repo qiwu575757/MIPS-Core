@@ -26,7 +26,7 @@ module mux2(
 	input[2:0] MUX2Sel;
 	output reg[31:0] WD;
 
-	always@(ALU1Out, RHLOut, DMOut, PC, Imm32, MUX2Sel)
+	always@(ALU1Out, RHLOut, DMOut, PC, Imm32, MUX2Sel, CP0Out)
 		case(MUX2Sel)
 			3'b000:	WD = RHLOut;
 			3'b001:	WD = Imm32;
