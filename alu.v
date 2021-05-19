@@ -1,7 +1,7 @@
 module alu1(
 	A, B, ALU1Op, ALU1Sel, Shamt, 
 	
-	C,,Overflow
+	C,Overflow
 	);
 	input[31:0] A, B;
 	input[3:0] ALU1Op;
