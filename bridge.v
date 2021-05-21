@@ -76,37 +76,45 @@ wire [63:0] divider_unsign_out;
 wire [63:0] multi_sign_out;
 wire [63:0] multi_unsign_out;
 reg [63:0] RHL;
-reg present_state;
-reg next_state;
+reg present_state_div;
+reg next_state_div;
+reg present_state_mult;
+reg next_state_mult;
+reg present_state_multu;
+reg next_state_multu;
 wire m_axis_dout_tvalid_sign;
 wire m_axis_dout_tvalid_unsign;
-wire[63:0] tempA, tempB;
-
+wire multiplier_signed_valid;
+wire multiplier_unsigned_valid;
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
 
-assign tempA = A[31] ? {32'hffffffff,A} : {32'h00000000,A};
-assign tempB = B[31] ? {32'hffffffff,B} : {32'h00000000,B};
 
 
-assign isBusy=next_state;
+assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
 
 
-assign multi_unsign_out=A*B;
-assign multi_sign_out=tempA*tempB;
 				// 6'b011001: ALU2Op <= 2'b00;		/* MULTU */
 				// 6'b011000: ALU2Op <= 2'b01;		/* MULT */
 				// 6'b011011: ALU2Op <= 2'b10;		/* DIVU */
 				// 6'b011010: ALU2Op <= 2'b11;		/* DIV */
+reg[2:0] counter;
+
+always@(posedge aclk)
+	if(!aresetn || counter == 3'd4 ||multiplier_signed_valid || multiplier_unsigned_valid)
+		counter <= 3'b000;
+	else if(present_state_mult == state_busy || present_state_multu == state_busy)
+		counter <= counter + 1;
+
 
 always @(posedge aclk) begin
     if(!aresetn)
         RHL <= 64'd0;
-	else if(ALU2Op==2'b00 && start && !MEM_Exception && !MEM_eret_flush)
+	else if((present_state_multu == state_busy) && (counter == 3'd4))
 		RHL <= multi_unsign_out;
-	else if(ALU2Op==2'b01 && start && !MEM_Exception && !MEM_eret_flush)
+	else if((present_state_mult == state_busy) && (counter == 3'd4))
 		RHL <= multi_sign_out;
 	else if(m_axis_dout_tvalid_sign) //sign
 		RHL <= {divider_sign_out[31:0],divider_sign_out[63:32]};
@@ -121,30 +129,83 @@ end
 always @(posedge aclk ) begin
 	if(!aresetn)
 	begin
-		present_state=state_free;
+		present_state_div=state_free;
 	end
 	else 
 	begin
-		present_state=next_state;
+		present_state_div=next_state_div;
 	end
 end
 
-always @(present_state, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign, MEM_Exception, MEM_eret_flush) begin
-	if(present_state == state_free) begin
+always @(present_state_div, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign, MEM_Exception, MEM_eret_flush) begin
+	if(present_state_div == state_free) begin
 	   if(start && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush)
-	       next_state=state_busy;
+	       next_state_div=state_busy;
 	   else
-	       next_state=state_free;
+	       next_state_div=state_free;
 	end
 	else begin
 	   if (m_axis_dout_tvalid_sign|m_axis_dout_tvalid_unsign)
-		   next_state=state_free;
+		   next_state_div=state_free;
 	   else
-	       next_state=state_busy;
+	       next_state_div=state_busy;
 	end
 
 end
 
+always @(posedge aclk ) begin
+	if(!aresetn)
+	begin
+		present_state_mult=state_free;
+	end
+	else 
+	begin
+		present_state_mult=next_state_mult;
+	end
+end
+
+always @(present_state_mult,multiplier_signed_valid,counter) begin
+	if(present_state_mult == state_free) begin
+	   if(multiplier_signed_valid)
+	       next_state_mult=state_busy;
+	   else
+	       next_state_mult=state_free;
+	end
+	else begin
+	   if (counter == 3'd4)
+		   next_state_mult=state_free;
+	   else
+	       next_state_mult=state_busy;
+	end
+
+end
+
+always @(posedge aclk ) begin
+	if(!aresetn)
+	begin
+		present_state_multu=state_free;
+	end
+	else 
+	begin
+		present_state_multu=next_state_multu;
+	end
+end
+
+always @(present_state_multu, multiplier_unsigned_valid,counter) begin
+	if(present_state_multu == state_free) begin
+	   if(multiplier_unsigned_valid)
+	       next_state_multu=state_busy;
+	   else
+	       next_state_multu=state_free;
+	end
+	else begin
+	   if (counter == 3'd4)
+		   next_state_multu=state_free;
+	   else
+	       next_state_multu=state_busy;
+	end
+
+end
 
 wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
 Divider divider (
@@ -169,7 +230,22 @@ Divider_Unsighed divider_unsign (
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
-
+assign multiplier_signed_valid = start && !ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+multiplier_signed multiplier_signed(
+	.CLK(aclk),
+	.A(A),
+	.B(B),
+	.CE(next_state_mult),
+	.P(multi_sign_out)
+);
+assign multiplier_unsigned_valid = start && !ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+multiplier_unsigned multiplier_unsigned(
+	.CLK(aclk),
+	.A(A),
+	.B(B),
+	.CE(next_state_multu),
+	.P(multi_unsign_out)
+);
 
 endmodule
 
