@@ -180,7 +180,7 @@ endmodule
 module EX_MEM(
 	clk, rst,wr_en, EX_Flush, OverFlow, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
 	RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,CP0Rd, 
-	EXE_dcache_en,
+	EXE_dcache_en, EX_badvaddr,
 
 	MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
 	MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
@@ -199,6 +199,7 @@ module EX_MEM(
 	input [7:0] CP0Addr;
 	input CP0Rd;
 	input EXE_dcache_en;
+	input[31:0] EX_badvaddr;
 
 	output reg MEM_DMWr, MEM_DMRd, MEM_RFWr;
 	output reg  MEM_eret_flush;
@@ -213,7 +214,7 @@ module EX_MEM(
 	output reg [7:0] MEM_CP0Addr;
 	output reg MEM_CP0Rd;
 	output reg MEM_dCache_en;
-	always @(posedge clk) begin
+	/*always @(posedge clk) begin
 		if (!rst || EX_Flush) begin
 			MEM_ExcCode <= 5'd0;
 			MEM_Exception <= 1'b0;
@@ -243,7 +244,7 @@ module EX_MEM(
 			badvaddr <= EX_PC;
 			end
 		end
-	end
+	end*/
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -265,6 +266,9 @@ module EX_MEM(
 			MEM_CP0Addr <= 7'd0;
 			MEM_CP0Rd <= 1'b0;
 			MEM_dCache_en<=1'b0;
+			MEM_ExcCode <= 5'd0;
+			MEM_Exception <= 1'b0;
+			badvaddr <= 32'd0;
 		end
 		else if (wr_en) begin
 			MEM_DMWr <= DMWr;
@@ -284,6 +288,9 @@ module EX_MEM(
 			MEM_CP0Addr <= CP0Addr;
 			MEM_CP0Rd <= CP0Rd;
 			MEM_dCache_en <= EXE_dcache_en;
+			MEM_ExcCode <= ExcCode;
+			MEM_Exception <= Exception;
+			badvaddr <= EX_badvaddr;
 		end
 
 endmodule
