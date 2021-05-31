@@ -186,6 +186,10 @@ module mips(
 	wire [7:0] EX_CP0Addr;
 	wire EXE_dcache_en;
 
+	reg[4:0] EX_MEM_ExcCode;
+	reg EX_MEM_Exception;
+	reg[31:0] EX_badvaddr;
+
 	//---------------M----------------//
 	wire Interrupt;
 	wire [31:0] MUX6Out;
@@ -443,6 +447,29 @@ alu1 U_ALU1(
 		.C(ALU1Out),.Overflow(Overflow)
 	);
 
+	always@(*)
+			if (Overflow  && !EX_Exception) begin
+			EX_MEM_ExcCode <= `Ov;
+			EX_MEM_Exception <= 1'b1;
+			EX_badvaddr <= 32'd0;
+			end
+			else if (EX_DMWr && !EX_Exception && (EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
+				EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0) )begin
+			EX_MEM_ExcCode <= `AdES;
+			EX_MEM_Exception <= 1'b1;
+			EX_badvaddr <= ALU1Out;
+			end
+			else if (EX_DMRd && !EX_Exception && (EX_DMSel == 3'b111 && ALU1Out[1:0] != 2'b00 ||
+				(EX_DMSel == 3'b101 || EX_DMSel == 3'b110) && ALU1Out[0] != 1'b0) ) begin
+			EX_MEM_ExcCode <= `AdEL;
+			EX_MEM_Exception <= 1'b1;
+			EX_badvaddr <= ALU1Out;
+			end
+			else  begin
+			EX_MEM_ExcCode <= EX_ExcCode;
+			EX_MEM_Exception <= EX_Exception;
+			EX_badvaddr <= EX_PC;
+			end
 
 
 EX_MEM U_EX_MEM(
@@ -450,8 +477,8 @@ EX_MEM U_EX_MEM(
 		.DMWr(EX_DMWr), .DMSel(EX_DMSel), .DMRd(EX_DMRd), .RFWr(EX_RFWr), 
 		.MUX2Sel(EX_MUX2Sel),.RHLOut(RHLOut), 
 		.ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(MUX1Out), .OverFlow(Overflow), .EX_Flush(EX_Flush), 
-		.eret_flush(EX_eret_flush), .CP0WrEn(EX_CP0WrEn), .Exception(EX_Exception), .ExcCode(EX_ExcCode), .isBD(EX_isBD),
-		.CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EXE_dcache_en(EXE_dcache_en),
+		.eret_flush(EX_eret_flush), .CP0WrEn(EX_CP0WrEn), .Exception(EX_MEM_Exception), .ExcCode(EX_MEM_ExcCode), .isBD(EX_isBD),
+		.CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EXE_dcache_en(EXE_dcache_en), .EX_badvaddr(EX_badvaddr),
 
 		.MEM_DMWr(MEM_DMWr), .MEM_DMRd(MEM_DMRd), .MEM_RFWr(MEM_RFWr),
 		.MEM_eret_flush(MEM_eret_flush), .MEM_CP0WrEn(MEM_CP0WrEn), .MEM_Exception(MEM_Exception), 
