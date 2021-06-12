@@ -55,7 +55,7 @@ module mips(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信�?
+// 时钟与复位信�??
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道 
@@ -151,7 +151,9 @@ module mips(
 	wire CP0Rd, RHL_visit;
 	wire start;
 	wire ID_dcache_en;
-
+	wire ID_EXWr;
+	wire EX_MEMWr;
+	wire MEM_WBWr;
 	//---------------E----------------//
 	wire Overflow;
 	wire [4:0] MUX1Out;
@@ -185,10 +187,8 @@ module mips(
 	wire EX_start;
 	wire [7:0] EX_CP0Addr;
 	wire EXE_dcache_en;
+	wire [31:0] EX_Paddr;
 
-	reg[4:0] EX_MEM_ExcCode;
-	reg EX_MEM_Exception;
-	reg[31:0] EX_badvaddr;
 
 	//---------------M----------------//
 	wire Interrupt;
@@ -197,8 +197,8 @@ module mips(
 	wire MEM_DMWr, MEM_DMRd, MEM_RFWr;
 	wire MEM_eret_flush;
 	wire MEM_CP0WrEn;
-	wire MEM_Exception;
-	wire [4:0] MEM_ExcCode;
+	reg MEM_Exception;
+	reg [4:0] MEM_ExcCode;
 	wire MEM_isBD;
 	wire[2:0] MEM_DMSel, MEM_MUX2Sel;
 	wire[4:0] MEM_RD;
@@ -223,17 +223,22 @@ module mips(
 	wire [2:0] MEM_dcache_wr_type;
 	wire [31:0] MEM_dcache_wr_addr;
 	wire [3:0] MEM_dcache_wr_wstrb;
+	wire [3:0] EX_dCache_wstrb;
 	wire [511:0] MEM_dcache_wr_data;
 	wire MEM_dcache_wr_rdy;
 	wire dcache_stall;
 
-	wire cache_sel;
+	wire MEM_cache_sel;
+	wire EX_cache_sel;
 
 	wire DMen;
+
+	wire DMWen_uncache;
+	wire DMWen_dcache;
 	wire [3:0] MEM_dCache_wstrb;
-	wire dcache_valid;
+	wire EX_dcache_valid;
+	wire MEM_dcache_valid;
 	wire uncache_valid;
-	wire DMWen;
 	wire[31:0] uncache_Out;
 	wire[31:0] dcache_Out;
 	wire MEM_unCache_data_ok;
@@ -255,7 +260,10 @@ module mips(
 	wire[3:0] MEM_wr_wstrb;
 
 	wire [31:0] cache_Out;
-
+	wire MEM_Overflow;
+	wire [4:0] Temp_ExcCode;
+	wire Temp_Exception;
+	reg [31:0] MEM_badvaddr;
 
 
 	//---------------W----------------//
@@ -283,26 +291,26 @@ assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
     // assign PF_AdEL = 0;
 pc U_PC(
 		//input
-		.clk(clk), .rst(rst), .wr(PCWr&~dcache_stall), .NPC(NPC),  .PF_AdEL(PF_AdEL),.PC_Flush(PC_Flush) 
+		.clk(clk), .rst(rst), .wr(PCWr), .NPC(NPC),  .PF_AdEL(PF_AdEL),.PC_Flush(PC_Flush) 
 		//input signals and output signals are separate
 		//output
 		,.IF_AdEL(IF_AdEL), .PC(PC)
 	);
 
 
-//搁这儿写个地�?转换,表示物理地址
-assign PPC={3'b000,PC[28:0]};
+//搁这儿写个地�??转换,表示物理地址
+assign PPC={3'b000,NPC[28:0]};
 
 // * cpu && cache
-// 		没收到icache_data_ok 要阻�?
+// 		没收到icache_data_ok 要阻�??
 // --------------------------------------
 // * cache && axi 
 
  cache U_ICACHE(
-	.clk(clk), .resetn(rst),
+	.clk(clk), .resetn(rst), .exception(1'b0),
 	// cpu && cache
 	/*input*/
-  	.valid(1'b1), .op(1'b0), .index(PPC[10:6]), .tag(PPC[31:11]), .offset(PPC[5:0]),
+  	.valid(!isStall), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
 	.wstrb(4'b0), .wdata(32'b0), 
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
@@ -317,8 +325,10 @@ assign PPC={3'b000,PC[28:0]};
 	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data)
 	);
 
+
+
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr&(~dcache_stall)), .IF_Flush(IF_Flush), 
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr), .IF_Flush(IF_Flush), 
 		.PC(PC), .Instr(IF_iCache_rdata), .IF_AdEL(IF_AdEL),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr), .ID_AdEL(ID_AdEL)
@@ -387,7 +397,7 @@ npc U_NPC(
 
 
 ID_EX U_ID_EX(
-		.clk(clk), .rst(rst), .wr_en(~dcache_stall),.RHLSel_Rd(RHLSel_Rd), .PC(ID_PC), .ALU1Op(ALU1Op), .ALU2Op(ALU2Op), 
+		.clk(clk), .rst(rst), .ID_EXWr(ID_EXWr),.RHLSel_Rd(RHLSel_Rd), .PC(ID_PC), .ALU1Op(ALU1Op), .ALU2Op(ALU2Op), 
 		.MUX1Sel(MUX1Sel), .MUX3Sel(MUX3Sel),.ALU1Sel(ALU1Sel), .DMWr(MUX7Out[2]), .DMSel(DMSel), .DMRd(DMRd), 
 		.RFWr(MUX7Out[1]), .RHLWr(MUX7Out[0]),.RHLSel_Wr(RHLSel_Wr), .MUX2Sel(MUX2_6Sel),
 		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out), .RS(ID_Instr[25:21]),.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), 
@@ -447,45 +457,23 @@ alu1 U_ALU1(
 		.C(ALU1Out),.Overflow(Overflow)
 	);
 
-	always@(*)
-			if (Overflow  && !EX_Exception) begin
-			EX_MEM_ExcCode <= `Ov;
-			EX_MEM_Exception <= 1'b1;
-			EX_badvaddr <= 32'd0;
-			end
-			else if (EX_DMWr && !EX_Exception && (EX_DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
-				EX_DMSel == 3'b001 && ALU1Out[0] != 1'b0) )begin
-			EX_MEM_ExcCode <= `AdES;
-			EX_MEM_Exception <= 1'b1;
-			EX_badvaddr <= ALU1Out;
-			end
-			else if (EX_DMRd && !EX_Exception && (EX_DMSel == 3'b111 && ALU1Out[1:0] != 2'b00 ||
-				(EX_DMSel == 3'b101 || EX_DMSel == 3'b110) && ALU1Out[0] != 1'b0) ) begin
-			EX_MEM_ExcCode <= `AdEL;
-			EX_MEM_Exception <= 1'b1;
-			EX_badvaddr <= ALU1Out;
-			end
-			else  begin
-			EX_MEM_ExcCode <= EX_ExcCode;
-			EX_MEM_Exception <= EX_Exception;
-			EX_badvaddr <= EX_PC;
-			end
-
 
 EX_MEM U_EX_MEM(
-		.clk(clk), .rst(rst), .wr_en(~dcache_stall),.Imm32(EX_Imm32), .EX_PC(EX_PC), 
+		.clk(clk), .rst(rst), .EX_MEMWr(EX_MEMWr),.Imm32(EX_Imm32), .EX_PC(EX_PC), 
 		.DMWr(EX_DMWr), .DMSel(EX_DMSel), .DMRd(EX_DMRd), .RFWr(EX_RFWr), 
 		.MUX2Sel(EX_MUX2Sel),.RHLOut(RHLOut), 
-		.ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(MUX1Out), .OverFlow(Overflow), .EX_Flush(EX_Flush), 
-		.eret_flush(EX_eret_flush), .CP0WrEn(EX_CP0WrEn), .Exception(EX_MEM_Exception), .ExcCode(EX_MEM_ExcCode), .isBD(EX_isBD),
+		.ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(MUX1Out), .EX_Flush(EX_Flush), 
+		.eret_flush(EX_eret_flush), .CP0WrEn(EX_CP0WrEn), .Exception(EX_Exception), .ExcCode(EX_ExcCode), .isBD(EX_isBD),
 		.CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EXE_dcache_en(EXE_dcache_en), .EX_badvaddr(EX_badvaddr),
+		.Overflow(Overflow),
 
 		.MEM_DMWr(MEM_DMWr), .MEM_DMRd(MEM_DMRd), .MEM_RFWr(MEM_RFWr),
-		.MEM_eret_flush(MEM_eret_flush), .MEM_CP0WrEn(MEM_CP0WrEn), .MEM_Exception(MEM_Exception), 
-		.MEM_ExcCode(MEM_ExcCode), .MEM_isBD(MEM_isBD),
+		.MEM_eret_flush(MEM_eret_flush), .MEM_CP0WrEn(MEM_CP0WrEn), .MEM_Exception(Temp_Exception), 
+		.MEM_ExcCode(Temp_ExcCode), .MEM_isBD(MEM_isBD),
 		.MEM_DMSel(MEM_DMSel), .MEM_MUX2Sel(MEM_MUX2Sel), .MEM_RD(MEM_RD), .MEM_PC(MEM_PC), .MEM_RHLOut(MEM_RHLOut), 
 		.MEM_ALU1Out(MEM_ALU1Out), .MEM_GPR_RT(MEM_GPR_RT), .MEM_Imm32(MEM_Imm32), 
-		.badvaddr(badvaddr), .MEM_CP0Addr(MEM_CP0Addr), .MEM_CP0Rd(MEM_CP0Rd),.MEM_dCache_en(MEM_dCache_en)
+		.badvaddr(badvaddr), .MEM_CP0Addr(MEM_CP0Addr), .MEM_CP0Rd(MEM_CP0Rd),.MEM_dCache_en(MEM_dCache_en),
+		.MEM_Overflow(MEM_Overflow)
 	);
 
 
@@ -493,7 +481,7 @@ EX_MEM U_EX_MEM(
 CP0 U_CP0(
 		.clk(clk), .rst(rst), .CP0WrEn(MEM_CP0WrEn), .addr(MEM_CP0Addr), .data_in(MEM_GPR_RT), 
 		.MEM_Exc(MEM_Exception), .MEM_eret_flush(MEM_eret_flush), .MEM_bd(MEM_isBD),
-        .ext_int_in(ext_int_in), .MEM_ExcCode(MEM_ExcCode), .MEM_badvaddr(badvaddr), 
+        .ext_int_in(ext_int_in), .MEM_ExcCode(MEM_ExcCode), .MEM_badvaddr(MEM_badvaddr), 
 		.MEM_PC(MEM_PC),
 		
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt)
@@ -508,19 +496,35 @@ mux6 U_MUX6(
 
 
 
-assign MEM_Paddr= {3'b000,MEM_ALU1Out[28:0]};
+assign MEM_Paddr = {3'b000,MEM_ALU1Out[28:0]};
+assign EX_Paddr = {3'b000,ALU1Out[28:0]};
 
-assign DMen = cache_sel ? uncache_valid : dcache_valid;
-assign DMWen = 
-			MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
+assign DMen = MEM_cache_sel ? uncache_valid : MEM_dcache_valid;
+assign DMWen_dcache = 
+			EX_DMWr && !EX_Exception && !EX_eret_flush;
 			//这里的alu1out将来都得改成物理地址
+assign DMWen_uncache = 
+			MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
 
-assign dcache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && ~cache_sel;
-assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && cache_sel;
+assign EX_dcache_valid = EXE_dcache_en && !MEM_Exception && !MEM_eret_flush && ~EX_cache_sel;
+assign MEM_dcache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && ~MEM_cache_sel;
+assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && MEM_cache_sel;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�??
-assign MEM_dCache_wstrb=(~DMWen)?4'b0:
+// 1.设置写使能信�???
+assign EX_dCache_wstrb=(~DMWen_dcache)?4'b0:
+							(EX_DMSel==3'b000)?
+								(EX_Paddr[1:0]==2'b00 ? 4'b0001 :
+								EX_Paddr[1:0]==2'b01 ? 4'b0010 :
+								EX_Paddr[1:0]==2'b10 ? 4'b0100 :
+								 				   4'b1000) :
+							(EX_DMSel==3'b001)?   // sh
+								(EX_Paddr[1]==1'b0 ? 4'b0011 :
+								  				4'b1100 ):
+		
+												4'b1111 ;//sw
+
+assign MEM_unCache_wstrb=(~DMWen_uncache)?4'b0:
 							(MEM_DMSel==3'b000)?
 								(MEM_Paddr[1:0]==2'b00 ? 4'b0001 :
 								MEM_Paddr[1:0]==2'b01 ? 4'b0010 :
@@ -532,13 +536,14 @@ assign MEM_dCache_wstrb=(~DMWen)?4'b0:
 		
 												4'b1111 ;//sw
 
-
-	assign cache_sel = (MEM_Paddr[31:16] == 16'h1faf);
-	// 1 表示uncache�? 0 表示cache
+	assign MEM_cache_sel = (MEM_Paddr[31:16] == 16'h1faf);
+	// 1 表示uncache�?? 0 表示cache
+	assign EX_cache_sel = (EX_Paddr[31:16] == 16'h1faf);
+	// 1 表示uncache�? 0表示uncache
 
 uncache U_UNCACHE(
         .clk(clk), .resetn(resetn),
-        .valid(uncache_valid), .op(DMWen), .addr(MEM_Paddr), .wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT),
+        .valid(uncache_valid), .op(DMWen_uncache), .addr(MEM_Paddr), .wstrb(MEM_unCache_wstrb), .wdata(MEM_GPR_RT),
         .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
         .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last),
 		.ret_data(MEM_dcache_ret_data),
@@ -547,10 +552,10 @@ uncache U_UNCACHE(
 		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
 );
 
-cache U_DCACHE(.clk(clk), .resetn(rst),
+cache U_DCACHE(.clk(clk), .resetn(rst), .exception(MEM_Exception),
 	// cpu && cache
-  	.valid(dcache_valid), .op(DMWen), .index(MEM_Paddr[10:6]), .tag(MEM_Paddr[31:11]), .offset(MEM_Paddr[5:0]),
-	.wstrb(MEM_dCache_wstrb), .wdata(MEM_GPR_RT), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
+  	.valid(EX_dcache_valid&IF_iCache_data_ok), .op(DMWen_dcache), .index(EX_Paddr[13:6]), .tag(EX_Paddr[31:14]), .offset(EX_Paddr[5:0]),
+	.wstrb(EX_dCache_wstrb), .wdata(MUX5Out), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), .rd_rdy(MEM_dcache_rd_rdy),
 	  .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last), .ret_data(MEM_dcache_ret_data),
@@ -558,17 +563,17 @@ cache U_DCACHE(.clk(clk), .resetn(rst),
 	  .wr_wstrb(MEM_dcache_wr_wstrb), .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy)
 	);
 
-	assign cache_Out = cache_sel ? uncache_Out : dcache_Out;
-	assign MEM_data_ok = cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
-	assign MEM_rd_req = cache_sel ? MEM_uncache_rd_req : MEM_dcache_rd_req;
-	assign MEM_wr_req = cache_sel ? MEM_uncache_wr_req : MEM_dcache_wr_req;
-	assign MEM_rd_type = cache_sel ? MEM_uncache_rd_type : MEM_dcache_rd_type;
-	assign MEM_wr_type = cache_sel ? MEM_uncache_wr_type : MEM_dcache_wr_type;
-	assign MEM_rd_addr = cache_sel ? MEM_uncache_rd_addr : MEM_dcache_rd_addr;
-	assign MEM_wr_addr = cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
-	assign MEM_wr_wstrb = cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
+	assign cache_Out = MEM_cache_sel ? uncache_Out : dcache_Out;
+	assign MEM_data_ok = MEM_cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
+	assign MEM_rd_req = MEM_cache_sel ? MEM_uncache_rd_req : MEM_dcache_rd_req;
+	assign MEM_wr_req = MEM_cache_sel ? MEM_uncache_wr_req : MEM_dcache_wr_req;
+	assign MEM_rd_type = MEM_cache_sel ? MEM_uncache_rd_type : MEM_dcache_rd_type;
+	assign MEM_wr_type = MEM_cache_sel ? MEM_uncache_wr_type : MEM_dcache_wr_type;
+	assign MEM_rd_addr = MEM_cache_sel ? MEM_uncache_rd_addr : MEM_dcache_rd_addr;
+	assign MEM_wr_addr = MEM_cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
+	assign MEM_wr_wstrb = MEM_cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
 
-//cache只能读出�?个字的数据，使用bridge_dm适配lb等特殊指�?
+//cache只能读出�??个字的数据，使用bridge_dm适配lb等特殊指�??
 bridge_dm U_BRIDGE(
 		 .addr2(MEM_ALU1Out),
 		 .DMSel2(MEM_DMSel),
@@ -578,10 +583,35 @@ bridge_dm U_BRIDGE(
 	);
 
 
+always@(MEM_Overflow or Temp_Exception or MEM_DMWr or MEM_DMSel or MEM_ALU1Out or MEM_DMRd or Temp_ExcCode
+		or MEM_PC)
+		if (MEM_Overflow  && !Temp_Exception) begin
+		MEM_ExcCode <= `Ov;
+		MEM_Exception <= 1'b1;
+		MEM_badvaddr <= 32'd0;
+		end
+		else if (MEM_DMWr && !Temp_Exception && (MEM_DMSel == 3'b010 && MEM_ALU1Out[1:0] != 2'b00 ||
+			MEM_DMSel == 3'b001 && MEM_ALU1Out[0] != 1'b0) )begin
+		MEM_ExcCode <= `AdES;
+		MEM_Exception <= 1'b1;
+		MEM_badvaddr <= MEM_ALU1Out;
+		end
+		else if (MEM_DMRd && !Temp_Exception && (MEM_DMSel == 3'b111 && MEM_ALU1Out[1:0] != 2'b00 ||
+			(MEM_DMSel == 3'b101 || MEM_DMSel == 3'b110) && MEM_ALU1Out[0] != 1'b0) ) begin
+		MEM_ExcCode <= `AdEL;
+		MEM_Exception <= 1'b1;
+		MEM_badvaddr <= MEM_ALU1Out;
+		end
+		else  begin
+		MEM_ExcCode <= Temp_ExcCode;
+		MEM_Exception <= Temp_Exception;
+		MEM_badvaddr <= MEM_PC;
+		end
+
 MEM_WB U_MEM_WB(
 		.clk(clk), .rst(rst), .PC(MEM_PC), .RFWr(MEM_RFWr),.MUX2Sel(MEM_MUX2Sel),
 		.RHLOut(MEM_RHLOut), .DMOut(DMOut), .ALU1Out(MEM_ALU1Out), 
-		.Imm32(MEM_Imm32), .RD(MEM_RD), .MEM_Flush(MEM_Flush), .CP0Out(CP0Out), .dcache_stall(dcache_stall),
+		.Imm32(MEM_Imm32), .RD(MEM_RD), .MEM_Flush(MEM_Flush), .CP0Out(CP0Out), .MEM_WBWr(MEM_WBWr),
 
 		.WB_RFWr(WB_RFWr),.WB_MUX2Sel(WB_MUX2Sel), 
 		.WB_RD(WB_RD), .WB_PC(WB_PC), .WB_ALU1Out(WB_ALU1Out), .WB_DMOut(WB_DMOut), 
@@ -614,16 +644,18 @@ stall U_STALL(
 		.rst_sign(!rst), .MEM_ex(MEM_Exception), .MEM_RFWr(MEM_RFWr), 
 		.MEM_eret_flush(MEM_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
 		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM_dCache_en(DMen),
+		.EX_cache_sel(EX_cache_sel), .EX_dCache_addr_ok(MEM_dCache_addr_ok),
+		.EX_dCache_en(EX_dcache_valid),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
 		.inst_sram_en(IF_iCache_read_en),.isStall(isStall),
-		.dcache_stall(dcache_stall)
+		.dcache_stall(dcache_stall), .ID_EXWr(ID_EXWr), .EX_MEMWr(EX_MEMWr), .MEM_WBWr(MEM_WBWr)
 	);
 
 
 
  axi_sram_bridge U_AXI_SRAM_BRIDGE(
-	 cache_sel,
+	 MEM_cache_sel,
     ext_int_in   ,   //high active
 
     clk      ,
@@ -670,7 +702,7 @@ stall U_STALL(
     bvalid    ,
     bready    ,
 // icache 
-	IF_icache_rd_req,// icache �? dcache 同时缺失怎么�?
+	IF_icache_rd_req,// icache �?? dcache 同时缺失怎么�??
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,
@@ -705,7 +737,7 @@ assign
 assign 
 	debug_wb_pc  = WB_PC;
 assign 
-	debug_wb_rf_wen  = {4{WB_RFWr&~dcache_stall}};
+	debug_wb_rf_wen  = {4{WB_RFWr&MEM_WBWr}};
 assign 
 	debug_wb_rf_wnum  = WB_RD[4:0];
 
