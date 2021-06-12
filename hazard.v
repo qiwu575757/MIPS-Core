@@ -50,10 +50,10 @@ module stall(
 	BJOp, EX_RFWr,EX_CP0Rd, MEM_CP0Rd,
 	rst_sign, MEM_ex, MEM_RFWr, 
 	MEM_eret_flush,isbusy, RHL_visit,
-	iCache_data_ok,dCache_data_ok,MEM_dCache_en,
-
+	iCache_data_ok,dCache_data_ok,MEM_dCache_en,EX_dCache_addr_ok,
+    EX_cache_sel,EX_dCache_en,
 	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,
-	dcache_stall
+	dcache_stall, ID_EXWr, EX_MEMWr, MEM_WBWr
 	);
 	input clk,rst;
 	input[4:0] EX_RT, MEM_RT, ID_RS, ID_RT;
@@ -65,10 +65,17 @@ module stall(
 	input iCache_data_ok;
 	input dCache_data_ok;
 	input MEM_dCache_en;
+	input EX_cache_sel;
+	input EX_dCache_addr_ok;
+	input EX_dCache_en;
 	output reg PCWr, IF_IDWr, MUX7Sel, inst_sram_en;
 	output isStall;
 	output dcache_stall;
+	output reg ID_EXWr,EX_MEMWr,MEM_WBWr;
 
+	wire addr_ok;
+
+/*
 	reg c_state;
 	reg n_state;
 
@@ -101,51 +108,84 @@ module stall(
 		end
 		endcase
 	end
-	assign dcache_stall = (~dCache_data_ok&MEM_dCache_en|~iCache_data_ok);
+*/
+
+	assign addr_ok = EX_cache_sel | EX_dCache_addr_ok;
+	assign dcache_stall = ((~dCache_data_ok &MEM_dCache_en) | (~addr_ok &EX_dCache_en) |~iCache_data_ok);
 	assign isStall=~PCWr || dcache_stall ;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
-	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, EX_CP0Rd, ID_PC, EX_PC, MEM_CP0Rd)
+	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, EX_CP0Rd, ID_PC, EX_PC, MEM_CP0Rd, dcache_stall)
 	    if(rst_sign) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
+			MUX7Sel = 1'b1;
+		end
+		else if(dcache_stall) begin
+			inst_sram_en = 1'b0;
+			PCWr = 1'b0;
+			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b0;
+			EX_MEMWr =1'b0;
+			MEM_WBWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
 		else if(MEM_ex || MEM_eret_flush) begin
 			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b0;
 		end
 		else if(isbusy && RHL_visit) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
 		else if((EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC)) begin
 		    inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
 		else if (BJOp && MEM_RFWr && (MEM_DMRd || MEM_CP0Rd) && ( (MEM_RT == ID_RS) || (MEM_RT == ID_RT) ) ) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
 		else if(BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
 		else begin
 			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;
+			ID_EXWr = 1'b1;
+			EX_MEMWr =1'b1;
+			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b0;
 		end
 
