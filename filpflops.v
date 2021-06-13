@@ -180,12 +180,12 @@ endmodule
 module EX_MEM(
 	clk, rst,EX_MEMWr, EX_Flush, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
 	RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,CP0Rd, 
-	EXE_dcache_en, EX_badvaddr, Overflow,
+	EXE_dcache_en, EX_badvaddr, Overflow, EX_Paddr, EX_dCache_wstrb, EX_cache_sel,
 
 	MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
 	MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
 	MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd,MEM_dCache_en,
-	MEM_Overflow
+	MEM_Overflow, MEM_Paddr, MEM_unCache_wstrb, MEM_cache_sel
 	);
 	input clk, rst, EX_MEMWr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -201,6 +201,9 @@ module EX_MEM(
 	input CP0Rd;
 	input EXE_dcache_en;
 	input[31:0] EX_badvaddr;
+	input[31:0] EX_Paddr;
+	input[3:0] EX_dCache_wstrb;
+	input EX_cache_sel;
 
 	output reg MEM_DMWr, MEM_DMRd, MEM_RFWr;
 	output reg  MEM_eret_flush;
@@ -216,38 +219,10 @@ module EX_MEM(
 	output reg MEM_CP0Rd;
 	output reg MEM_dCache_en;
 	output reg MEM_Overflow;
+	output reg[31:0] MEM_Paddr;
+	output reg[3:0] MEM_unCache_wstrb;
+	output reg MEM_cache_sel;
 
-	/*always @(posedge clk) begin
-		if (!rst || EX_Flush) begin
-			MEM_ExcCode <= 5'd0;
-			MEM_Exception <= 1'b0;
-			badvaddr <= 32'd0;
-		end
-		else if(wr_en) begin
-			if (OverFlow  && !Exception) begin
-			MEM_ExcCode <= `Ov;
-			MEM_Exception <= 1'b1;
-			badvaddr <= 32'd0;
-			end
-			else if (DMWr && !Exception && (DMSel == 3'b010 && ALU1Out[1:0] != 2'b00 ||
-				DMSel == 3'b001 && ALU1Out[0] != 1'b0) )begin
-			MEM_ExcCode <= `AdES;
-			MEM_Exception <= 1'b1;
-			badvaddr <= ALU1Out;
-			end
-			else if (DMRd && !Exception && (DMSel == 3'b111 && ALU1Out[1:0] != 2'b00 ||
-				(DMSel == 3'b101 || DMSel == 3'b110) && ALU1Out[0] != 1'b0) ) begin
-			MEM_ExcCode <= `AdEL;
-			MEM_Exception <= 1'b1;
-			badvaddr <= ALU1Out;
-			end
-			else  begin
-			MEM_ExcCode <= ExcCode;
-			MEM_Exception <= Exception;
-			badvaddr <= EX_PC;
-			end
-		end
-	end*/
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -273,6 +248,9 @@ module EX_MEM(
 			MEM_Exception <= 1'b0;
 			MEM_Overflow <= 1'b0;
 			badvaddr <= 32'd0;
+			MEM_Paddr <= 32'd0;
+			MEM_unCache_wstrb <= 4'd0;
+			MEM_cache_sel <= 1'b0;
 		end
 		else if (EX_MEMWr) begin
 			MEM_DMWr <= DMWr;
@@ -296,6 +274,9 @@ module EX_MEM(
 			MEM_Exception <= Exception;
 			MEM_Overflow <= Overflow;
 			badvaddr <= EX_badvaddr;
+			MEM_Paddr <= EX_Paddr;
+			MEM_unCache_wstrb <= EX_dCache_wstrb;
+			MEM_cache_sel <= EX_cache_sel;
 		end
 
 endmodule
