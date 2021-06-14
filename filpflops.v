@@ -264,11 +264,11 @@ module EX_MEM1(
 
 endmodule
 
-module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD, 
+module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD, 
         MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWr, Exception,
         eret_flush, dcache_en, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
 
-		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_RHLOut, MEM2_Imm32, MEM2_CP0Out,
+		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
         MEM2_DMSel, MEM2_cache_sel, MEM2_DMWr, MEM2_Exception, MEM2_eret_flush, MEM2_dcache_en,
         MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, MEM2_DMRd, MEM2_CP0Rd
 				);
@@ -280,9 +280,8 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD,
 	input[31:0] PC;
 	input RFWr;
 	input[2:0] MUX2Sel;
-	input[31:0] RHLOut;
+	input[31:0] MUX6Out;
 	input[31:0] ALU1Out;
-	input[31:0] Imm32;
 	input[4:0] RD;
 	input[31:0] CP0Out;
 	input[2:0] DMSel;
@@ -300,9 +299,8 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD,
 	output reg[31:0] MEM2_PC;
 	output reg MEM2_RFWr;
 	output reg[2:0] MEM2_MUX2Sel;
-	output reg[31:0] MEM2_RHLOut;
-	output reg[31:0] MEM2_ALU1Out;
-	output reg[31:0] MEM2_Imm32;	
+	output reg[31:0] MEM2_MUX6Out;
+	output reg[31:0] MEM2_ALU1Out;	
 	output reg[4:0] MEM2_RD;
 	output reg[31:0] MEM2_CP0Out;
 	output reg[2:0] MEM2_DMSel;
@@ -322,9 +320,8 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD,
 			MEM2_PC <= 32'd0;
 			MEM2_RFWr <= 1'b0;
 			MEM2_MUX2Sel <= 3'd0;
-			MEM2_RHLOut <= 32'd0;
+			MEM2_MUX6Out <= 32'd0;
 			MEM2_ALU1Out <= 32'd0;
-			MEM2_Imm32 <= 32'd0;	
 			MEM2_RD <= 5'd0;
 			MEM2_CP0Out <= 32'd0;
 			MEM2_DMSel <= 3'd0;
@@ -343,9 +340,8 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD,
 			MEM2_PC <= PC;
 			MEM2_RFWr <= RFWr;
 			MEM2_MUX2Sel <= MUX2Sel;
-			MEM2_RHLOut <= RHLOut;
-			MEM2_ALU1Out <= ALU1Out;
-			MEM2_Imm32 <= Imm32;	
+			MEM2_MUX6Out <= MUX6Out;
+			MEM2_ALU1Out <= ALU1Out;	
 			MEM2_RD <= RD;
 			MEM2_CP0Out <= CP0Out;
 			MEM2_DMSel <= DMSel;
