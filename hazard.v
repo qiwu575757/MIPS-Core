@@ -112,7 +112,7 @@ module stall(
 
 	assign addr_ok = EX_cache_sel | EX_dCache_addr_ok;
 	assign dcache_stall = ((~dCache_data_ok &MEM_dCache_en) | (~addr_ok &EX_dCache_en) |~iCache_data_ok);
-	assign isStall=~PCWr || dcache_stall ;
+	assign isStall=~PCWr;
 
 	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM_RT,MEM_DMRd, BJOp, EX_RFWr, MEM_RFWr, rst_sign,
 	        MEM_ex, MEM_eret_flush, isbusy, RHL_visit, EX_CP0Rd, ID_PC, EX_PC, MEM_CP0Rd, dcache_stall)
@@ -125,15 +125,6 @@ module stall(
 			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
-		else if(dcache_stall) begin
-			inst_sram_en = 1'b0;
-			PCWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b0;
-			EX_MEMWr =1'b0;
-			MEM_WBWr = 1'b0;
-			MUX7Sel = 1'b1;
-		end
 		else if(MEM_ex || MEM_eret_flush) begin
 			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
@@ -142,6 +133,15 @@ module stall(
 			EX_MEMWr =1'b1;
 			MEM_WBWr = 1'b1;
 			MUX7Sel = 1'b0;
+		end
+		else if(dcache_stall) begin
+			inst_sram_en = 1'b0;
+			PCWr = 1'b0;
+			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b0;
+			EX_MEMWr =1'b0;
+			MEM_WBWr = 1'b0;
+			MUX7Sel = 1'b1;
 		end
 		else if(isbusy && RHL_visit) begin
 			inst_sram_en = 1'b0;
