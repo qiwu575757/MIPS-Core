@@ -177,17 +177,16 @@ module ID_EX(
 		end
 endmodule
 
-module EX_MEM(
-	clk, rst,EX_MEMWr, EX_Flush, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, 
-	RHLOut, ALU1Out, GPR_RT, RD, eret_flush, CP0WrEn, Exception, ExcCode, isBD, CP0Addr,CP0Rd, 
-	EXE_dcache_en, EX_badvaddr, Overflow, EX_Paddr, EX_dCache_wstrb, EX_cache_sel,
+module EX_MEM1(
+		clk, rst, EX_MEM1Wr, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel,RHLOut, 
+        ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
+        CP0Addr, CP0Rd, EX_dcache_en, Overflow,
 
-	MEM_DMWr, MEM_RFWr, MEM_eret_flush, MEM_CP0WrEn, MEM_Exception, MEM_ExcCode, 
-	MEM_isBD, MEM_DMRd, MEM_DMSel, MEM_MUX2Sel, MEM_RD, MEM_PC, MEM_RHLOut,
-	MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32, badvaddr, MEM_CP0Addr, MEM_CP0Rd,MEM_dCache_en,
-	MEM_Overflow, MEM_Paddr, MEM_unCache_wstrb, MEM_cache_sel
+		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
+        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT, 
+        MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow
 	);
-	input clk, rst, EX_MEMWr,EX_Flush, DMWr, DMRd, RFWr;
+	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
 	input eret_flush;
 	input CP0WrEn;
@@ -199,125 +198,208 @@ module EX_MEM(
 	input[31:0] EX_PC, RHLOut,ALU1Out, GPR_RT, Imm32;
 	input [7:0] CP0Addr;
 	input CP0Rd;
-	input EXE_dcache_en;
-	input[31:0] EX_badvaddr;
-	input[31:0] EX_Paddr;
-	input[3:0] EX_dCache_wstrb;
-	input EX_cache_sel;
+	input EX_dcache_en;
 
-	output reg MEM_DMWr, MEM_DMRd, MEM_RFWr;
-	output reg  MEM_eret_flush;
-	output reg MEM_CP0WrEn;
-	output reg MEM_Exception;
-	output reg [4:0] MEM_ExcCode;
-	output reg MEM_isBD;
-	output reg[2:0] MEM_DMSel, MEM_MUX2Sel;
-	output reg[4:0] MEM_RD;
-	output reg[31:0] MEM_PC, MEM_RHLOut,MEM_ALU1Out, MEM_GPR_RT, MEM_Imm32;
-	output reg [31:0] badvaddr;
-	output reg [7:0] MEM_CP0Addr;
-	output reg MEM_CP0Rd;
-	output reg MEM_dCache_en;
-	output reg MEM_Overflow;
-	output reg[31:0] MEM_Paddr;
-	output reg[3:0] MEM_unCache_wstrb;
-	output reg MEM_cache_sel;
+	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
+	output reg MEM1_eret_flush;
+	output reg MEM1_CP0WrEn;
+	output reg MEM1_Exception;
+	output reg [4:0] MEM1_ExcCode;
+	output reg MEM1_isBD;
+	output reg[2:0] MEM1_DMSel, MEM1_MUX2Sel;
+	output reg[4:0] MEM1_RD;
+	output reg[31:0] MEM1_PC, MEM1_RHLOut,MEM1_ALU1Out, MEM1_GPR_RT, MEM1_Imm32;
+	output reg [7:0] MEM1_CP0Addr;
+	output reg MEM1_CP0Rd;
+	output reg MEM1_dcache_en;
+	output reg MEM1_Overflow;
 
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
-			MEM_DMWr <= 1'b0;
-			MEM_DMRd <= 1'b0;
-			MEM_RFWr <= 1'b0;
-			MEM_eret_flush <= 1'b0;
-			MEM_CP0WrEn <= 1'b0;
-			MEM_isBD <= 1'b0;
-			MEM_DMRd <= 1'b0;
-			MEM_DMSel <= 3'd0;
-			MEM_MUX2Sel <= 3'd0;
-			MEM_RD <= 5'd0;
-			MEM_PC <= 32'd0;
-			MEM_RHLOut <= 32'd0;
-			MEM_ALU1Out <= 32'd0;
-			MEM_GPR_RT <= 32'd0;
-			MEM_Imm32 <= 32'd0;
-			MEM_CP0Addr <= 7'd0;
-			MEM_CP0Rd <= 1'b0;
-			MEM_dCache_en<=1'b0;
-			MEM_ExcCode <= 5'd0;
-			MEM_Exception <= 1'b0;
-			MEM_Overflow <= 1'b0;
-			badvaddr <= 32'd0;
-			MEM_Paddr <= 32'd0;
-			MEM_unCache_wstrb <= 4'd0;
-			MEM_cache_sel <= 1'b0;
+			MEM1_DMWr <= 1'b0;
+			MEM1_DMRd <= 1'b0;
+			MEM1_RFWr <= 1'b0;
+			MEM1_eret_flush <= 1'b0;
+			MEM1_CP0WrEn <= 1'b0;
+			MEM1_isBD <= 1'b0;
+			MEM1_DMRd <= 1'b0;
+			MEM1_DMSel <= 3'd0;
+			MEM1_MUX2Sel <= 3'd0;
+			MEM1_RD <= 5'd0;
+			MEM1_PC <= 32'd0;
+			MEM1_RHLOut <= 32'd0;
+			MEM1_ALU1Out <= 32'd0;
+			MEM1_GPR_RT <= 32'd0;
+			MEM1_Imm32 <= 32'd0;
+			MEM1_CP0Addr <= 7'd0;
+			MEM1_CP0Rd <= 1'b0;
+			MEM1_dcache_en<=1'b0;
+			MEM1_ExcCode <= 5'd0;
+			MEM1_Exception <= 1'b0;
+			MEM1_Overflow <= 1'b0;
 		end
-		else if (EX_MEMWr) begin
-			MEM_DMWr <= DMWr;
-			MEM_DMRd <= DMRd;
-			MEM_RFWr <= RFWr;
-			MEM_eret_flush <= eret_flush;
-			MEM_CP0WrEn <= CP0WrEn;
-			MEM_isBD <= isBD;
-			MEM_DMSel <= DMSel;
-			MEM_MUX2Sel <= MUX2Sel;
-			MEM_RD <= RD;
-			MEM_PC <= EX_PC;
-			MEM_RHLOut <= RHLOut;
-			MEM_ALU1Out <= ALU1Out;
-			MEM_GPR_RT <= GPR_RT;
-			MEM_Imm32 <= Imm32;
-			MEM_CP0Addr <= CP0Addr;
-			MEM_CP0Rd <= CP0Rd;
-			MEM_dCache_en <= EXE_dcache_en;
-			MEM_ExcCode <= ExcCode;
-			MEM_Exception <= Exception;
-			MEM_Overflow <= Overflow;
-			badvaddr <= EX_badvaddr;
-			MEM_Paddr <= EX_Paddr;
-			MEM_unCache_wstrb <= EX_dCache_wstrb;
-			MEM_cache_sel <= EX_cache_sel;
+		else if (EX_MEM1Wr) begin
+			MEM1_DMWr <= DMWr;
+			MEM1_DMRd <= DMRd;
+			MEM1_RFWr <= RFWr;
+			MEM1_eret_flush <= eret_flush;
+			MEM1_CP0WrEn <= CP0WrEn;
+			MEM1_isBD <= isBD;
+			MEM1_DMSel <= DMSel;
+			MEM1_MUX2Sel <= MUX2Sel;
+			MEM1_RD <= RD;
+			MEM1_PC <= EX_PC;
+			MEM1_RHLOut <= RHLOut;
+			MEM1_ALU1Out <= ALU1Out;
+			MEM1_GPR_RT <= GPR_RT;
+			MEM1_Imm32 <= Imm32;
+			MEM1_CP0Addr <= CP0Addr;
+			MEM1_CP0Rd <= CP0Rd;
+			MEM1_dcache_en <= EX_dcache_en;
+			MEM1_ExcCode <= ExcCode;
+			MEM1_Exception <= Exception;
+			MEM1_Overflow <= Overflow;
 		end
 
 endmodule
 
-module MEM_WB(clk, rst, PC, RFWr, MUX2Sel, RHLOut, CP0Out,
-				DMOut, ALU1Out, Imm32, RD, MEM_Flush, MEM_WBWr,
-				WB_RFWr, WB_MUX2Sel, WB_RD, WB_PC, WB_ALU1Out, WB_DMOut, 
-				WB_RHLOut, WB_Imm32, WB_CP0Out);
-	input clk, rst, RFWr;
+module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, RHLOut, ALU1Out, Imm32, RD, 
+        MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWr, Exception,
+        eret_flush, dcache_en, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
+
+		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_RHLOut, MEM2_Imm32, MEM2_CP0Out,
+        MEM2_DMSel, MEM2_cache_sel, MEM2_DMWr, MEM2_Exception, MEM2_eret_flush, MEM2_dcache_en,
+        MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, MEM2_DMRd, MEM2_CP0Rd
+				);
+	input clk;
+	input rst;
+	input MEM1_Flush;
+	input MEM1_MEM2Wr;
+
+	input[31:0] PC;
+	input RFWr;
+	input[2:0] MUX2Sel;
+	input[31:0] RHLOut;
+	input[31:0] ALU1Out;
+	input[31:0] Imm32;
+	input[4:0] RD;
+	input[31:0] CP0Out;
+	input[2:0] DMSel;
+	input cache_sel;
+	input DMWr;
+	input Exception;
+	input eret_flush;
+	input dcache_en;
+	input[31:0] Paddr;
+	input[3:0] MEM1_dCache_wstrb;
+	input[31:0] GPR_RT;
+	input DMRd;
+	input CP0Rd;
+
+	output reg[31:0] MEM2_PC;
+	output reg MEM2_RFWr;
+	output reg[2:0] MEM2_MUX2Sel;
+	output reg[31:0] MEM2_RHLOut;
+	output reg[31:0] MEM2_ALU1Out;
+	output reg[31:0] MEM2_Imm32;	
+	output reg[4:0] MEM2_RD;
+	output reg[31:0] MEM2_CP0Out;
+	output reg[2:0] MEM2_DMSel;
+	output reg MEM2_cache_sel;
+	output reg MEM2_DMWr;
+	output reg MEM2_Exception;
+	output reg MEM2_eret_flush;
+	output reg MEM2_dcache_en;
+	output reg[31:0] MEM2_Paddr;
+	output reg[3:0] MEM2_unCache_wstrb;
+	output reg[31:0] MEM2_GPR_RT;
+	output reg MEM2_DMRd;
+	output reg MEM2_CP0Rd;
+
+	always@(posedge clk)
+		if(!rst || MEM1_Flush) begin
+			MEM2_PC <= 32'd0;
+			MEM2_RFWr <= 1'b0;
+			MEM2_MUX2Sel <= 3'd0;
+			MEM2_RHLOut <= 32'd0;
+			MEM2_ALU1Out <= 32'd0;
+			MEM2_Imm32 <= 32'd0;	
+			MEM2_RD <= 5'd0;
+			MEM2_CP0Out <= 32'd0;
+			MEM2_DMSel <= 3'd0;
+			MEM2_cache_sel <= 1'b0;
+			MEM2_DMWr <= 1'b0;
+			MEM2_Exception <= 1'b0;
+			MEM2_eret_flush <= 1'b0;
+			MEM2_dcache_en <= 1'b0;
+			MEM2_Paddr <= 32'd0;
+			MEM2_unCache_wstrb <= 4'd0;
+			MEM2_GPR_RT <= 32'd0;
+			MEM2_DMRd <= 1'b0;
+			MEM2_CP0Rd <= 1'b0;
+		end
+		else if(MEM1_MEM2Wr) begin
+			MEM2_PC <= PC;
+			MEM2_RFWr <= RFWr;
+			MEM2_MUX2Sel <= MUX2Sel;
+			MEM2_RHLOut <= RHLOut;
+			MEM2_ALU1Out <= ALU1Out;
+			MEM2_Imm32 <= Imm32;	
+			MEM2_RD <= RD;
+			MEM2_CP0Out <= CP0Out;
+			MEM2_DMSel <= DMSel;
+			MEM2_cache_sel <= cache_sel;
+			MEM2_DMWr <= DMWr;
+			MEM2_Exception <= Exception;
+			MEM2_eret_flush <= eret_flush;
+			MEM2_dcache_en <= dcache_en;
+			MEM2_Paddr <= Paddr;
+			MEM2_unCache_wstrb <= MEM1_dCache_wstrb;
+			MEM2_GPR_RT <= GPR_RT;
+			MEM2_DMRd <= DMRd;
+			MEM2_CP0Rd <= CP0Rd;
+		end
+endmodule
+
+module MEM2_WB(clk, rst,MEM2_WBWr, MEM2_Flush,
+			PC, MUX2Out, MUX2Sel, RD, RFWr, DMOut,
+			WB_PC, WB_MUX2Out, WB_MUX2Sel, WB_RD, WB_RFWr, WB_DMOut);
+	input clk;
+	input rst;
+	input MEM2_WBWr;
+	input MEM2_Flush;
+
+	input[31:0] PC;
+	input[31:0] MUX2Out;
 	input[2:0] MUX2Sel;
 	input[4:0] RD;
-	input[31:0] PC, ALU1Out, DMOut, RHLOut, Imm32, CP0Out;
-	input MEM_Flush;
-	input MEM_WBWr;
+	input RFWr;
+	input[31:0] DMOut;
 
-	output reg WB_RFWr;
+	output reg[31:0] WB_PC;
+	output reg[31:0] WB_MUX2Out;
 	output reg[2:0] WB_MUX2Sel;
 	output reg[4:0] WB_RD;
-	output reg[31:0] WB_PC, WB_ALU1Out, WB_DMOut, WB_RHLOut, WB_Imm32, WB_CP0Out;
+	output reg WB_RFWr;
+	output reg[31:0] WB_DMOut;
+
 	always@(posedge clk)
-		if(!rst || MEM_Flush) begin
-			WB_RFWr <= 1'b0;
+		if(!rst || MEM2_Flush) begin
+			WB_PC <= 32'd0;
+			WB_MUX2Out <= 32'd0;
 			WB_MUX2Sel <= 3'd0;
 			WB_RD <= 5'd0;
-			WB_PC <= 32'd0;
-			WB_ALU1Out <= 32'd0;
+			WB_RFWr <= 1'b0;
 			WB_DMOut <= 32'd0;
-			WB_RHLOut <= 32'd0;
-			WB_Imm32 <= 32'd0;
-			WB_CP0Out <= 32'd0;
 		end
-		else if(MEM_WBWr) begin
-			
-			WB_RFWr <= RFWr;
+		else if(MEM2_WBWr) begin
+			WB_PC <= PC;
+			WB_MUX2Out <= MUX2Out;
 			WB_MUX2Sel <= MUX2Sel;
 			WB_RD <= RD;
-			WB_PC <= PC;
-			WB_ALU1Out <= ALU1Out;
+			WB_RFWr <= RFWr;
 			WB_DMOut <= DMOut;
-			WB_RHLOut <= RHLOut;
-			WB_Imm32 <= Imm32;
-			WB_CP0Out <= CP0Out;
 		end
+
 endmodule
