@@ -250,8 +250,7 @@ module mips(
     wire MEM2_RD; 
     wire[31:0] MEM2_PC;
     wire[31:0] MEM2_ALU1Out;
-    wire[31:0] MEM2_RHLOut;
-    wire[31:0] MEM2_Imm32;
+    wire[31:0] MEM2_MUX6Out;
     wire[31:0] MEM2_CP0Out;
     wire[2:0] MEM2_DMSel;
     wire MEM2_cache_sel;
@@ -550,8 +549,8 @@ dcache U_DCACHE(.clk(clk), .resetn(rst),
 	//-------------MEM2---------------//
 MEM1_MEM2 U_MEM1_MEM2(
 		.clk(clk), .rst(rst), .PC(MEM1_PC), .RFWr(MEM1_RFWr),.MUX2Sel(MEM1_MUX2Sel),
-		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .Imm32(MEM1_Imm32), .RD(MEM1_RD), 
-        .MEM1_Flush(MEM1_Flush), .CP0Out(CP0Out), .MEM1_MEM2Wr(MEM1_MEM2Wr), .DMSel(MEM1_DMSel),
+		.MUX6Out(MUX6Out), .ALU1Out(MEM1_ALU1Out), .RD(MEM1_RD), .MEM1_Flush(MEM1_Flush), 
+        .CP0Out(CP0Out), .MEM1_MEM2Wr(MEM1_MEM2Wr), .DMSel(MEM1_DMSel),
         .cache_sel(MEM1_cache_sel), .DMWr(MEM1_DMWr), .Exception(MEM1_Exception),
         .eret_flush(MEM1_eret_flush), .dcache_en(MEM1_dcache_en),
         .Paddr(MEM1_Paddr), .MEM1_dCache_wstrb(MEM1_dCache_wstrb), .GPR_RT(MEM1_GPR_RT),
@@ -559,7 +558,7 @@ MEM1_MEM2 U_MEM1_MEM2(
 
 		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel), 
 		.MEM2_RD(MEM2_RD), .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),
-		.MEM2_RHLOut(MEM2_RHLOut), .MEM2_Imm32(MEM2_Imm32), .MEM2_CP0Out(MEM2_CP0Out),
+		.MEM2_MUX6Out(MEM2_MUX6Out), .MEM2_CP0Out(MEM2_CP0Out),
         .MEM2_DMSel(MEM2_DMSel), .MEM2_cache_sel(MEM2_cache_sel), .MEM2_DMWr(MEM2_DMWr), 
         .MEM2_Exception(MEM2_Exception), .MEM2_eret_flush(MEM2_eret_flush), .MEM2_dcache_en(MEM2_dcache_en),
         .MEM2_Paddr(MEM2_Paddr), .MEM2_unCache_wstrb(MEM2_unCache_wstrb), .MEM2_GPR_RT(MEM2_GPR_RT),
@@ -567,8 +566,7 @@ MEM1_MEM2 U_MEM1_MEM2(
 	);
 
 mux2 U_MUX2(
-		.ALU1Out(MEM2_ALU1Out), .RHLOut(MEM2_RHLOut), .PC(MEM2_PC),
-		.Imm32(MEM2_Imm32),.MUX2Sel(MEM2_MUX2Sel), .CP0Out(MEM2_CP0Out),
+		.MUX6Out(MEM2_MUX6Out), .MUX2Sel(MEM2_MUX2Sel), .CP0Out(MEM2_CP0Out),
 
 		.WD(MUX2Out)
 	);
