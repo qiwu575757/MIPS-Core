@@ -311,10 +311,10 @@ pc U_PC(
 // * cache && axi 
 
  cache U_ICACHE(
-	.clk(clk), .resetn(rst), .exception(1'b0),
+	.clk(clk), .resetn(rst), .exception(MEM_eret_flush || MEM_Exception), .id(1'b0),
 	// cpu && cache
 	/*input*/
-  	.valid(!isStall), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
+  	.valid(~isStall), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
 	.wstrb(4'b0), .wdata(32'b0), 
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
@@ -393,7 +393,7 @@ ctrl U_CTRL(
 
 npc U_NPC(
 		.PC(PC), .Imm(ID_Instr[25:0]), .ret_addr(MUX8Out), .NPCOp(NPCOp),.PCWr(PCWr), 
-		.EPC(EPCOut), .MEM_eret_flush(MEM_eret_flush), .MEM_ex(MEM_Exception), .dcache_stall(dcache_stall),
+		.EPC(EPCOut), .MEM_eret_flush(MEM_eret_flush), .MEM_ex(MEM_Exception),
 
 		.NPC(NPC), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
 		.EX_Flush(EX_Flush), .PC_Flush(PC_Flush), .MEM_Flush(MEM_Flush)
@@ -446,7 +446,7 @@ mux5 U_MUX5(
 	);
 
 bridge_RHL U_ALU2(
-		.aclk(clk),.aresetn(rst),.A(MUX4Out), .B(MUX5Out), .ALU2Op(EX_ALU2Op) ,.start(EX_start & ~dcache_stall),
+		.aclk(clk),.aresetn(rst),.A(MUX4Out), .B(MUX5Out), .ALU2Op(EX_ALU2Op) ,.start(EX_start),
 		.EX_RHLWr(EX_RHLWr), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
 		.MEM_Exception(MEM_Exception), .MEM_eret_flush(MEM_eret_flush),
 
@@ -527,7 +527,7 @@ uncache U_UNCACHE(
 		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
 );
 
-cache U_DCACHE(.clk(clk), .resetn(rst), .exception(MEM_Exception || MEM_eret_flush),
+cache U_DCACHE(.clk(clk), .resetn(rst), .exception(MEM_Exception || MEM_eret_flush), .id(1'b1),
 	// cpu && cache
   	.valid(EX_dcache_valid&IF_iCache_data_ok), .op(DMWen_dcache), .index(EX_Paddr[13:6]), .tag(EX_Paddr[31:14]), .offset(EX_Paddr[5:0]),
 	.wstrb(EX_dCache_wstrb), .wdata(MUX5Out), .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
@@ -685,14 +685,8 @@ stall U_STALL(
 	MEM_uncache_wr_data
 	
 );
-assign 
-	debug_wb_rf_wdata = MUX2Out;
-assign 
-	debug_wb_pc  = WB_PC;
-assign 
-	debug_wb_rf_wen  = {4{WB_RFWr&MEM_WBWr}};
-assign 
-	debug_wb_rf_wnum  = WB_RD[4:0];
 
+debug U_DEBUG(MUX2Out, WB_PC, WB_RFWr, MEM_WBWr,WB_RD,
+        debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
 
 endmodule
