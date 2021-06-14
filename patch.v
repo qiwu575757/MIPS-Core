@@ -1,40 +1,40 @@
-module exception(MEM_Overflow, Temp_Exception, MEM_DMWr, MEM_DMSel, MEM_ALU1Out, MEM_DMRd, Temp_ExcCode, MEM_PC,
-                    MEM_ExcCode,MEM_Exception,MEM_badvaddr);
-    input MEM_Overflow;
+module exception(MEM1_Overflow, Temp_Exception, MEM1_DMWr, MEM1_DMSel, MEM1_ALU1Out, MEM1_DMRd, Temp_ExcCode, MEM1_PC,
+                    MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr);
+    input MEM1_Overflow;
     input Temp_Exception;
-    input MEM_DMWr;
-    input[2:0] MEM_DMSel;
-    input[31:0] MEM_ALU1Out;
-    input MEM_DMRd;
+    input MEM1_DMWr;
+    input[2:0] MEM1_DMSel;
+    input[31:0] MEM1_ALU1Out;
+    input MEM1_DMRd;
     input[4:0] Temp_ExcCode;
-    input[31:0] MEM_PC;
-    output reg[4:0] MEM_ExcCode;
-    output reg MEM_Exception;
-    output reg[31:0] MEM_badvaddr;
+    input[31:0] MEM1_PC;
+    output reg[4:0] MEM1_ExcCode;
+    output reg MEM1_Exception;
+    output reg[31:0] MEM1_badvaddr;
 
-always@(MEM_Overflow or Temp_Exception or MEM_DMWr or MEM_DMSel or MEM_ALU1Out or MEM_DMRd or Temp_ExcCode
-		or MEM_PC)
-		if (MEM_Overflow  && !Temp_Exception) begin
-		MEM_ExcCode <= `Ov;
-		MEM_Exception <= 1'b1;
-		MEM_badvaddr <= 32'd0;
+always@(MEM1_Overflow or Temp_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out or MEM1_DMRd or Temp_ExcCode
+		or MEM1_PC)
+		if (MEM1_Overflow  && !Temp_Exception) begin
+		MEM1_ExcCode <= `Ov;
+		MEM1_Exception <= 1'b1;
+		MEM1_badvaddr <= 32'd0;
 		end
-		else if (MEM_DMWr && !Temp_Exception && (MEM_DMSel == 3'b010 && MEM_ALU1Out[1:0] != 2'b00 ||
-			MEM_DMSel == 3'b001 && MEM_ALU1Out[0] != 1'b0) )begin
-		MEM_ExcCode <= `AdES;
-		MEM_Exception <= 1'b1;
-		MEM_badvaddr <= MEM_ALU1Out;
+		else if (MEM1_DMWr && !Temp_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
+			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
+		MEM1_ExcCode <= `AdES;
+		MEM1_Exception <= 1'b1;
+		MEM1_badvaddr <= MEM1_ALU1Out;
 		end
-		else if (MEM_DMRd && !Temp_Exception && (MEM_DMSel == 3'b111 && MEM_ALU1Out[1:0] != 2'b00 ||
-			(MEM_DMSel == 3'b101 || MEM_DMSel == 3'b110) && MEM_ALU1Out[0] != 1'b0) ) begin
-		MEM_ExcCode <= `AdEL;
-		MEM_Exception <= 1'b1;
-		MEM_badvaddr <= MEM_ALU1Out;
+		else if (MEM1_DMRd && !Temp_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
+			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
+		MEM1_ExcCode <= `AdEL;
+		MEM1_Exception <= 1'b1;
+		MEM1_badvaddr <= MEM1_ALU1Out;
 		end
 		else  begin
-		MEM_ExcCode <= Temp_ExcCode;
-		MEM_Exception <= Temp_Exception;
-		MEM_badvaddr <= MEM_PC;
+		MEM1_ExcCode <= Temp_ExcCode;
+		MEM1_Exception <= Temp_Exception;
+		MEM1_badvaddr <= MEM1_PC;
 		end
 
 endmodule
@@ -101,71 +101,71 @@ module cache_select(MEM_cache_sel, uncache_Out, dcache_Out, MEM_unCache_data_ok,
 
 endmodule
 
-module ex_cache_prep(EXE_dcache_en, EX_Exception, EX_eret_flush, ALU1Out, EX_DMWr, EX_DMSel,
-            EX_Paddr, EX_cache_sel, EX_dcache_valid, DMWen_dcache, EX_dCache_wstrb);
-    input EXE_dcache_en;
-    input EX_Exception;
-    input EX_eret_flush;
-    input[31:0] ALU1Out;
-    input EX_DMWr;
-    input[2:0] EX_DMSel;
+module mem1_cache_prep(MEM1_dcache_en, MEM1_Exception, MEM1_eret_flush, MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel,
+            MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, DMWen_dcache, MEM1_dCache_wstrb);
+    input MEM1_dcache_en;
+    input MEM1_Exception;
+    input MEM1_eret_flush;
+    input[31:0] MEM1_ALU1Out;
+    input MEM1_DMWr;
+    input[2:0] MEM1_DMSel;
 
-    output[31:0] EX_Paddr;
-    output EX_cache_sel;
-    output EX_dcache_valid;
+    output[31:0] MEM1_Paddr;
+    output MEM1_cache_sel;
+    output MEM1_dcache_valid;
     output DMWen_dcache;
-    output[3:0] EX_dCache_wstrb;
+    output[3:0] MEM1_dCache_wstrb;
 
-    assign EX_Paddr = {3'b000,ALU1Out[28:0]};
+    assign MEM1_Paddr = {3'b000,MEM1_ALU1Out[28:0]};
 			//这里的alu1out将来都得改成物理地址
-	assign EX_cache_sel = (EX_Paddr[31:16] == 16'h1faf);
+	assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
 	// 1 表示uncache�? 0表示uncache
 
-    assign EX_dcache_valid = EXE_dcache_en && !EX_Exception && !EX_eret_flush && ~EX_cache_sel;
-    assign DMWen_dcache = EX_DMWr && !EX_Exception && !EX_eret_flush;
+    assign MEM1_dcache_valid = MEM1_dcache_en && !MEM1_Exception && !MEM1_eret_flush && ~MEM1_cache_sel;
+    assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
 // 1.设置写使能信�???
-    assign EX_dCache_wstrb=(~DMWen_dcache)?4'b0:
-							(EX_DMSel==3'b000)?
-								(EX_Paddr[1:0]==2'b00 ? 4'b0001 :
-								EX_Paddr[1:0]==2'b01 ? 4'b0010 :
-								EX_Paddr[1:0]==2'b10 ? 4'b0100 :
+    assign MEM1_dCache_wstrb=(~DMWen_dcache)?4'b0:
+							(MEM1_DMSel==3'b000)?
+								(MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
+								MEM1_Paddr[1:0]==2'b01 ? 4'b0010 :
+								MEM1_Paddr[1:0]==2'b10 ? 4'b0100 :
 								 				   4'b1000) :
-							(EX_DMSel==3'b001)?   // sh
-								(EX_Paddr[1]==1'b0 ? 4'b0011 :
+							(MEM1_DMSel==3'b001)?   // sh
+								(MEM1_Paddr[1]==1'b0 ? 4'b0011 :
 								  				4'b1100 ):
 		
 												4'b1111 ;//sw
 
 endmodule
 
-module mem_cache_prep(MEM_cache_sel, MEM_DMWr, MEM_Exception, MEM_eret_flush, MEM_dCache_en,
-            DMen, DMWen_uncache, MEM_dcache_valid, uncache_valid);
-    input MEM_cache_sel;
-    input MEM_DMWr;
-    input MEM_Exception;
-    input MEM_eret_flush;
-    input MEM_dCache_en;
+module mem2_cache_prep(MEM2_cache_sel, MEM2_DMWr, MEM2_Exception, MEM2_eret_flush, MEM2_dCache_en,
+            DMen, DMWen_uncache, MEM2_dcache_valid, uncache_valid);
+    input MEM2_cache_sel;
+    input MEM2_DMWr;
+    input MEM2_Exception;
+    input MEM2_eret_flush;
+    input MEM2_dCache_en;
 
     output DMen;
     output DMWen_uncache;
-    output MEM_dcache_valid;
+    output MEM2_dcache_valid;
     output uncache_valid;
 
-    assign DMen = MEM_cache_sel ? uncache_valid : MEM_dcache_valid;
-    assign DMWen_uncache = MEM_DMWr && !MEM_Exception && !MEM_eret_flush;
-    assign MEM_dcache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && ~MEM_cache_sel;
-    assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && MEM_cache_sel;
+    assign DMen = MEM2_cache_sel ? uncache_valid : MEM2_dcache_valid;
+    assign DMWen_uncache = MEM2_DMWr && !MEM2_Exception && !MEM2_eret_flush;
+    assign MEM2_dcache_valid = MEM2_dCache_en && !MEM2_Exception && !MEM2_eret_flush && ~MEM2_cache_sel;
+    assign uncache_valid = MEM2_dCache_en && !MEM2_Exception && !MEM2_eret_flush && MEM2_cache_sel;
 
 endmodule
 
-module debug(MUX2Out, WB_PC, WB_RFWr, MEM_WBWr,WB_RD,
+module debug(MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
         debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
-    input[31:0] MUX2Out;
+    input[31:0] MUX10Out;
     input[31:0] WB_PC;
     input WB_RFWr;
-    input MEM_WBWr;
+    input MEM2_WBWr;
     input[4:0] WB_RD;
 
     output[31:0] debug_wb_rf_wdata;
@@ -174,12 +174,12 @@ module debug(MUX2Out, WB_PC, WB_RFWr, MEM_WBWr,WB_RD,
     output[4:0] debug_wb_rf_wnum; 
 
 assign 
-	debug_wb_rf_wdata = MUX2Out;
+	debug_wb_rf_wdata = MUX10Out;
 assign 
 	debug_wb_pc  = WB_PC;
 assign 
-	debug_wb_rf_wen  = {4{WB_RFWr&MEM_WBWr}};
+	debug_wb_rf_wen  = {4{WB_RFWr&MEM2_WBWr&(WB_RD!=5'd0)}};
 assign 
-	debug_wb_rf_wnum  = WB_RD[4:0];
+	debug_wb_rf_wnum  = WB_RD;
 
 endmodule
