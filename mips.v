@@ -358,8 +358,7 @@ pc U_PC(
 	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush),
 	// cpu && cache
 	/*input*/
-  	.valid(~isStall), .op(1'b0), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
-	.wstrb(4'b0), .wdata(32'b0), 
+  	.valid(~isStall), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
 	//cache && axi
