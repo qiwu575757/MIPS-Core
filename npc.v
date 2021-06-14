@@ -3,7 +3,7 @@ module npc(
 	MEM_eret_flush, MEM_ex, PCWr,
 
 	NPC, IF_Flush,ID_Flush, EX_Flush, 
-	PC_Flush, MEM_Flush
+	PC_Flush, MEM1_Flush, MEM2_Flush
 	);
 
 	input[31:0] PC, ret_addr, EPC;
@@ -18,7 +18,8 @@ module npc(
 	output ID_Flush;
 	output EX_Flush;
 	output PC_Flush;
-	output MEM_Flush;
+	output MEM1_Flush;
+	output MEM2_Flush;
 
 	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)
@@ -41,7 +42,8 @@ module npc(
 	assign IF_Flush =  (MEM_eret_flush || MEM_ex) ;
 	assign ID_Flush = (MEM_eret_flush || MEM_ex) ;
 	assign EX_Flush = (MEM_eret_flush || MEM_ex) ;
-	assign MEM_Flush = (MEM_eret_flush || MEM_ex) ;
+	assign MEM1_Flush = (MEM_eret_flush || MEM_ex) ;
 	assign PC_Flush = (((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex) ;
-
+	assign MEM2_Flush = 1'b0;
+	
 endmodule
