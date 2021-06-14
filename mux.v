@@ -17,23 +17,15 @@ module mux1(
 endmodule
 
 module mux2(
-	ALU1Out, RHLOut, PC, 
-	Imm32, CP0Out, MUX2Sel, 
+	MUX6Out, CP0Out, MUX2Sel, 
 	
 	WD
 	);
-	input[31:0] ALU1Out, RHLOut, PC, Imm32, CP0Out;
+	input[31:0] MUX6Out, CP0Out;
 	input[2:0] MUX2Sel;
-	output reg[31:0] WD;
+	output[31:0] WD;
 
-	always@(ALU1Out, RHLOut, PC, Imm32, MUX2Sel, CP0Out)
-		case(MUX2Sel)
-			3'b000:	WD = RHLOut;
-			3'b001:	WD = Imm32;
-			3'b010:	WD = ALU1Out;
-			3'b011:	WD = PC + 8;
-			default:WD = CP0Out;
-		endcase
+	assign WD = (MUX2Sel == 3'b101) ? CP0Out : MUX6Out;
 
 endmodule
 
@@ -109,7 +101,7 @@ module mux6(
 			2'b00:	out = RHLOut;
 			2'b01:	out = Imm32;
 			2'b10:	out = ALU1Out;
-			default:out = PC + 4;
+			default:out = PC + 8;
 		endcase
 
 endmodule
