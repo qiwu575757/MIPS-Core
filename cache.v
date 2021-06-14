@@ -1,6 +1,6 @@
 
 
-module cache(       clk, resetn, exception,
+module cache(       clk, resetn, exception, id,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata, 
         /*output*/  addr_ok, data_ok, rdata,
@@ -13,6 +13,7 @@ module cache(       clk, resetn, exception,
     input clk;
     input resetn;
     input exception;
+    input id;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -102,6 +103,7 @@ module cache(       clk, resetn, exception,
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
+    reg exception_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
@@ -233,6 +235,13 @@ module cache(       clk, resetn, exception,
             offset_RB <= offset;
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
+        end
+    always@(posedge clk)
+        if(!resetn) begin
+            exception_RB <= 1'b0;
+        end
+        else begin
+            exception_RB <= exception;
         end
     
     //Miss Buffer
@@ -367,7 +376,7 @@ module cache(       clk, resetn, exception,
         else
             Data_in = {16{ret_data}};
     always@(*)
-        if(hit_write & ~exception) begin
+        if(hit_write & ~exception_RB & ~exception) begin
             if(way0_hit) begin
                 case(offset_RB[5:2])
                     4'd0:   Data_Way0_wen = {60'd0,wstrb_RB};
@@ -461,7 +470,7 @@ module cache(       clk, resetn, exception,
                 Data_Way2_wen = 64'd0;
             end
         end
-        else if(ret_valid) begin
+        else if(ret_valid &&(C_STATE == REFILL)) begin
             if(replace_way_MB == 2'd0) begin
                 case(ret_number_MB)
                     4'd0:   Data_Way0_wen = {60'd0,4'b1111};
@@ -616,14 +625,16 @@ module cache(       clk, resetn, exception,
         else
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, 
-            replace_Valid_MB, replace_Dirty_MB, write_conflict, exception)
+            replace_Valid_MB, replace_Dirty_MB, write_conflict, exception, id)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
                     else 
                         N_STATE = IDLE;
-            LOOKUP: if(exception)
+            LOOKUP: if(exception && id)        //dcache
                         N_STATE = IDLE;
+                    else if(exception & ~id)                   //icache
+                        N_STATE = LOOKUP;
                     else if(!cache_hit)
                         N_STATE = MISS;
                     else if(write_conflict)
