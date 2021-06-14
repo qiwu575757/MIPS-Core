@@ -159,3 +159,27 @@ module mem_cache_prep(MEM_cache_sel, MEM_DMWr, MEM_Exception, MEM_eret_flush, ME
     assign uncache_valid = MEM_dCache_en && !MEM_Exception && !MEM_eret_flush && MEM_cache_sel;
 
 endmodule
+
+module debug(MUX2Out, WB_PC, WB_RFWr, MEM_WBWr,WB_RD,
+        debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
+    input[31:0] MUX2Out;
+    input[31:0] WB_PC;
+    input WB_RFWr;
+    input MEM_WBWr;
+    input[4:0] WB_RD;
+
+    output[31:0] debug_wb_rf_wdata;
+    output[31:0] debug_wb_pc;
+    output[3:0] debug_wb_rf_wen;
+    output[4:0] debug_wb_rf_wnum; 
+
+assign 
+	debug_wb_rf_wdata = MUX2Out;
+assign 
+	debug_wb_pc  = WB_PC;
+assign 
+	debug_wb_rf_wen  = {4{WB_RFWr&MEM_WBWr}};
+assign 
+	debug_wb_rf_wnum  = WB_RD[4:0];
+
+endmodule
