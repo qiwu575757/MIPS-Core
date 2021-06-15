@@ -212,9 +212,9 @@ wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !ME
 Divider divider (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(divider_sign_valid),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_sign_valid & ~(isBusy & present_state_div)),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(divider_sign_valid),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_sign_valid & ~(isBusy & present_state_div)),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
   .m_axis_dout_tvalid(m_axis_dout_tvalid_sign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
@@ -223,9 +223,9 @@ wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception &
 Divider_Unsighed divider_unsign (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(divider_unsign_valid),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_unsign_valid & ~(isBusy & present_state_div)),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(divider_unsign_valid),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_unsign_valid & ~(isBusy & present_state_div)),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
   .m_axis_dout_tvalid(m_axis_dout_tvalid_unsign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
