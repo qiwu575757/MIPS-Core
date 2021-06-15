@@ -1,3 +1,4 @@
+
 module  bridge_dm(
 	addr2,
 	Din,
@@ -35,7 +36,7 @@ endmodule
 
 
 // 这个模块用于当前与cpu与乘除器的交互。
-// 借助状态机来控制
+// 借助状态机来制
 // * start为1时，乘除法开始计算
 // * isBusy为1时，表示正在运行
 // * 乘法单周期运算，除法多周期（34个）。
@@ -423,26 +424,20 @@ module axi_sram_bridge(
 	output MEM_dcache_wr_rdy;
 	input [31:0]MEM_uncache_wr_data;
 
+reg [3:0] count_wr16;
 //暂时用不到的信号初始化
-	assign arid = 4'b0;
-   	assign arlen    =   4'b1111;
 	assign arsize   =   3'b010;
-    assign arburst  =   IF_icache_rd_req? 1:0;
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
     assign awid     =   1;
 	assign rready   =   1;
 
-    assign awlen    =   4'b0;
 	assign awsize   =   3'b010;
-    assign awburst  =   conf_sel&MEM_dcache_wr_req? 0:1;
     assign awlock   =   0;
     assign awcache  =   0;
     assign awprot   =   0;
-	assign wlast    =   1;
     assign wid      =   1;
-	assign bready   =   1;
 
     // assign wlast    =   1;
 
@@ -468,16 +463,37 @@ reg [1:0] next_rd_state;
 reg [2:0] current_wr_state;
 reg [2:0] next_wr_state;
 reg [511:0] temp_data;//write buffer
-reg [3:0] count_rd16;
-reg [3:0] count_wr16;
 
 reg arid_reg;// 寄存事务id
-
+reg conf_wr;// write event argument
+reg dram_wr;
+reg [31:0] uncache_wr_data_reg;
 initial begin
-	count_rd16 = 0;
 	count_wr16 = 0;
+	conf_wr=0;
+	dram_wr=0;
+	uncache_wr_data_reg=0;
 end
 
+always @(posedge clk) begin
+	if(!rst)
+		conf_wr=0; 
+	if(MEM_dcache_wr_req & conf_sel)
+	 	conf_wr=1;
+	else if (next_wr_state==state_wr_finish)
+		conf_wr=0;
+		
+end
+
+always @(posedge clk) begin
+	if(!rst)
+		dram_wr=0; 
+	if(MEM_dcache_wr_req & ~conf_sel)
+	 	dram_wr=1;
+	else if (next_wr_state==state_wr_finish)
+		dram_wr=0;
+		
+end
 //Write Passway
 always @(posedge clk) begin
 	if(!rst)
@@ -493,6 +509,16 @@ always @(posedge clk) begin
 		temp_data={32'b0,{temp_data[511:32]}};//需要与 wdata 保持一致
 	end
 end
+always @(posedge clk) begin
+	if(!rst)
+	begin
+		uncache_wr_data_reg=0;
+	end
+	else if(current_wr_state==state_wr_req)
+	begin
+		uncache_wr_data_reg<=MEM_uncache_wr_data;
+	end
+end
 
 always @(posedge clk) begin
 	if((current_wr_state==state_wr_data) && wready)
@@ -501,14 +527,6 @@ always @(posedge clk) begin
 		count_wr16=count_wr16;
 	else
 		count_wr16=0;
-end
-always @(posedge clk) begin
-	if((current_wr_state==state_wr_data) && wready)
-		count_rd16=count_rd16+1;
-	else if ((current_wr_state==state_wr_data) && !wready)
-		count_rd16=count_rd16;
-	else
-		count_rd16=0;
 end
 
 always @(posedge clk) begin
@@ -543,7 +561,7 @@ always @(*) begin
 		end
 		state_wr_data:
 		begin
-			if(wvalid & wready & (count_wr16==4'hf))
+			if(wvalid & wready & (count_wr16==4'hf|(conf_wr)))
 				next_wr_state=state_wr_res;
 			else
 				next_wr_state = current_wr_state;
@@ -577,6 +595,8 @@ always @(posedge clk) begin
 			   MEM_dcache_rd_req ? 1 : 0;
 	end
 end
+
+
 
 always @(posedge clk) begin
 	if(!rst)
@@ -621,28 +641,35 @@ always @(*) begin
 		end
 	endcase
 end
+// 
+assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_ret_valid = (rvalid & rid[0]);
+assign MEM_dcache_ret_last = (rlast & rid[0]);
 
-assign MEM_dcache_rd_rdy = arready&(current_rd_state!=state_rd_res);
-assign MEM_dcache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid&(arid_reg);
-assign MEM_dcache_ret_last = rlast;
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = awready;
-assign IF_icache_rd_rdy = arready&(current_rd_state!=state_rd_res);
-assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid&(~arid_reg);
-assign IF_icache_ret_last = rlast;
+assign MEM_dcache_wr_rdy = awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign IF_icache_rd_rdy = arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
+assign IF_icache_ret_last = rlast & (~rid[0]);
 assign IF_icache_ret_data = rdata;
-
+assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
-assign araddr = arid_reg ? MEM_dcache_rd_addr : IF_icache_rd_addr;
+assign arid = IF_icache_rd_req ? 0: 1;
+assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_req?MEM_dcache_rd_addr   : 0;
+assign arlen =  MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
+assign arburst = MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
-assign arvalid = (current_rd_state==state_rd_req) ? 
-						arid_reg ? MEM_dcache_rd_req : IF_icache_rd_req:0;
+assign arvalid = (current_rd_state==state_rd_req) ;
 
-assign awaddr =conf_sel&MEM_dcache_wr_req? MEM_dcache_wr_addr: (MEM_dcache_wr_addr+count_wr16*4);
-assign awvalid =   MEM_dcache_wr_req ;
+assign awaddr =MEM_dcache_wr_addr;
+assign awlen = conf_wr ? 4'b0:4'b1111;
+assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
+assign awburst = conf_wr ? 2'b0 : 2'b1;
 					
-assign wdata = conf_sel&MEM_dcache_wr_req? MEM_uncache_wr_data: arid_reg ? temp_data[31:0] : IF_icache_wr_data[31:0];
+assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
 assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
-assign wvalid = MEM_dcache_wr_req ;
+assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );
+assign wlast = conf_wr ? 1: dram_wr ? count_wr16==4'hf : 0;
+assign bready = 1;
 
 endmodule
