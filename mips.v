@@ -53,7 +53,7 @@ module mips(
 );
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
-// 时钟与复位信�??
+// 时钟与复位信�???
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道 
@@ -245,9 +245,7 @@ module mips(
     wire MEM2_RFWr;
     wire[4:0] MEM2_RD;
     wire[31:0] MUX2Out;
-    wire MEM2_RFWr;
     wire[2:0] MEM2_MUX2Sel; 
-    wire MEM2_RD; 
     wire[31:0] MEM2_PC;
     wire[31:0] MEM2_ALU1Out;
     wire[31:0] MEM2_MUX6Out;
@@ -314,16 +312,11 @@ module mips(
     wire[2:0] MEM_dcache_wr_type;
     wire[31:0] MEM_dcache_wr_addr; 
 	wire[3:0] MEM_dcache_wr_wstrb;
-    wire[31:0] MEM_dcache_wr_data;
+    wire[511:0] MEM_dcache_wr_data;
     wire MEM_dcache_wr_rdy;
 
     wire MEM_unCache_data_ok;
     wire[31:0] uncache_Out;
-    wire MEM_dcache_rd_rdy;
-    wire MEM_dcache_wr_rdy;
-    wire MEM_dcache_ret_valid; 
-    wire MEM_dcache_ret_last;
-    wire[31:0] MEM_dcache_ret_data;
     wire MEM_uncache_rd_req;
     wire MEM_uncache_wr_req;
     wire[2:0] MEM_uncache_rd_type;
@@ -704,7 +697,7 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bvalid    ,
     bready    ,
 // icache 
-	IF_icache_rd_req,// icache �?? dcache 同时缺失怎么�??
+	IF_icache_rd_req,// icache �??? dcache 同时缺失怎么�???
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,
