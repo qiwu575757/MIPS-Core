@@ -1,4 +1,3 @@
-
 module  bridge_dm(
 	addr2,
 	Din,
@@ -36,7 +35,7 @@ endmodule
 
 
 // 这个模块用于当前与cpu与乘除器的交互。
-// 借助状态机来制
+// 借助状态机来控制
 // * start为1时，乘除法开始计算
 // * isBusy为1时，表示正在运行
 // * 乘法单周期运算，除法多周期（34个）。
@@ -208,24 +207,26 @@ always @(present_state_multu, multiplier_unsigned_valid,counter) begin
 
 end
 
-wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush 
+			&& isBusy && !present_state_div;
 Divider divider (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(divider_sign_valid & ~(isBusy & present_state_div)),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_sign_valid),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(divider_sign_valid & ~(isBusy & present_state_div)),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_sign_valid),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
   .m_axis_dout_tvalid(m_axis_dout_tvalid_sign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
-wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
+			&& isBusy && !present_state_div;
 Divider_Unsighed divider_unsign (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
-  .s_axis_divisor_tvalid(divider_unsign_valid & ~(isBusy & present_state_div)),    // input wire s_axis_divisor_tvalid
+  .s_axis_divisor_tvalid(divider_unsign_valid),    // input wire s_axis_divisor_tvalid
   .s_axis_divisor_tdata(B),      // input wire [31 : 0] s_axis_divisor_tdata
-  .s_axis_dividend_tvalid(divider_unsign_valid & ~(isBusy & present_state_div)),  // input wire s_axis_dividend_tvalid
+  .s_axis_dividend_tvalid(divider_unsign_valid),  // input wire s_axis_dividend_tvalid
   .s_axis_dividend_tdata(A),    // input wire [31 : 0] s_axis_dividend_tdata
   .m_axis_dout_tvalid(m_axis_dout_tvalid_unsign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
