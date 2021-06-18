@@ -142,8 +142,8 @@ module stall(
 			IF_IDWr = 1'b1;
 			ID_EXWr = 1'b1;
 			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
+			MEM1_MEM2Wr = 1'b0;
+			MEM2_WBWr = 1'b0;
 			MUX7Sel = 1'b0;
 		end
 		else if(dcache_stall) begin
