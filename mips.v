@@ -574,7 +574,7 @@ uncache U_UNCACHE(
         .valid(uncache_valid), .op(DMWen_uncache), .addr(MEM2_Paddr), .wstrb(MEM2_unCache_wstrb), 
         .wdata(MEM2_GPR_RT), .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
         .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid), 
-        .ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),
+        .ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data), .wr_valid(bvalid),
         .rd_req(MEM_uncache_rd_req), .wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
 		.wr_type(MEM_uncache_wr_type), .rd_addr(MEM_uncache_rd_addr), .wr_addr(MEM_uncache_wr_addr), 
 		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
