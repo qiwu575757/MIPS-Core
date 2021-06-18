@@ -119,6 +119,7 @@ module mem1_cache_prep(MEM1_dcache_en, MEM1_Exception, MEM1_eret_flush, MEM1_ALU
     assign MEM1_Paddr = {3'b000,MEM1_ALU1Out[28:0]};
 			//这里的alu1out将来都得改成物理地址
 	assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
+    //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache�? 0表示uncache
 
     assign MEM1_dcache_valid = MEM1_dcache_en && !MEM1_Exception && !MEM1_eret_flush && ~MEM1_cache_sel;
