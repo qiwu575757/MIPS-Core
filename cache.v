@@ -1,5 +1,3 @@
-
-
 module icache(       clk, resetn, exception,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset, 
@@ -1119,7 +1117,7 @@ module uncache(
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
         //AXI-Bus side 
-        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
 
@@ -1140,6 +1138,7 @@ module uncache(
     input ret_valid;
     input ret_last;
     input[31:0] ret_data;
+    input wr_valid;
 
     output rd_req;
     output wr_req;
@@ -1148,7 +1147,7 @@ module uncache(
     output[31:0] rd_addr;
     output[31:0] wr_addr;
     output[3:0] wr_wstrb;
-    output[31:0] wr_data;
+    output reg[31:0] wr_data;
 
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
@@ -1169,7 +1168,7 @@ module uncache(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last)
+    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last, wr_valid)
         case(C_STATE)
             DEFAULT:    if(load && rd_rdy)
                             N_STATE = LOAD;
@@ -1181,13 +1180,16 @@ module uncache(
                             N_STATE = DEFAULT;
                         else
                             N_STATE = LOAD;
-            STORE:      N_STATE = DEFAULT;
+            STORE:      if(wr_valid)
+                            N_STATE = DEFAULT;
+                        else
+                            N_STATE = STORE;
             default:    N_STATE = DEFAULT;
         endcase
 
     assign data_ok = 
                     (load && (C_STATE == LOAD) && ret_valid && ret_last) ||
-                    (store && C_STATE == STORE) ;
+                    (store && (C_STATE == STORE) && wr_valid)  ;
     assign rdata = ret_data;
 
     assign rd_req = (N_STATE == LOAD);
@@ -1197,5 +1199,14 @@ module uncache(
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;
-    assign wr_data = wdata;
+    always@(wstrb, wdata)
+        case(wstrb)
+            4'b0001:wr_data = {4{wdata[7:0]}};
+            4'b0010:wr_data = {4{wdata[7:0]}};
+            4'b0100:wr_data = {4{wdata[7:0]}};
+            4'b1000:wr_data = {4{wdata[7:0]}};
+            4'b0011:wr_data = {2{wdata[15:0]}};
+            4'b1100:wr_data = {2{wdata[15:0]}};
+            default:wr_data = wdata;
+        endcase
 endmodule
