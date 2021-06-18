@@ -42,7 +42,7 @@ module npc(
 	assign IF_Flush =  (MEM_eret_flush || MEM_ex) ;
 	assign ID_Flush = (MEM_eret_flush || MEM_ex) ;
 	assign EX_Flush = (MEM_eret_flush || MEM_ex) ;
-	assign MEM1_Flush = (MEM_eret_flush || MEM_ex) ;
+	assign MEM1_Flush = 1'b0;
 	assign PC_Flush = (((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex) ;
 	assign MEM2_Flush = 1'b0;
 	
