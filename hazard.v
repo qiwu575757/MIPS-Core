@@ -60,7 +60,8 @@ module stall(
 	rst_sign, MEM1_ex, MEM1_RFWr, MEM2_RFWr,
 	MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok,MEM_dCache_en,MEM_dCache_addr_ok,
-    MEM1_cache_sel,MEM1_dCache_en,
+    MEM1_cache_sel,MEM1_dCache_en,,ID_tlb_searchen,EX_CP0WrEn,
+
 	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,
 	dcache_stall, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr
 	);
@@ -76,7 +77,8 @@ module stall(
 	input MEM_dCache_en;
 	input MEM1_cache_sel;
 	input MEM_dCache_addr_ok;
-	input MEM1_dCache_en;
+	input MEM1_dCache_en,ID_tlb_searchen,EX_CP0WrEn;
+
 	output reg PCWr, IF_IDWr, MUX7Sel, inst_sram_en;
 	output isStall;
 	output dcache_stall;
@@ -167,6 +169,17 @@ module stall(
 			MUX7Sel = 1'b1;
 		end
 		else if((EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC)) begin
+		    inst_sram_en = 1'b0;
+			PCWr = 1'b0;
+			IF_IDWr = 1'b0;
+			ID_EXWr = 1'b1;
+			EX_MEM1Wr =1'b1;
+			MEM1_MEM2Wr = 1'b1;
+			MEM2_WBWr = 1'b1;
+			MUX7Sel = 1'b1;
+		end
+		else if (ID_tlb_searchen && EX_CP0WrEn)
+		begin
 		    inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			IF_IDWr = 1'b0;
