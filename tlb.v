@@ -1,5 +1,6 @@
 module tlb(
     input clk,
+    input rst,
 
     //search port 0
     input   [18:0]  s0_vpn2,
@@ -78,8 +79,10 @@ module tlb(
     reg         tlb_d1      [TLBNUM-1:0];
     reg         tlb_v1      [TLBNUM-1:0];
 
-    wire match0  [15:0];
-    wire match1  [15:0];
+    wire [15:0]     match0 ;
+    wire [15:0]     match1  ;
+
+    integer i;
 
     assign match0[ 0] = (s0_vpn2==tlb_vpn2[ 0]) && ((s0_asid==tlb_asid[ 0]) || tlb_g[ 0]);
     assign match0[ 1] = (s0_vpn2==tlb_vpn2[ 1]) && ((s0_asid==tlb_asid[ 1]) || tlb_g[ 1]);
@@ -115,15 +118,9 @@ module tlb(
     assign match1[14] = (s1_vpn2==tlb_vpn2[14]) && ((s1_asid==tlb_asid[14]) || tlb_g[14]);
     assign match1[15] = (s1_vpn2==tlb_vpn2[15]) && ((s1_asid==tlb_asid[15]) || tlb_g[15]);
 
-    assign s0_found =   match0[ 0] | match0[ 1] | match0[ 2] | match0[ 3] |
-                        match0[ 4] | match0[ 5] | match0[ 6] | match0[ 7] |
-                        match0[ 8] | match0[ 9] | match0[10] | match0[11] |
-                        match0[12] | match0[13] | match0[14] | match0[15] ;
+    assign s0_found =   (match0[15:0] != 16'b0);
 
-    assign s1_found =   match1[ 0] | match1[ 1] | match1[ 2] | match1[ 3] |
-                        match1[ 4] | match1[ 5] | match1[ 6] | match1[ 7] |
-                        match1[ 8] | match1[ 9] | match1[10] | match1[11] |
-                        match1[12] | match1[13] | match1[14] | match1[15] ;
+    assign s1_found =   (match1[15:0] != 16'b0);
 
     //----------search port----------------//
     assign s0_index = 
@@ -297,7 +294,21 @@ module tlb(
 
     //------------write port-----------//
     always @(posedge clk) begin
-        if ( we )
+        if(!rst)
+            for(i=0;i<TLBNUM;i=i+1) begin
+            tlb_vpn2[i] = 19'd0;
+            tlb_asid[i] = 8'd0;
+            tlb_g[i]    = 1'b0;
+            tlb_pfn0[i] = 20'd0;
+            tlb_c0[i]   = 3'd0;
+            tlb_d0[i]   = 1'b0;
+            tlb_v0[i]   = 1'b0;
+            tlb_pfn1[i] = 20'd0;
+            tlb_c1[i]   = 3'd0;
+            tlb_d1[i]   = 1'b0;
+            tlb_v1[i]   = 1'b0;
+            end
+        else if ( we )
         begin
             tlb_vpn2[w_index] = w_vpn2;
             tlb_asid[w_index] = w_asid;
