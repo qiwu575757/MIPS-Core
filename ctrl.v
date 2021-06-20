@@ -1,10 +1,13 @@
  `include "MacroDef.v"
 
- module ctrl(clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
- 			ID_AdEL, IF_Flush,
-			MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
-			RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ExcCode, Exception, isBD, isBranch,
-			CP0Rd, start, RHL_visit,dcache_en);
+ module ctrl(
+	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
+ 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,
+
+		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
+		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
+		CP0Rd, start, RHL_visit,dcache_en,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen
+	);
 	input clk;
 	input rst;
 	input [5:0] OP;
@@ -15,8 +18,10 @@
 	input [1:0] CMPOut2;
 	input EXE_isBranch;
 	input Interrupt;
-	input ID_AdEL;
+	input Temp_ID_Excetion;
 	input IF_Flush;
+	input [4:0] Temp_ID_ExcCode;
+	input ID_TLB_Exc;
 
 	output reg [1:0] MUX1Sel;
 	output reg [2:0] MUX2Sel;
@@ -37,13 +42,17 @@
 	output reg eret_flush;
 	output reg CP0WrEn;
 	output reg CP0Rd;
-	output reg Exception;
-	output reg [4:0] ExcCode;
+	output reg ID_Exception;
+	output reg [4:0] ID_ExcCode;
 	output isBD;
 	output reg isBranch;
 	output reg start;
 	output reg RHL_visit;
 	output reg dcache_en;
+	output reg ID_MUX11Sel;
+	output ID_MUX12Sel;
+	output reg ID_tlb_searchen;
+	output TLB_flush,TLB_readen,TLB_writeen;
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
@@ -74,30 +83,31 @@
 			CP0WrEn <= 1'b0;
 	end
 
-	always @(OP or Funct or ri or rst or IF_Flush or ID_AdEL or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
+	always @(OP or Funct or ri or rst or IF_Flush
+	or Temp_ID_Excetion or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
 		if (Interrupt) begin
-			Exception <= 1'b1;
-			ExcCode <= `Int;
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `Int;
 		end
-		else if (ID_AdEL) begin
-			Exception <= 1'b1;
-			ExcCode <= `AdEL;
+		else if (Temp_ID_Excetion) begin
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= Temp_ID_ExcCode;
 		end
 		else if (!ri && !rst_sign && !IF_Flush) begin
-			Exception <= 1'b1;
-			ExcCode <= `RI;
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `RI;
 		end
 		else if (OP == `R_type && Funct == `break) begin
-			Exception <= 1'b1;
-			ExcCode <= `Bp;
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `Bp;
 		end
 		else if (OP == `R_type && Funct == `syscall) begin
-			Exception <= 1'b1;
-			ExcCode <= `Sys;
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `Sys;
 		end
 		else begin
-			Exception <= 1'b0;
-			ExcCode <= 5'd0;
+			ID_Exception <= 1'b0;
+			ID_ExcCode <= 5'd0;
 		end
 	end
 
@@ -518,10 +528,27 @@
 			default: dcache_en <= 1'b0;
 	endcase
 	end
+
+	always @(OP or Funct) begin		/* the genenration of MUX11Sel and MUX12Sel*/
+		if ( OP == `tlb && Funct == `tlbp)
+		begin
+			ID_tlb_searchen = 1'b1;
+			ID_MUX11Sel = 1'b1;
+		end
+		else
+		begin
+			ID_tlb_searchen = 1'b0;
+			ID_MUX11Sel = 1'b0;		
+		end
+	end
+
+	//MUX12 for select badvaddr from the PC and ALU1out
+	assign ID_MUX12Sel = ID_TLB_Exc;
+
+	////used for the TLBR ,TLBWI, to clear the instrs after the two instr
+	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi));
+
+	assign TLB_readen = ( OP == `tlb && (Funct == `tlbr));
+	assign TLB_writeen = ( OP == `tlb && (Funct == `tlbwi));
+
 endmodule
-
-
-
-
-
-
