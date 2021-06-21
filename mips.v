@@ -461,7 +461,7 @@ module mips(
 /**************DATA PATH***************/
     //--------------PF----------------//
 instr_fetch_pre U_INSTR_FETCH(
-    NPC, PCWr, s0_found,s0_v,s0_pfn,
+    NPC, PCWr, s0_found,s0_v,s0_pfn, IF_uncache_data_ok,
     isStall,TLB_flush,EX_TLB_flush, MEM1_TLB_flush, MEM2_TLB_flush, WB_TLB_flush,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,
@@ -704,7 +704,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
     MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel,
     MEM1_Overflow, Temp_M1_Exception,
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
-    s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_data_ok,Temp_MEM1_TLBRill_Exc,
+    s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
