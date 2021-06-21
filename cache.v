@@ -1172,7 +1172,7 @@ module uncache_im(
             default:    N_STATE = DEFAULT;
         endcase
 
-    assign data_ok = 
+    assign data_ok = ~valid ||
                     (valid && (C_STATE == LOAD) && ret_valid && ret_last);
     assign rdata = ret_data;
 
@@ -1262,7 +1262,7 @@ module uncache_dm(
             default:    N_STATE = DEFAULT;
         endcase
 
-    assign data_ok = 
+    assign data_ok = ~valid ||
                     (load && (C_STATE == LOAD) && ret_valid && ret_last) ||
                     (store && (C_STATE == STORE) && wr_valid)  ;
     assign rdata = ret_data;
