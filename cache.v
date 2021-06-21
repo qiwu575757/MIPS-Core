@@ -1118,7 +1118,7 @@ module uncache_im(
         /*input*/   valid, addr,
         /*output*/  data_ok, rdata,
         //AXI-Bus side 
-        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
 
