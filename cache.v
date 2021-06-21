@@ -1,5 +1,3 @@
-
-
 module icache(       clk, resetn, exception,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset, 
@@ -460,7 +458,7 @@ module dcache(       clk, resetn,
         /*input*/   valid, op, tag, index, offset, wstrb, wdata, 
         /*output*/  addr_ok, data_ok, rdata,
         //AXI-Bus side 
-        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
         );
 
@@ -486,6 +484,7 @@ module dcache(       clk, resetn,
     input ret_valid;                //to show the data returned from AXI-Bus is valid 
     input ret_last;                 //to show the data returned from AXI-Bus is the last one
     input[31:0] ret_data;           //data to be refilled from AXI-Bus to Cache
+    input wr_valid;
     output rd_req;                  //Cache read-request signal
     output wr_req;                  //Cache write-request signal
     output[2:0] rd_type;            //read type, assign 3'b100
@@ -547,7 +546,7 @@ module dcache(       clk, resetn,
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REPLACE = 3'b011, REFILL = 3'b100;
+    parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REPLACE = 3'b011, HOLD = 3'b100, REFILL = 3'b101;
 
     //Request Buffer
     reg op_RB;
@@ -1070,7 +1069,7 @@ module dcache(       clk, resetn,
         else
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, 
-            replace_Valid_MB, replace_Dirty_MB, write_conflict)
+            replace_Valid_MB, replace_Dirty_MB, write_conflict, wr_valid)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
@@ -1084,18 +1083,18 @@ module dcache(       clk, resetn,
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            MISS:   if(!replace_Valid_MB || !replace_Dirty_MB) begin    //data is not dirty
-                        if(!rd_rdy)
-                            N_STATE = MISS;
-                        else
-                            N_STATE = REFILL;
-                    end
+            MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
+                        N_STATE = HOLD;
                     else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;
                     else
                         N_STATE = REPLACE;
-            REPLACE:if(!rd_rdy)
+            REPLACE:if(!wr_valid)
                         N_STATE = REPLACE;
+                    else
+                        N_STATE = HOLD;
+            HOLD:   if(!rd_rdy)
+                        N_STATE = HOLD;
                     else
                         N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
@@ -1113,13 +1112,87 @@ module dcache(       clk, resetn,
 
 endmodule
 
-module uncache(
+module uncache_im(
+        clk, resetn,
+        //CPU_Pipeline side
+        /*input*/   valid, addr,
+        /*output*/  data_ok, rdata,
+        //AXI-Bus side 
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+);
+
+    input clk;
+    input resetn;
+
+    input valid;
+    input[31:0] addr;
+
+    output data_ok;
+    output[31:0] rdata;
+
+    input rd_rdy;
+    input wr_rdy;
+    input ret_valid;
+    input ret_last;
+    input[31:0] ret_data;
+
+    output rd_req;
+    output wr_req;
+    output[2:0] rd_type;
+    output[2:0] wr_type;
+    output[31:0] rd_addr;
+    output[31:0] wr_addr;
+    output[3:0] wr_wstrb;
+    output[31:0] wr_data;
+
+    reg C_STATE;
+    reg N_STATE;
+
+    parameter DEFAULT = 1'b0;
+    parameter LOAD    = 1'b1;
+
+
+    always@(posedge clk)
+        if(!resetn)
+            C_STATE <= DEFAULT;
+        else
+            C_STATE <= N_STATE;
+
+    always@(C_STATE, rd_rdy, ret_valid, ret_last, valid)
+        case(C_STATE)
+            DEFAULT:    if(valid && rd_rdy)
+                            N_STATE = LOAD;
+                        else
+                            N_STATE = DEFAULT;
+            LOAD:       if(ret_valid && ret_last)
+                            N_STATE = DEFAULT;
+                        else
+                            N_STATE = LOAD;
+            default:    N_STATE = DEFAULT;
+        endcase
+
+    assign data_ok = 
+                    (valid && (C_STATE == LOAD) && ret_valid && ret_last);
+    assign rdata = ret_data;
+
+    assign rd_req = (N_STATE == LOAD);
+    assign wr_req = 1'b0;
+    assign rd_type = 3'b010;
+    assign wr_type = 3'b010;
+    assign rd_addr = addr;
+    assign wr_addr = addr;
+    assign wr_wstrb = 4'd0;
+    assign wr_data = 32'd0;
+endmodule
+
+module uncache_dm(
         clk, resetn,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
         //AXI-Bus side 
-        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
+        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
 
@@ -1140,6 +1213,7 @@ module uncache(
     input ret_valid;
     input ret_last;
     input[31:0] ret_data;
+    input wr_valid;
 
     output rd_req;
     output wr_req;
@@ -1148,7 +1222,7 @@ module uncache(
     output[31:0] rd_addr;
     output[31:0] wr_addr;
     output[3:0] wr_wstrb;
-    output[31:0] wr_data;
+    output reg[31:0] wr_data;
 
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
@@ -1169,7 +1243,7 @@ module uncache(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last)
+    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last, wr_valid)
         case(C_STATE)
             DEFAULT:    if(load && rd_rdy)
                             N_STATE = LOAD;
@@ -1181,13 +1255,16 @@ module uncache(
                             N_STATE = DEFAULT;
                         else
                             N_STATE = LOAD;
-            STORE:      N_STATE = DEFAULT;
+            STORE:      if(wr_valid)
+                            N_STATE = DEFAULT;
+                        else
+                            N_STATE = STORE;
             default:    N_STATE = DEFAULT;
         endcase
 
     assign data_ok = 
                     (load && (C_STATE == LOAD) && ret_valid && ret_last) ||
-                    (store && C_STATE == STORE) ;
+                    (store && (C_STATE == STORE) && wr_valid)  ;
     assign rdata = ret_data;
 
     assign rd_req = (N_STATE == LOAD);
@@ -1197,5 +1274,14 @@ module uncache(
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;
-    assign wr_data = wdata;
+    always@(wstrb, wdata)
+        case(wstrb)
+            4'b0001:wr_data = {4{wdata[7:0]}};
+            4'b0010:wr_data = {4{wdata[7:0]}};
+            4'b0100:wr_data = {4{wdata[7:0]}};
+            4'b1000:wr_data = {4{wdata[7:0]}};
+            4'b0011:wr_data = {2{wdata[15:0]}};
+            4'b1100:wr_data = {2{wdata[15:0]}};
+            default:wr_data = wdata;
+        endcase
 endmodule

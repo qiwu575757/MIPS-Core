@@ -162,3 +162,16 @@ module mux10(WB_MUX2Out, WB_DMOut, WB_MUX2Sel, MUX10Out);
 
 	assign MUX10Out = (WB_MUX2Sel == 3'b100) ? WB_DMOut : WB_MUX2Out;
 endmodule
+
+module mux11(
+	vpn2, alu1out, MUX11_Sel,
+
+	out
+);
+	input [18:0] vpn2, alu1out;
+	input MUX11_Sel;
+
+	output [18:0] out;
+
+	assign out = MUX11_Sel ? vpn2 : alu1out;
+endmodule

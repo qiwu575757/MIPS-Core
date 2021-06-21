@@ -99,6 +99,14 @@
 
 `define eret    6'b011000
 
+//--------------tlb---------------------//
+`define tlb     6'b010000
+
+`define tlbp    6'b001000
+`define tlbr    6'b000001
+`define tlbwi   6'b000010
+`define tlbwr   6'b000110
+`define walt    6'b100000
 
 //---- data memory 's opration----//
 `define Byte_Zero       3'd0//用于加载无符号字节
@@ -143,9 +151,14 @@
 
 //异常、中断类型
 `define Int     5'd0
+`define TLBMod  5'd1
+`define TLBL    5'd2
+`define TLBS    5'd3
 `define AdEL    5'd4
 `define AdES    5'd5
 `define Sys     5'd8
 `define Bp      5'd9
 `define RI      5'd10
+`define Cpu     5'd11
 `define Ov      5'd12
+`define Trap    5'd13

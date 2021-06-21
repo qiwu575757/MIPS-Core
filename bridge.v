@@ -643,7 +643,7 @@ always @(*) begin
 	endcase
 end
 // 
-assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign MEM_dcache_ret_valid = (rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
@@ -656,7 +656,7 @@ assign IF_icache_ret_data = rdata;
 assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
 assign arid = IF_icache_rd_req ? 0: 1;
-assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_req?MEM_dcache_rd_addr   : 0;
+assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
 assign arlen =  MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
 assign arburst = MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
