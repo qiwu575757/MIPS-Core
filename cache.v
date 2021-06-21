@@ -603,13 +603,13 @@ module dcache(       clk, resetn,
         clk, 1, D_Way0_wen, D_addr, D_in, Way0_Dirty
     );
     Dirty_Block D_Way1(
-        clk, 1, D_Way0_wen, D_addr, D_in, Way1_Dirty
+        clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
     );
     Dirty_Block D_Way2(
-        clk, 1, D_Way0_wen, D_addr, D_in, Way2_Dirty
+        clk, 1, D_Way2_wen, D_addr, D_in, Way2_Dirty
     );
     Dirty_Block D_Way3(
-        clk, 1, D_Way0_wen, D_addr, D_in, Way3_Dirty
+        clk, 1, D_Way3_wen, D_addr, D_in, Way3_Dirty
     );
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
@@ -1036,25 +1036,27 @@ module dcache(       clk, resetn,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(replace_index_MB, index, C_STATE, valid, index_RB)
-        if(!valid)
-            VT_addr = index_RB;
-        else if(C_STATE == REFILL)
-            VT_addr = replace_index_MB;
-        else
+    always@(hit_write, index_RB, replace_index_MB, index, C_STATE, valid)
+        if(hit_write) begin
             VT_addr = index;
-    always@(hit_write, index_RB, replace_index_MB)
-        if(hit_write)
             D_addr = index_RB;
-        else
-            D_addr = replace_index_MB;
-    always@(hit_write, index_RB, replace_index_MB, index, C_STATE,valid)
-        if(hit_write||!valid)
             Data_addr = index_RB;
-        else if(C_STATE == REFILL)
+        end
+        else if(C_STATE == REFILL)begin
+            VT_addr = replace_index_MB;
+            D_addr = replace_index_MB;
             Data_addr = replace_index_MB;
-        else
+        end
+        else if(~valid) begin
+            VT_addr = index_RB;
+            D_addr = index_RB;
+            Data_addr = index_RB;
+        end
+        else begin
+            VT_addr = index;
+            D_addr = index;
             Data_addr = index;
+        end
 
     //main FSM
     /*
