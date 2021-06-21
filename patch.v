@@ -1,7 +1,7 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    NPC, PCWr, s0_found,s0_v,s0_pfn,
+    NPC, PCWr, s0_found,s0_v,s0_pfn, IF_uncache_data_ok,
     isStall,TLB_flush,EX_TLB_flush, MEM1_TLB_flush, MEM2_TLB_flush, WB_TLB_flush,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,
@@ -13,6 +13,7 @@ module instr_fetch_pre(
     input s0_found,s0_v;
     input [19:0] s0_pfn;
     input isStall,TLB_flush, EX_TLB_flush, MEM1_TLB_flush,MEM2_TLB_flush, WB_TLB_flush;
+    input IF_uncache_data_ok;
 
     output PF_AdEL,PF_TLB_Exc,PF_TLBRill_Exc,PF_Exception;
     output [4:0] PF_ExcCode;
@@ -41,7 +42,7 @@ module instr_fetch_pre(
 						32'd0;
     assign PF_valid = !isStall&!PF_Exception 
             &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush;
-    assign PF_icache_valid = PF_valid & ~PF_icache_sel;
+    assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
     assign PF_uncache_valid = PF_valid & PF_icache_sel;
     assign TLB_flush_signal = TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush;
 
@@ -54,7 +55,7 @@ module mem1_cache_prep(
     MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel,
     MEM1_Overflow, Temp_M1_Exception, 
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
-    s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc,
+    s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
@@ -74,6 +75,7 @@ module mem1_cache_prep(
     input s1_found,s1_v;
     input s1_d,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc;
     input [19:0] s1_pfn;
+    input MEM_unCache_data_ok;
 
     output[31:0] MEM1_Paddr;
     output MEM1_cache_sel;
@@ -129,7 +131,7 @@ module mem1_cache_prep(
     //assign MEM1_dcache_valid_temp = MEM1_dcache_en && ~MEM1_cache_sel;
     assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
     assign MEM1_dcache_valid = MEM1_dcache_en && ~MEM1_cache_sel
-                 &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush;
+                 &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
 // 1.设置写使能信�???
