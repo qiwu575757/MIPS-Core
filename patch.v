@@ -52,7 +52,7 @@ endmodule
 
 module mem1_cache_prep(
     MEM1_dcache_en,MEM1_eret_flush, 
-    MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel,
+    MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel, MEM1_RFWr,
     MEM1_Overflow, Temp_M1_Exception, 
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
     s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
@@ -76,6 +76,7 @@ module mem1_cache_prep(
     input s1_d,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc;
     input [19:0] s1_pfn;
     input MEM_unCache_data_ok;
+    input MEM1_RFWr;
 
     output[31:0] MEM1_Paddr;
     output MEM1_cache_sel;
@@ -148,7 +149,7 @@ module mem1_cache_prep(
 												4'b1111 ;//sw
 
     always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out or MEM1_DMRd or Temp_M1_ExcCode
-		or MEM1_PC or MEM1_TLB_Exc)
+		or MEM1_PC or MEM1_TLB_Exc or MEM1_RFWr)
 		if (MEM1_Overflow  && !Temp_M1_Exception) begin
 		MEM1_ExcCode <= `Ov;
 		MEM1_Exception <= 1'b1;
@@ -160,7 +161,7 @@ module mem1_cache_prep(
 		MEM1_Exception <= 1'b1;
 		MEM1_badvaddr <= MEM1_ALU1Out;
 		end
-		else if (MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
+		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
 		MEM1_ExcCode <= `AdEL;
 		MEM1_Exception <= 1'b1;
