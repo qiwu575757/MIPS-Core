@@ -351,13 +351,13 @@ module EX_MEM1(
 endmodule
 
 module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD, 
-        MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWr, Exception,
-        eret_flush, dcache_valid, dCache_en, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
+        MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWen, Exception,
+        eret_flush, uncache_valid, DMen, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
 		MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
-        MEM2_DMSel, MEM2_cache_sel, MEM2_DMWr, MEM2_Exception, MEM2_eret_flush,
-		MEM2_dcache_valid, MEM2_dCache_en,
+        MEM2_DMSel, MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
+		MEM2_uncache_valid, MEM2_DMen,
         MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, MEM2_DMRd, MEM2_CP0Rd,
 		MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen
 		);
@@ -375,11 +375,11 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 	input[31:0] CP0Out;
 	input[2:0] DMSel;
 	input cache_sel;
-	input DMWr;
+	input DMWen;
 	input Exception;
 	input eret_flush;
-	input dcache_valid;
-	input dCache_en;
+	input uncache_valid;
+	input DMen;
 	input[31:0] Paddr;
 	input[3:0] MEM1_dCache_wstrb;
 	input[31:0] GPR_RT;
@@ -396,11 +396,11 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 	output reg[31:0] MEM2_CP0Out;
 	output reg[2:0] MEM2_DMSel;
 	output reg MEM2_cache_sel;
-	output reg MEM2_DMWr;
+	output reg MEM2_DMWen;
 	output reg MEM2_Exception;
 	output reg MEM2_eret_flush;
-	output reg MEM2_dcache_valid;
-	output reg MEM2_dCache_en;
+	output reg MEM2_uncache_valid;
+	output reg MEM2_DMen;
 	output reg[31:0] MEM2_Paddr;
 	output reg[3:0] MEM2_unCache_wstrb;
 	output reg[31:0] MEM2_GPR_RT;
@@ -419,11 +419,11 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 			MEM2_CP0Out <= 32'd0;
 			MEM2_DMSel <= 3'd0;
 			MEM2_cache_sel <= 1'b0;
-			MEM2_DMWr <= 1'b0;
+			MEM2_DMWen <= 1'b0;
 			MEM2_Exception <= 1'b0;
 			MEM2_eret_flush <= 1'b0;
-			MEM2_dcache_valid <= 1'b0;
-			MEM2_dCache_en <= 1'b0;
+			MEM2_uncache_valid <= 1'b0;
+			MEM2_DMen <= 1'b0;
 			MEM2_Paddr <= 32'd0;
 			MEM2_unCache_wstrb <= 4'd0;
 			MEM2_GPR_RT <= 32'd0;
@@ -443,11 +443,11 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 			MEM2_CP0Out <= CP0Out;
 			MEM2_DMSel <= DMSel;
 			MEM2_cache_sel <= cache_sel;
-			MEM2_DMWr <= DMWr;
+			MEM2_DMWen <= DMWen;
 			MEM2_Exception <= Exception;
 			MEM2_eret_flush <= eret_flush;
-			MEM2_dcache_valid <= dcache_valid;
-			MEM2_dCache_en <= dCache_en;
+			MEM2_uncache_valid <= uncache_valid;
+			MEM2_DMen <= DMen;
 			MEM2_Paddr <= Paddr;
 			MEM2_unCache_wstrb <= MEM1_dCache_wstrb;
 			MEM2_GPR_RT <= GPR_RT;
