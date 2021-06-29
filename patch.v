@@ -60,7 +60,7 @@ module mem1_cache_prep(
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
     MEM1_Exception,MEM1_badvaddr,MEM1_TLBRill_Exc,MEM1_TLB_Exc,
-    MEM1_Paddr
+    MEM1_uncache_valid, MEM1_DMen
     );
     input MEM1_dcache_en;
     input MEM1_eret_flush;
@@ -87,6 +87,8 @@ module mem1_cache_prep(
     output reg MEM1_Exception;
     output reg[31:0] MEM1_badvaddr;
     output  MEM1_TLBRill_Exc,MEM1_TLB_Exc;
+    output MEM1_uncache_valid;
+    output MEM1_DMen;
 
     wire data_mapped;
     wire valid;
@@ -133,6 +135,9 @@ module mem1_cache_prep(
     assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
     assign MEM1_dcache_valid = MEM1_dcache_en && ~MEM1_cache_sel
                  &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
+
+    assign MEM1_uncache_valid = MEM1_dcache_en && MEM1_cache_sel&!MEM1_Exception&!MEM1_eret_flush;
+    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
 // 1.设置写使能信�???
@@ -285,27 +290,6 @@ module cache_select_im(
 
 endmodule
 
-module mem2_cache_prep(
-    MEM2_cache_sel, MEM2_DMWr, MEM2_Exception, MEM2_eret_flush, MEM2_dCache_en, MEM2_dcache_valid,
-
-    DMen, DMWen_uncache,  uncache_valid
-    );
-    input MEM2_cache_sel;
-    input MEM2_DMWr;
-    input MEM2_Exception;
-    input MEM2_eret_flush;
-    input MEM2_dcache_valid;
-    input MEM2_dCache_en;
-
-    output DMen;
-    output DMWen_uncache;
-    output uncache_valid;
-
-    assign DMen = MEM2_cache_sel ? uncache_valid : MEM2_dcache_valid;
-    assign DMWen_uncache = MEM2_DMWr && !MEM2_Exception && !MEM2_eret_flush;
-    assign uncache_valid = MEM2_dCache_en && !MEM2_Exception && !MEM2_eret_flush && MEM2_cache_sel;
-
-endmodule
 
 module debug(MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
         debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
