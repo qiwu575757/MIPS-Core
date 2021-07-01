@@ -2,32 +2,55 @@ module  bridge_dm(
 	addr2,
 	Din,
 	DMSel2,
+	MEM2_LoadOp,
+	MEM2_GPR_RT,
 
 	dout
 );
 	input [31:0] addr2;
 	input [31:0] Din;
 	input [2:0] DMSel2;
-	output [31:0] dout;
+	input [1:0] MEM2_LoadOp;
+	input [31:0] MEM2_GPR_RT;
 
-assign dout=
-				DMSel2==3'b011 ?  // zero
-				(  	addr2[1:0]==2'b00 ? {24'b0,Din[7:0]} :
-					addr2[1:0]==2'b01 ? {24'b0,Din[15:8]} :
-					addr2[1:0]==2'b10 ? {24'b0,Din[23:16]} :
-									   {24'b0,Din[31:24]}) :
-				DMSel2==3'b100 ?
-				(   addr2[1:0]==2'b00 ? {{24{Din[ 7]}},Din[ 7: 0]} :
-					addr2[1:0]==2'b01 ? {{24{Din[15]}},Din[15: 8]} :
-					addr2[1:0]==2'b10 ? {{24{Din[23]}},Din[23:16]} :
-									   {{24{Din[31]}},Din[31:24]}) :
-				DMSel2==3'b101 ?
-				( 	addr2[1]==1'b0 	 ? {16'h0000,Din[15:0]}  :
-								 	   {16'h0000,Din[31:16]})  :
-				DMSel2==3'b110 ?
-				(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
-							    	   {{16{Din[31]}},Din[31:16]} ) :
-																Din;
+	output reg [31:0] dout;
+
+always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
+	case (MEM2_LoadOp)
+		2'b00 :
+			dout = 
+				(DMSel2==3'b011) ?  // zero
+					(  	addr2[1:0]==2'b00 ? {24'b0,Din[7:0]} :
+						addr2[1:0]==2'b01 ? {24'b0,Din[15:8]} :
+						addr2[1:0]==2'b10 ? {24'b0,Din[23:16]} :
+										   {24'b0,Din[31:24]}) :
+				(DMSel2==3'b100) ?
+					(   addr2[1:0]==2'b00 ? {{24{Din[ 7]}},Din[ 7: 0]} :
+						addr2[1:0]==2'b01 ? {{24{Din[15]}},Din[15: 8]} :
+						addr2[1:0]==2'b10 ? {{24{Din[23]}},Din[23:16]} :
+										   {{24{Din[31]}},Din[31:24]}) :
+				(DMSel2==3'b101) ?
+					( 	addr2[1]==1'b0 	 ? {16'h0000,Din[15:0]}  :
+									 	   {16'h0000,Din[31:16]})  :
+				(DMSel2==3'b110) ?
+					(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
+								    	   {{16{Din[31]}},Din[31:16]} ) :
+																	Din;
+		2'b10 :				//LWL
+			dout = 
+				(addr2[1:0] == 2'b00) ? {Din[7:0],MEM2_GPR_RT[23:0]} :
+				(addr2[1:0] == 2'b01) ? {Din[15:0],MEM2_GPR_RT[15:0]} :
+				(addr2[1:0] == 2'b10) ? {Din[23:0],MEM2_GPR_RT[7:0]} :
+										Din[31:0];
+		2'b11 :				//LWR
+			dout = 
+				(addr2[1:0] == 2'b00) ? Din[31:0]:
+				(addr2[1:0] == 2'b01) ? {MEM2_GPR_RT[31:24],Din[31:8]} :
+				(addr2[1:0] == 2'b10) ? {MEM2_GPR_RT[31:16],Din[31:16]} :
+										{MEM2_GPR_RT[31:8],Din[31:24]};
+	endcase
+
+end
 													
 	
 endmodule
