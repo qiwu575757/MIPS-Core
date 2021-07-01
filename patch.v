@@ -56,11 +56,12 @@ module mem1_cache_prep(
     MEM1_Overflow, Temp_M1_Exception, 
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
     s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
+    MEM1_LoadOp,MEM1_StoreOp,MEM1_GPR_RT,Interrupt,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
     MEM1_Exception,MEM1_badvaddr,MEM1_TLBRill_Exc,MEM1_TLB_Exc,
-    MEM1_uncache_valid, MEM1_DMen
+    MEM1_uncache_valid, MEM1_DMen,MEM1_wdata
     );
     input MEM1_dcache_en;
     input MEM1_eret_flush;
@@ -77,6 +78,9 @@ module mem1_cache_prep(
     input [19:0] s1_pfn;
     input MEM_unCache_data_ok;
     input MEM1_RFWr;
+    input [1:0] MEM1_LoadOp,MEM1_StoreOp;
+    input [31:0] MEM1_GPR_RT;
+    input Interrupt;
 
     output[31:0] MEM1_Paddr;
     output MEM1_cache_sel;
@@ -89,6 +93,7 @@ module mem1_cache_prep(
     output  MEM1_TLBRill_Exc,MEM1_TLB_Exc;
     output MEM1_uncache_valid;
     output MEM1_DMen;
+    output reg [31:0] MEM1_wdata;
 
     wire data_mapped;
     wire valid;
@@ -141,32 +146,86 @@ module mem1_cache_prep(
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
 // 1.设置写使能信�???
-    assign MEM1_dCache_wstrb=(~DMWen_dcache)?4'b0:
-							(MEM1_DMSel==3'b000)?
-								(MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
-								MEM1_Paddr[1:0]==2'b01 ? 4'b0010 :
-								MEM1_Paddr[1:0]==2'b10 ? 4'b0100 :
-								 				   4'b1000) :
-							(MEM1_DMSel==3'b001)?   // sh
-								(MEM1_Paddr[1]==1'b0 ? 4'b0011 :
-								  				4'b1100 ):
-		
-												4'b1111 ;//sw
+    assign MEM1_dCache_wstrb=
+                    (~DMWen_dcache)         ?   4'b0  :
+                        (MEM1_StoreOp == 2'b00)  ? 
+                                (
+                                    (MEM1_DMSel==3'b000)    ?
+                                    (
+                                        MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
+                                        MEM1_Paddr[1:0]==2'b01 ? 4'b0010 :
+                                        MEM1_Paddr[1:0]==2'b10 ? 4'b0100 :
+                                                                4'b1000
+                                    ) :
+                                    (MEM1_DMSel==3'b001)    ?   // sh
+                                    (
+                                        MEM1_Paddr[1]==1'b0 ? 4'b0011 :
+                                                    4'b1100 
+                                    )   : 4'b1111
+                                )  :    //sw
+                        (MEM1_StoreOp == 2'b10)   ?     //SWL
+                                (
+                                    MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
+                                    MEM1_Paddr[1:0]==2'b01 ? 4'b0011 :
+                                    MEM1_Paddr[1:0]==2'b10 ? 4'b0111 :
+                                                    4'b1111 
+                                ) :                     //SWR
+                                (
+                                    MEM1_Paddr[1:0]==2'b00 ? 4'b1111 :
+                                    MEM1_Paddr[1:0]==2'b01 ? 4'b1110 :
+                                    MEM1_Paddr[1:0]==2'b10 ? 4'b1100 :
+                                                    4'b1000 
+                                ) ;
+    always @(MEM1_StoreOp,MEM1_dCache_wstrb,MEM1_GPR_RT) begin
+        if ( MEM1_StoreOp == 2'b10)
+        begin
+            case (MEM1_dCache_wstrb)
+                4'b0001 :
+                    MEM1_wdata = {4{MEM1_GPR_RT[31:24]}};
+                4'b0011 :
+                    MEM1_wdata = {2{MEM1_GPR_RT[31:16]}};
+                4'b0111 :
+                    MEM1_wdata = {8'b0,MEM1_GPR_RT[31:8]};
+                default :
+                    MEM1_wdata = MEM1_GPR_RT[31:0];
+            endcase
+        end
+        else if ( MEM1_StoreOp == 2'b11)
+        begin
+            case (MEM1_dCache_wstrb)
+                4'b1000 :
+                    MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
+                4'b1100 :
+                    MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
+                4'b1110 :
+                    MEM1_wdata = {MEM1_GPR_RT[23:0],8'b0};
+                default :
+                    MEM1_wdata = MEM1_GPR_RT[31:0];
+            endcase
+        end
+        else
+            MEM1_wdata = MEM1_GPR_RT[31:0];
+    end
 
     always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out or MEM1_DMRd or Temp_M1_ExcCode
 		or MEM1_PC or MEM1_TLB_Exc or MEM1_RFWr)
-		if (MEM1_Overflow  && !Temp_M1_Exception) begin
+        if (Interrupt) begin
+			MEM1_Exception <= 1'b1;
+			MEM1_ExcCode <= `Int;
+            MEM1_badvaddr <= 32'd0;
+		end
+		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
 		MEM1_ExcCode <= `Ov;
 		MEM1_Exception <= 1'b1;
 		MEM1_badvaddr <= 32'd0;
 		end
-		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
-			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
+		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00)&& ( MEM1_DMSel == 3'b010 
+        && MEM1_ALU1Out[1:0] != 2'b00 || MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
 		MEM1_ExcCode <= `AdES;
 		MEM1_Exception <= 1'b1;
 		MEM1_badvaddr <= MEM1_ALU1Out;
 		end
-		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
+		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00) &&(MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
 		MEM1_ExcCode <= `AdEL;
 		MEM1_Exception <= 1'b1;
