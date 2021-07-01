@@ -1,3 +1,4 @@
+ `include "MacroDef.v"
 module mips(
     ext_int_in   ,   //high active
 
@@ -149,8 +150,8 @@ module mips(
 	wire IF_icache_wr_rdy;
     wire IF_iCache_read_en;
 
-	wire IF_Exception;
-	wire [4:0] IF_ExcCode;
+	wire IF_Exception, Temp_IF_Exception;
+	wire [4:0] IF_ExcCode, Temp_IF_ExcCode;
 	wire IF_TLBRill_Exc;
 	wire IF_TLB_Exc;
 	wire IF_valid;
@@ -224,6 +225,8 @@ module mips(
 	wire TLB_flush;
 	wire TLB_writeen;
 	wire TLB_readen;
+    wire [1:0] LoadOp;
+    wire [1:0] StoreOp;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -275,6 +278,8 @@ module mips(
 	wire EX_TLB_writeen;
 	wire EX_TLB_readen;
     wire EX_TLB_flush;
+    wire [1:0] EX_LoadOp;
+    wire [1:0] EX_StoreOp;
 	//-------------MEM1---------------//
     wire MEM1_eret_flush;
     wire MEM1_Exception;
@@ -330,6 +335,9 @@ module mips(
     wire Temp_MEM1_TLB_Exc,Temp_MEM1_TLBRill_Exc;
     wire MEM1_uncache_valid;
     wire MEM1_DMen;
+    wire [1:0] MEM1_LoadOp;
+    wire [1:0] MEM1_StoreOp;
+    wire [31:0] MEM1_wdata;
 	//-------------MEM2---------------//
     wire MEM2_RFWr;
     wire[4:0] MEM2_RD;
@@ -357,6 +365,8 @@ module mips(
     wire MEM2_TLB_writeen;
 	wire MEM2_TLB_readen;
 	wire MEM2_TLB_flush;
+    wire [1:0] MEM2_LoadOp;
+    wire [31:0] MEM2_wdata;
     //--------------WB----------------//
     wire[31:0] WB_PC;
 	wire[31:0] WB_MUX2Out;
@@ -524,7 +534,8 @@ cache_select_im U_CACHE_SELECT_IM(
     IF_wr_addr, IF_wr_wstrb
                 );
 
-
+    // assign IF_ExcCode = Interrupt ? `Int : Temp_IF_ExcCode;
+    // assign IF_Exception = Interrupt&Temp_IF_Exception;
     //--------------ID----------------//
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush), 
@@ -584,7 +595,7 @@ ctrl U_CTRL(
 		.ID_Exception(ID_Exception), .ID_ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), .CP0Rd(CP0Rd), .start(start),
 		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en),.ID_tlb_searchen(ID_tlb_searchen),
 		.ID_MUX11Sel(ID_MUX11Sel),.ID_MUX12Sel(ID_MUX12Sel),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),
-		.TLB_readen(TLB_readen)
+		.TLB_readen(TLB_readen),.LoadOp(LoadOp),.StoreOp(StoreOp)
 	);
 
 	//--------------EX----------------//
@@ -597,7 +608,8 @@ ID_EX U_ID_EX(
 		.Exception(ID_Exception), .ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), 
 		.CP0Addr({ID_Instr[15:11], ID_Instr[2:0]}), .CP0Rd(CP0Rd), .start(start & ~EX_isBusy),.ID_dcache_en(MUX7Out[3]),
 		.ID_TLBRill_Exc(ID_TLBRill_Exc),.ID_tlb_searchen(ID_tlb_searchen),.ID_MUX11Sel(ID_MUX11Sel),.ID_MUX12Sel(ID_MUX12Sel),
-		.ID_TLB_Exc(ID_TLB_Exc),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),.TLB_readen(TLB_readen),
+		.ID_TLB_Exc(ID_TLB_Exc),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),.TLB_readen(TLB_readen),.LoadOp(LoadOp),
+        .StoreOp(StoreOp),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception), 
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -608,7 +620,8 @@ ID_EX U_ID_EX(
 		.EX_GPR_RS(EX_GPR_RS), .EX_GPR_RT(EX_GPR_RT), .EX_Imm32(EX_Imm32), .EX_CP0Addr(EX_CP0Addr),
 		.EX_CP0Rd(EX_CP0Rd), .EX_start(EX_start),.EX_dcache_en(EX_dcache_en),.EX_TLBRill_Exc(EX_TLBRill_Exc),
 		.EX_tlb_searchen(EX_tlb_searchen),.EX_MUX11Sel(EX_MUX11Sel),.EX_MUX12Sel(EX_MUX12Sel),
-		.EX_TLB_Exc(EX_TLB_Exc),.EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),.EX_TLB_readen(EX_TLB_readen)
+		.EX_TLB_Exc(EX_TLB_Exc),.EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),.EX_TLB_readen(EX_TLB_readen),
+        .EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp)
 	);
 
 mux1 U_MUX1(
@@ -660,6 +673,7 @@ EX_MEM1 U_EX_MEM1(
 		.Overflow(Overflow),.EX_TLBRill_Exc(EX_TLBRill_Exc),.EX_tlb_searchen(EX_tlb_searchen),
         .EX_MUX11Sel(EX_MUX11Sel),.EX_MUX12Sel(EX_MUX12Sel),.EX_TLB_Exc(EX_TLB_Exc),
         .EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),.EX_TLB_readen(EX_TLB_readen),
+        .EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush), 
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode), 
@@ -669,7 +683,7 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_dcache_en(MEM1_dcache_en),.MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc),
         .MEM1_tlb_searchen(MEM1_tlb_searchen),.MEM1_MUX11Sel(MEM1_MUX11Sel),.MEM1_MUX12Sel(MEM1_MUX12Sel),
         .MEM1_TLB_Exc(Temp_MEM1_TLB_Exc),.MEM1_TLB_flush(MEM1_TLB_flush),.MEM1_TLB_writeen(MEM1_TLB_writeen),
-        .MEM1_TLB_readen(MEM1_TLB_readen)
+        .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp)
 	);
 
 
@@ -705,17 +719,18 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
     MEM1_Overflow, Temp_M1_Exception,
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
     s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
+    MEM1_LoadOp,MEM1_StoreOp,MEM1_GPR_RT,Interrupt,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
     MEM1_Exception,MEM1_badvaddr,MEM1_TLBRill_Exc,MEM1_TLB_Exc,
-    MEM1_uncache_valid, MEM1_DMen
+    MEM1_uncache_valid, MEM1_DMen,MEM1_wdata
 	);
 
 dcache U_DCACHE(.clk(clk), .resetn(rst),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_Paddr[13:6]), 
-    .tag(MEM1_Paddr[31:14]), .offset(MEM1_Paddr[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_GPR_RT), 
+    .tag(MEM1_Paddr[31:14]), .offset(MEM1_Paddr[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_wdata), 
     .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), 
@@ -734,6 +749,7 @@ MEM1_MEM2 U_MEM1_MEM2(
         .Paddr(MEM1_Paddr), .MEM1_dCache_wstrb(MEM1_dCache_wstrb), .GPR_RT(MEM1_GPR_RT),
         .DMRd(MEM1_DMRd), .CP0Rd(MEM1_CP0Rd),.MEM1_TLB_flush(MEM1_TLB_flush),
         .MEM1_TLB_writeen(MEM1_TLB_writeen),.MEM1_TLB_readen(MEM1_TLB_readen),
+        .MEM1_LoadOp(MEM1_LoadOp),.MEM1_wdata(MEM1_wdata),
 
 		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel), 
 		.MEM2_RD(MEM2_RD), .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),
@@ -743,7 +759,8 @@ MEM1_MEM2 U_MEM1_MEM2(
         .MEM2_uncache_valid(MEM2_uncache_valid), .MEM2_DMen(MEM2_DMen),
         .MEM2_Paddr(MEM2_Paddr), .MEM2_unCache_wstrb(MEM2_unCache_wstrb), .MEM2_GPR_RT(MEM2_GPR_RT),
         .MEM2_DMRd(MEM2_DMRd), .MEM2_CP0Rd(MEM2_CP0Rd),.MEM2_TLB_flush(MEM2_TLB_flush),
-        .MEM2_TLB_writeen(MEM2_TLB_writeen),.MEM2_TLB_readen(MEM2_TLB_readen)
+        .MEM2_TLB_writeen(MEM2_TLB_writeen),.MEM2_TLB_readen(MEM2_TLB_readen),.MEM2_LoadOp(MEM2_LoadOp),
+        .MEM2_wdata(MEM2_wdata)
 	);
 
 mux2 U_MUX2(
@@ -755,7 +772,7 @@ mux2 U_MUX2(
 uncache_dm U_UNCACHE_DM(
         .clk(clk), .resetn(rst),
         .valid(MEM2_uncache_valid), .op(DMWen_uncache), .addr(MEM2_Paddr), .wstrb(MEM2_unCache_wstrb), 
-        .wdata(MEM2_GPR_RT), .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
+        .wdata(MEM2_wdata), .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
         .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid), 
         .ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),.wr_valid(bvalid),
         .rd_req(MEM_uncache_rd_req), .wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
@@ -767,6 +784,8 @@ bridge_dm U_BRIDGE_DM(
 		 .addr2(MEM2_ALU1Out),
 		 .DMSel2(MEM2_DMSel),
 		 .Din(cache_Out),
+         .MEM2_LoadOp(MEM2_LoadOp),
+         .MEM2_GPR_RT(MEM2_GPR_RT),
 
 		 .dout(DMOut)
 	);
