@@ -587,7 +587,7 @@ ctrl U_CTRL(
 		.clk(clk), .rst(rst), .OP(ID_Instr[31:26]), .Funct(ID_Instr[5:0]), .rt(ID_Instr[20:16]), .CMPOut1(CMPOut1), 
 		.CMPOut2(CMPOut2), .rs(ID_Instr[25:21]), .EXE_isBranch(EX_isBranch), .Interrupt(Interrupt), 
 		.Temp_ID_Excetion(Temp_ID_Excetion), .IF_Flush(IF_Flush),.Temp_ID_ExcCode(Temp_ID_ExcCode),
-		.ID_TLB_Exc(ID_TLB_Exc),
+		.ID_TLB_Exc(ID_TLB_Exc),.rd(ID_Instr[15:11]),
 
 		.MUX1Sel(MUX1Sel), .MUX2Sel(MUX2_6Sel), .MUX3Sel(MUX3Sel), .RFWr(RFWr), .RHLWr(RHLWr), .DMWr(DMWr), .DMRd(DMRd), 
 		.NPCOp(NPCOp), .EXTOp(EXTOp), .ALU1Op(ALU1Op), .ALU1Sel(ALU1Sel), .ALU2Op(ALU2Op), .RHLSel_Rd(RHLSel_Rd), 
@@ -697,8 +697,8 @@ CP0 U_CP0(
 		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT), 
 		.MEM_Exc(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush), .MEM_bd(MEM1_isBD),
         .ext_int_in(ext_int_in), .MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
-		.MEM_PC(MEM1_PC),.EntryHi_Wren(WB_TLB_readen),.EntryLo0_Wren(WB_TLB_readen),
-		.EntryLo1_Wren(WB_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
+		.MEM_PC(MEM1_PC),.EntryHi_Wren(MEM1_TLB_readen),.EntryLo0_Wren(MEM1_TLB_readen),
+		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_TLB_readen),.s1_found(s1_found),
     	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),.BadVAddr_Wren(MEM1_TLB_Exc),
 		.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),.Index_in({!s1_found,27'b0,s1_index}),
 		
@@ -848,7 +848,7 @@ tlb U_TLB(
     s1_v,   
     
     //write port
-    WB_TLB_writeen,//we, write enable
+    MEM1_TLB_writeen,//we, write enable
     Index_out[3:0],//w_index,
     EntryHi_out[31:13],		//w_vpn2,
     EntryHi_out[7:0],		//w_asid,
