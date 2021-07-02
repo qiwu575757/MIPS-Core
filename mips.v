@@ -688,7 +688,7 @@ EX_MEM1 U_EX_MEM1(
 
 
 mux11 U_MUX11(
-	.vpn2(s_vpn2),.alu1out(MEM1_ALU1Out[31:13]),.MUX11_Sel(MEM1_MUX11Sel),
+	.vpn2(EntryHi_out[31:13]),.alu1out(MEM1_ALU1Out[31:13]),.MUX11_Sel(MEM1_MUX11Sel),
 
 	.out(s1_vpn2)
 );
