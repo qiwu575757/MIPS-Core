@@ -2,11 +2,12 @@
 
  module ctrl(
 	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
- 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,
+ 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
-		CP0Rd, start, RHL_visit,dcache_en,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen
+		CP0Rd, start, RHL_visit,dcache_en,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
+		LoadOp,StoreOp
 	);
 	input clk;
 	input rst;
@@ -14,6 +15,7 @@
 	input [5:0] Funct;
 	input [4:0] rs;
 	input [4:0] rt;
+	input [4:0] rd;
 	input CMPOut1;
 	input [1:0] CMPOut2;
 	input EXE_isBranch;
@@ -53,6 +55,7 @@
 	output ID_MUX12Sel;
 	output reg ID_tlb_searchen;
 	output TLB_flush,TLB_readen,TLB_writeen;
+	output reg [1:0] LoadOp,StoreOp;
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
@@ -85,11 +88,7 @@
 
 	always @(OP or Funct or ri or rst or IF_Flush
 	or Temp_ID_Excetion or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
-		if (Interrupt) begin
-			ID_Exception <= 1'b1;
-			ID_ExcCode <= `Int;
-		end
-		else if (Temp_ID_Excetion) begin
+		if (Temp_ID_Excetion) begin
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= Temp_ID_ExcCode;
 		end
@@ -182,18 +181,20 @@
 			6'b001010: RFWr <= 1;		/* SLTI */
 			6'b001011: RFWr <= 1;		/* SLTIU */
 			6'b000001: 
-			if (rt == 5'b10001)
-				RFWr <= 1;		/* BGEZAL */
-			else if (rt == 5'b10000)
-				RFWr <= 1;		/* BLTZAL */
-			else
-				RFWr <= 0;
+				if (rt == 5'b10001)
+					RFWr <= 1;		/* BGEZAL */
+				else if (rt == 5'b10000)
+					RFWr <= 1;		/* BLTZAL */
+				else
+					RFWr <= 0;
 			6'b000011: RFWr <= 1;		/* JAL */
 			6'b100100: RFWr <= 1;		/* LBU */
 			6'b100000: RFWr <= 1;		/* LB */
 			6'b100101: RFWr <= 1;		/* LHU */
 			6'b100001: RFWr <= 1;		/* LH */
 			6'b100011: RFWr <= 1;		/* LW */
+			6'b100010: RFWr <= 1;		/* LWL */
+			6'b100110: RFWr <= 1;		/* LWR */
 			`cop0:
 			if (rs == `mfc0)
 				RFWr <= 1;
@@ -239,6 +240,8 @@
 			6'b101000: DMWr <= 1;	/* SB */
 			6'b101001: DMWr <= 1;	/* SH */
 			6'b101011: DMWr <= 1;	/* SW */
+			6'b101010: DMWr <= 1;	/* SWL */
+			6'b101110: DMWr <= 1;	/* SWR */
 			default: DMWr <= 0;
 		endcase
 	end
@@ -250,6 +253,8 @@
 			6'b100101: DMRd <= 1;		/* LHU */
 			6'b100001: DMRd <= 1;		/* LH */
 			6'b100011: DMRd <= 1;		/* LW */
+			6'b100010: DMRd <= 1;		/* LWL */
+			6'b100110: DMRd <= 1;		/* LWR */
 			default: DMRd <= 0;
 		endcase
 	end
@@ -293,11 +298,16 @@
 			6'b101000: ALU1Op <= 4'b0000;		/* SB */
 			6'b101001: ALU1Op <= 4'b0000;		/* SH */
 			6'b101011: ALU1Op <= 4'b0000;		/* SW */
+			6'b101010: ALU1Op <= 4'b0000;		/* SWL */
+			6'b101110: ALU1Op <= 4'b0000;		/* SWR */
 			6'b100100: ALU1Op <= 4'b0000;		/* LBU */
 			6'b100000: ALU1Op <= 4'b0000;		/* LB */
 			6'b100101: ALU1Op <= 4'b0000;		/* LHU */
 			6'b100001: ALU1Op <= 4'b0000;		/* LH */
 			6'b100011: ALU1Op <= 4'b0000;		/* LW */
+			6'b100010: ALU1Op <= 4'b0000;		/* LWL */
+			6'b100110: ALU1Op <= 4'b0000;		/* LWR */
+
 			default: ALU1Op <= 4'b1111;
 		endcase
 	end
@@ -389,11 +399,15 @@
 			6'b101000: EXTOp <= 2'b01;	      	/* SB */
 			6'b101001: EXTOp <= 2'b01;	      	/* SH */
 			6'b101011: EXTOp <= 2'b01;	   		/* SW */
+			6'b101010: EXTOp <= 2'b01;			/* SWL */
+			6'b101110: EXTOp <= 2'b01;			/* SWR */
 			6'b100100: EXTOp <= 2'b01;	  		/* LBU */
 			6'b100000: EXTOp <= 2'b01;	  		/* LB */
 			6'b100101: EXTOp <= 2'b01;	   		/* LHU */
 			6'b100001: EXTOp <= 2'b01;	   		/* LH */
 			6'b100011: EXTOp <= 2'b01;	        /* LW */
+			6'b100010: EXTOp <= 2'b01;			/* LWL */
+			6'b100110: EXTOp <= 2'b01;			/* LWR */
 			default: EXTOp <= 2'b00;
 		endcase
 	end
@@ -480,6 +494,8 @@
 			6'b100000: MUX2Sel <= 3'b100;		/* LB */
 			6'b100100: MUX2Sel <= 3'b100;		/* LBU */
 			6'b100001: MUX2Sel <= 3'b100;		/* LH */
+			6'b100010: MUX2Sel <= 3'b100;		/* LWL */
+			6'b100110: MUX2Sel <= 3'b100;		/* LWR */
 			6'b100101: MUX2Sel <= 3'b100;		/* LHU */
 			6'b100011: MUX2Sel <= 3'b100;		/* LW */
 			6'b000001: MUX2Sel <= 3'b011;		/* BGEZAL or BLTZAL */
@@ -511,7 +527,7 @@
 			6'b100000: DMSel <= 3'b100;		/* LB */
 			6'b100101: DMSel <= 3'b101;		/* LHU */
 			6'b100001: DMSel <= 3'b110;		/* LH */
-			default:   DMSel <= 3'b111;		/* LW */
+			default:   DMSel <= 3'b111;		/* LW LWL LWR */
 		endcase
 	end
 
@@ -520,11 +536,15 @@
 			6'b101000: dcache_en<= 1'b1;	      	/* SB */
 			6'b101001: dcache_en<= 1'b1;	      	/* SH */
 			6'b101011: dcache_en<= 1'b1;	   		/* SW */
+			6'b101010: dcache_en<= 1'b1;			/* SWL */
+			6'b101110: dcache_en<= 1'b1;			/* SWR */
 			6'b100100: dcache_en<= 1'b1;	  		/* LBU */
 			6'b100000: dcache_en<= 1'b1;	  		/* LB */
 			6'b100101: dcache_en<= 1'b1;	   		/* LHU */
 			6'b100001: dcache_en<= 1'b1;	   		/* LH */
 			6'b100011: dcache_en<= 1'b1;	        /* LW */
+			6'b100010: dcache_en<= 1'b1;			/* LWL */
+			6'b100110: dcache_en<= 1'b1;			/* LWR */
 			default: dcache_en <= 1'b0;
 	endcase
 	end
@@ -545,10 +565,27 @@
 	//MUX12 for select badvaddr from the PC and ALU1out
 	assign ID_MUX12Sel = ID_TLB_Exc;
 
-	////used for the TLBR ,TLBWI, to clear the instrs after the two instr
-	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi));
+	////used for the TLBR ,TLBWI or mtc0 entryHi, to clear the instrs after the two instr
+	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi)) || (CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b01010_000);
 
 	assign TLB_readen = ( OP == `tlb && (Funct == `tlbr));
 	assign TLB_writeen = ( OP == `tlb && (Funct == `tlbwi));
+
+	always @( OP ) begin
+		case (OP)
+			6'b100010: LoadOp <= 2'b10;			/* LWL */
+			6'b100110: LoadOp <= 2'b11;			/* LWR */
+			default :  LoadOp <= 2'b0;	
+		endcase
+	end
+
+	always @( OP ) begin
+		case (OP)
+			6'b101010: StoreOp <= 2'b10;			/* SWL */
+			6'b101110: StoreOp <= 2'b11;			/* SWR */
+			default :  StoreOp <= 2'b00;
+		endcase
+	end
+
 
 endmodule
