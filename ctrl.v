@@ -2,7 +2,7 @@
 
  module ctrl(
 	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
- 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,
+ 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
@@ -15,6 +15,7 @@
 	input [5:0] Funct;
 	input [4:0] rs;
 	input [4:0] rt;
+	input [4:0] rd;
 	input CMPOut1;
 	input [1:0] CMPOut2;
 	input EXE_isBranch;
@@ -564,8 +565,8 @@
 	//MUX12 for select badvaddr from the PC and ALU1out
 	assign ID_MUX12Sel = ID_TLB_Exc;
 
-	////used for the TLBR ,TLBWI, to clear the instrs after the two instr
-	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi));
+	////used for the TLBR ,TLBWI or mtc0 entryHi, to clear the instrs after the two instr
+	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi)) || (CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b01010_000);
 
 	assign TLB_readen = ( OP == `tlb && (Funct == `tlbr));
 	assign TLB_writeen = ( OP == `tlb && (Funct == `tlbwi));
