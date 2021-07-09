@@ -14,8 +14,8 @@ module icache(       clk, resetn, exception,
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
-    input[17:0] tag;                //CPU address[31:14]
-    input[7:0] index;               //CPU address[13:6]
+    input[19:0] tag;                //CPU address[31:14]
+    input[5:0] index;               //CPU address[13:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     output addr_ok;                 //to show address and data is received by Cache 
     output data_ok;                 //to show load or store operation is done
@@ -46,25 +46,25 @@ module icache(       clk, resetn, exception,
         Total memory: 64KB
     */
 
-    reg[7:0] VT_addr;
-    reg[7:0] Data_addr;
+    reg[5:0] VT_addr;
+    reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
     wire VT_Way2_wen;
     wire VT_Way3_wen;
-    wire[18:0] VT_in;
-    wire[18:0] VT_Way0_out;
-    wire[18:0] VT_Way1_out;
-    wire[18:0] VT_Way2_out;
-    wire[18:0] VT_Way3_out;
-    wire Way0_Valid = VT_Way0_out[18];
-    wire Way1_Valid = VT_Way1_out[18];
-    wire Way2_Valid = VT_Way2_out[18];
-    wire Way3_Valid = VT_Way3_out[18];
-    wire[17:0] Way0_Tag = VT_Way0_out[17:0];
-    wire[17:0] Way1_Tag = VT_Way1_out[17:0];
-    wire[17:0] Way2_Tag = VT_Way2_out[17:0];
-    wire[17:0] Way3_Tag = VT_Way3_out[17:0];
+    wire[20:0] VT_in;
+    wire[20:0] VT_Way0_out;
+    wire[20:0] VT_Way1_out;
+    wire[20:0] VT_Way2_out;
+    wire[20:0] VT_Way3_out;
+    wire Way0_Valid = VT_Way0_out[20];
+    wire Way1_Valid = VT_Way1_out[20];
+    wire Way2_Valid = VT_Way2_out[20];
+    wire Way3_Valid = VT_Way3_out[20];
+    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
+    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
+    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     reg[63:0] Data_Way0_wen;
     reg[63:0] Data_Way1_wen;
     reg[63:0] Data_Way2_wen;
@@ -81,20 +81,21 @@ module icache(       clk, resetn, exception,
     parameter IDLE = 2'b00, LOOKUP = 2'b01, MISS = 2'b10, REFILL = 2'b11;
 
     //Request Buffer
-    reg[7:0] index_RB;
-    reg[17:0] tag_RB;
+    reg[5:0] index_RB;
+    reg[19:0] tag_RB;
     reg[5:0] offset_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
-    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
-    reg[7:0] replace_index_MB;
+    reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
+    reg[5:0] replace_index_MB;
     reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
     //replace select
     reg[511:0] replace_data;
     reg[1:0] counter;
+    reg[2:0] age[63:0];
 
     //hit
     wire way0_hit;
@@ -102,6 +103,8 @@ module icache(       clk, resetn, exception,
     wire way2_hit;
     wire way3_hit;
     wire cache_hit;
+
+    integer i;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -137,13 +140,40 @@ module icache(       clk, resetn, exception,
     assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
-
-    //random replacement strategy with a clock counter
+    
     always@(posedge clk)
         if(!resetn)
-            counter <= 2'b00;
-        else
-            counter <= counter + 1;
+            for(i=0;i<64;i=i+1)
+                age[i] <= 3'b000;
+        else if(way0_hit) begin
+            age[index_RB][2] <= 1'b1;
+            age[index_RB][1] <= 1'b1;
+        end
+        else if(way1_hit) begin
+            age[index_RB][2] <= 1'b1;
+            age[index_RB][1] <= 1'b0;
+        end
+        else if(way2_hit) begin
+            age[index_RB][2] <= 1'b0;
+            age[index_RB][0] <= 1'b1;
+        end
+        else if(way3_hit) begin
+            age[index_RB][2] <= 1'b0;
+            age[index_RB][0] <= 1'b0;
+        end
+    always@(age, index_RB)
+        if(age[index_RB][2]) begin
+            if(age[index_RB][0])
+                counter = 2'd3;
+            else
+                counter = 2'd2;
+        end
+        else begin
+            if(age[index_RB][1])
+                counter = 2'd1;
+            else
+                counter = 2'd0;
+        end
     always@(*)
         case(counter)
             2'b00:  //choose way0
@@ -159,8 +189,8 @@ module icache(       clk, resetn, exception,
     //Request Buffer
     always@(posedge clk)
         if(!resetn) begin
-            index_RB <= 8'd0;
-            tag_RB <= 17'd0;
+            index_RB <= 6'd0;
+            tag_RB <= 20'd0;
             offset_RB <= 6'd0;
         end
         else if((C_STATE == IDLE && N_STATE == LOOKUP) || (C_STATE == LOOKUP && N_STATE ==LOOKUP)) begin
@@ -172,10 +202,10 @@ module icache(       clk, resetn, exception,
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
-            replace_way_MB <= 1'b0;
+            replace_way_MB <= 2'b0;
             replace_data_MB <= 512'd0; 
-            replace_index_MB <= 8'd0;
-            replace_tag_new_MB <= 18'd0;
+            replace_index_MB <= 6'd0;
+            replace_tag_new_MB <= 20'd0;
         end
         else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
@@ -469,8 +499,8 @@ module dcache(       clk, resetn,
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
     input op;                       //CPU opcode: 0 = load , 1 = store
-    input[17:0] tag;                //CPU address[31:14]
-    input[7:0] index;               //CPU address[13:6]
+    input[19:0] tag;                //CPU address[31:14]
+    input[5:0] index;               //CPU address[13:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     input[3:0] wstrb;               //write code,including 0001 , 0010 , 0100, 1000, 0011 , 1100 , 1111
     input[31:0] wdata;              //data to be stored from CPU to Cache
@@ -504,26 +534,26 @@ module dcache(       clk, resetn,
         Total memory: 64KB
     */
 
-    reg[7:0] VT_addr;
-    reg[7:0] D_addr;
-    reg[7:0] Data_addr;
+    reg[5:0] VT_addr;
+    reg[5:0] D_addr;
+    reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
     wire VT_Way2_wen;
     wire VT_Way3_wen;
-    wire[18:0] VT_in;
-    wire[18:0] VT_Way0_out;
-    wire[18:0] VT_Way1_out;
-    wire[18:0] VT_Way2_out;
-    wire[18:0] VT_Way3_out;
-    wire Way0_Valid = VT_Way0_out[18];
-    wire Way1_Valid = VT_Way1_out[18];
-    wire Way2_Valid = VT_Way2_out[18];
-    wire Way3_Valid = VT_Way3_out[18];
-    wire[17:0] Way0_Tag = VT_Way0_out[17:0];
-    wire[17:0] Way1_Tag = VT_Way1_out[17:0];
-    wire[17:0] Way2_Tag = VT_Way2_out[17:0];
-    wire[17:0] Way3_Tag = VT_Way3_out[17:0];
+    wire[20:0] VT_in;
+    wire[20:0] VT_Way0_out;
+    wire[20:0] VT_Way1_out;
+    wire[20:0] VT_Way2_out;
+    wire[20:0] VT_Way3_out;
+    wire Way0_Valid = VT_Way0_out[20];
+    wire Way1_Valid = VT_Way1_out[20];
+    wire Way2_Valid = VT_Way2_out[20];
+    wire Way3_Valid = VT_Way3_out[20];
+    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
+    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
+    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     wire D_Way0_wen;
     wire D_Way1_wen;
     wire D_Way2_wen;
@@ -546,12 +576,18 @@ module dcache(       clk, resetn,
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REPLACE = 3'b011, HOLD = 3'b100, REFILL = 3'b101;
+    parameter IDLE = 3'b000, LOOKUP = 3'b001, SELECT = 3'b010,
+              MISS = 3'b011, REPLACE = 3'b100, HOLD = 3'b101, REFILL = 3'b110;
+
+    reg C_STATE_WB;
+    reg N_STATE_WB;
+    parameter IDLE_WB = 1'b0, WRITE = 1'b1;
+
 
     //Request Buffer
     reg op_RB;
-    reg[7:0] index_RB;
-    reg[17:0] tag_RB;
+    reg[5:0] index_RB;
+    reg[19:0] tag_RB;
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
@@ -560,18 +596,27 @@ module dcache(       clk, resetn,
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
     reg replace_Valid_MB;           
     reg replace_Dirty_MB;
-    reg[17:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
-    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
-    reg[7:0] replace_index_MB;
+    reg[19:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
+    reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
+    reg[5:0] replace_index_MB;
     reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
+
+    //Write Buffer
+    reg[31:0] wdata_WB;
+    reg[1:0] way_WB;
+    reg[3:0] wstrb_WB;
+    reg[5:0] offset_WB;
+    reg[5:0] index_WB;
+    reg[19:0] tag_WB;
 
     //replace select
     reg[511:0] replace_data;
     reg replace_Valid;
     reg replace_Dirty;
-    reg[17:0] replace_tag_old;
+    reg[19:0] replace_tag_old;
     reg[1:0] counter;
+    reg[2:0] age[63:0];
 
     //hit
     wire way0_hit;
@@ -580,9 +625,16 @@ module dcache(       clk, resetn,
     wire way3_hit;
     wire cache_hit;
     wire hit_write;
-    wire write_conflict;
-    wire write_bypass;
-    reg[31:0] wdata_bypass;
+    wire write_conflict1;
+    wire write_conflict2;
+    wire write_bypass1;
+    wire write_bypass2;
+    reg[31:0] wdata_bypass1;
+    reg[31:0] wdata_bypass2;
+    reg write_bypass1_delay;
+    reg write_bypass2_delay;
+
+    integer i;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -631,15 +683,54 @@ module dcache(       clk, resetn,
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
-    assign write_conflict = hit_write && !op && valid && ({tag,index,offset[5:2]}!={tag_RB,index_RB,offset_RB});
-    assign write_bypass = hit_write && !op && valid && ({tag,index,offset[5:2]}=={tag_RB,index_RB,offset_RB});
-
-    //random replacement strategy with a clock counter
+    
+    assign write_conflict1 = hit_write && !op && valid 
+                            && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
+    assign write_conflict2 = (C_STATE_WB == WRITE) && !op && valid 
+                            && ({tag,index,offset}!={tag_WB,index_WB,offset_WB});
+    assign write_bypass1 = hit_write && !op && valid 
+                            && ({tag,index,offset}=={tag_RB,index_RB,offset_RB});
+    assign write_bypass2 = (C_STATE_WB == WRITE) && !op && valid 
+                            && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});
+    /*
+    assign write_conflict1 = hit_write && !op && valid;
+    assign write_conflict2 = (C_STATE_WB == WRITE) && !op && valid;
+    assign write_bypass1 = 1'b0;
+    assign write_bypass2 = 1'b0;
+    */
     always@(posedge clk)
         if(!resetn)
-            counter <= 2'b00;
-        else
-            counter <= counter + 1;
+            for(i=0;i<64;i=i+1)
+                age[i] <= 3'b000;
+        else if(way0_hit) begin
+            age[index_RB][2] <= 1'b1;
+            age[index_RB][1] <= 1'b1;
+        end
+        else if(way1_hit) begin
+            age[index_RB][2] <= 1'b1;
+            age[index_RB][1] <= 1'b0;
+        end
+        else if(way2_hit) begin
+            age[index_RB][2] <= 1'b0;
+            age[index_RB][0] <= 1'b1;
+        end
+        else if(way3_hit) begin
+            age[index_RB][2] <= 1'b0;
+            age[index_RB][0] <= 1'b0;
+        end
+    always@(age, index_RB)
+        if(age[index_RB][2]) begin
+            if(age[index_RB][0])
+                counter = 2'd3;
+            else
+                counter = 2'd2;
+        end
+        else begin
+            if(age[index_RB][1])
+                counter = 2'd1;
+            else
+                counter = 2'd0;
+        end
     always@(*)
         case(counter)
             2'b00:  begin   //choose way0
@@ -672,34 +763,39 @@ module dcache(       clk, resetn,
     always@(posedge clk)
         if(!resetn) begin
             op_RB <= 1'b0;
-            index_RB <= 8'd0;
-            tag_RB <= 17'd0;
+            index_RB <= 6'd0;
+            tag_RB <= 20'd0;
             offset_RB <= 6'd0;
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
+            write_bypass1_delay <= 1'b0;
+            write_bypass2_delay <= 1'b0;
         end
-        else if((C_STATE == IDLE && N_STATE == LOOKUP) || (C_STATE == LOOKUP && N_STATE ==LOOKUP) 
-                || write_conflict) begin
+        else if(valid && addr_ok && data_ok) begin
             op_RB <= op;
             index_RB <= index;
             tag_RB <= tag;
             offset_RB <= offset;
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
+            write_bypass1_delay <= write_bypass1;
+            write_bypass2_delay <= write_bypass2;
         end
+        else if(~addr_ok && data_ok)
+            op_RB <= 1'b0;
     
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
-            replace_way_MB <= 1'b0;
+            replace_way_MB <= 2'b0;
             replace_data_MB <= 512'd0; 
             replace_Valid_MB <= 1'b0;
             replace_Dirty_MB <= 1'b0;
-            replace_index_MB <= 8'd0;
-            replace_tag_old_MB <= 18'd0;
-            replace_tag_new_MB <= 18'd0;
+            replace_index_MB <= 6'd0;
+            replace_tag_old_MB <= 20'd0;
+            replace_tag_new_MB <= 20'd0;
         end
-        else if(C_STATE == LOOKUP) begin
+        else if(C_STATE == SELECT) begin
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
             replace_Valid_MB <= replace_Valid;
@@ -716,15 +812,40 @@ module dcache(       clk, resetn,
         else if(ret_valid)
             ret_number_MB <= ret_number_MB + 1;
 
+    //Write Buffer
+    always@(posedge clk)
+        if(!resetn) begin
+            wdata_WB <= 32'd0;
+            way_WB <= 2'b0;
+            wstrb_WB <= 4'd0;
+            offset_WB <= 6'd0;
+            index_WB <= 6'd0;
+            tag_WB <= 20'd0;
+        end
+        else if(hit_write) begin
+            wdata_WB <= wdata_RB;
+            way_WB <= way0_hit ? 2'd0 : way1_hit ? 2'd1 : way2_hit ? 2'd2 : 2'd3;
+            wstrb_WB <= wstrb_RB;
+            offset_WB <= offset_RB;
+            index_WB <= index_RB;
+            tag_WB <= tag_RB;
+        end
+
     //reading from cache to cpu (load)
     always@(posedge clk)
-        if(!resetn)
-            wdata_bypass <= 32'd0;
-        else
-            wdata_bypass <= wdata_RB;
+        if(!resetn) begin
+            wdata_bypass1 <= 32'd0;
+            wdata_bypass2 <= 32'd0;
+        end
+        else begin
+            wdata_bypass1 <= wdata_RB;
+            wdata_bypass2 <= wdata_WB;
+        end
     always@(*)
-        if(write_bypass)
-            rdata = wdata_bypass;
+        if(write_bypass1_delay)
+            rdata = wdata_bypass1;
+        else if(write_bypass2_delay)
+            rdata = wdata_bypass2;
         else if(way0_hit)        //read way0
             case(offset_RB[5:2])
                 4'd0:   rdata = Data_Way0_out[ 31:  0];
@@ -805,109 +926,109 @@ module dcache(       clk, resetn,
             rdata = ret_data;
     
     //write from cpu to cache (store)
-    always@(wdata_RB, wstrb_RB, hit_write, ret_data)
-        if(hit_write) begin
-            case(wstrb_RB)
-                4'b0001:    Data_in = {64{wdata_RB[7:0]}};
-                4'b0010:    Data_in = {64{wdata_RB[7:0]}};
-                4'b0100:    Data_in = {64{wdata_RB[7:0]}};
-                4'b1000:    Data_in = {64{wdata_RB[7:0]}};
-                4'b0011:    Data_in = {32{wdata_RB[15:0]}};
-                4'b1100:    Data_in = {32{wdata_RB[15:0]}};
-                default:    Data_in = {16{wdata_RB}};
+    always@(wdata_WB, wstrb_WB, C_STATE_WB, ret_data)
+        if(C_STATE_WB == WRITE) begin
+            case(wstrb_WB)
+                4'b0001:    Data_in = {64{wdata_WB[7:0]}};
+                4'b0010:    Data_in = {64{wdata_WB[7:0]}};
+                4'b0100:    Data_in = {64{wdata_WB[7:0]}};
+                4'b1000:    Data_in = {64{wdata_WB[7:0]}};
+                4'b0011:    Data_in = {32{wdata_WB[15:0]}};
+                4'b1100:    Data_in = {32{wdata_WB[15:0]}};
+                default:    Data_in = {16{wdata_WB}};
             endcase
         end
         else
             Data_in = {16{ret_data}};
     always@(*)
-        if(hit_write) begin
-            if(way0_hit) begin
-                case(offset_RB[5:2])
-                    4'd0:   Data_Way0_wen = {60'd0,wstrb_RB};
-                    4'd1:   Data_Way0_wen = {56'd0,wstrb_RB,4'd0};
-                    4'd2:   Data_Way0_wen = {52'd0,wstrb_RB,8'd0};
-                    4'd3:   Data_Way0_wen = {48'd0,wstrb_RB,12'd0};
-                    4'd4:   Data_Way0_wen = {44'd0,wstrb_RB,16'd0};
-                    4'd5:   Data_Way0_wen = {40'd0,wstrb_RB,20'd0};
-                    4'd6:   Data_Way0_wen = {36'd0,wstrb_RB,24'd0};
-                    4'd7:   Data_Way0_wen = {32'd0,wstrb_RB,28'd0};
-                    4'd8:   Data_Way0_wen = {28'd0,wstrb_RB,32'd0};
-                    4'd9:   Data_Way0_wen = {24'd0,wstrb_RB,36'd0};
-                    4'd10:  Data_Way0_wen = {20'd0,wstrb_RB,40'd0};
-                    4'd11:  Data_Way0_wen = {16'd0,wstrb_RB,44'd0};
-                    4'd12:  Data_Way0_wen = {12'd0,wstrb_RB,48'd0};
-                    4'd13:  Data_Way0_wen = {8'd0,wstrb_RB,52'd0};
-                    4'd14:  Data_Way0_wen = {4'd0,wstrb_RB,56'd0};
-                    default:Data_Way0_wen = {wstrb_RB,60'd0};
+        if(C_STATE_WB) begin
+            if(way_WB == 2'd0) begin
+                case(offset_WB[5:2])
+                    4'd0:   Data_Way0_wen = {60'd0,wstrb_WB};
+                    4'd1:   Data_Way0_wen = {56'd0,wstrb_WB,4'd0};
+                    4'd2:   Data_Way0_wen = {52'd0,wstrb_WB,8'd0};
+                    4'd3:   Data_Way0_wen = {48'd0,wstrb_WB,12'd0};
+                    4'd4:   Data_Way0_wen = {44'd0,wstrb_WB,16'd0};
+                    4'd5:   Data_Way0_wen = {40'd0,wstrb_WB,20'd0};
+                    4'd6:   Data_Way0_wen = {36'd0,wstrb_WB,24'd0};
+                    4'd7:   Data_Way0_wen = {32'd0,wstrb_WB,28'd0};
+                    4'd8:   Data_Way0_wen = {28'd0,wstrb_WB,32'd0};
+                    4'd9:   Data_Way0_wen = {24'd0,wstrb_WB,36'd0};
+                    4'd10:  Data_Way0_wen = {20'd0,wstrb_WB,40'd0};
+                    4'd11:  Data_Way0_wen = {16'd0,wstrb_WB,44'd0};
+                    4'd12:  Data_Way0_wen = {12'd0,wstrb_WB,48'd0};
+                    4'd13:  Data_Way0_wen = {8'd0,wstrb_WB,52'd0};
+                    4'd14:  Data_Way0_wen = {4'd0,wstrb_WB,56'd0};
+                    default:Data_Way0_wen = {wstrb_WB,60'd0};
                 endcase
                 Data_Way1_wen = 64'd0;
                 Data_Way2_wen = 64'd0;
                 Data_Way3_wen = 64'd0;
             end
-            else if(way1_hit) begin
-                case(offset_RB[5:2])
-                    4'd0:   Data_Way1_wen = {60'd0,wstrb_RB};
-                    4'd1:   Data_Way1_wen = {56'd0,wstrb_RB,4'd0};
-                    4'd2:   Data_Way1_wen = {52'd0,wstrb_RB,8'd0};
-                    4'd3:   Data_Way1_wen = {48'd0,wstrb_RB,12'd0};
-                    4'd4:   Data_Way1_wen = {44'd0,wstrb_RB,16'd0};
-                    4'd5:   Data_Way1_wen = {40'd0,wstrb_RB,20'd0};
-                    4'd6:   Data_Way1_wen = {36'd0,wstrb_RB,24'd0};
-                    4'd7:   Data_Way1_wen = {32'd0,wstrb_RB,28'd0};
-                    4'd8:   Data_Way1_wen = {28'd0,wstrb_RB,32'd0};
-                    4'd9:   Data_Way1_wen = {24'd0,wstrb_RB,36'd0};
-                    4'd10:  Data_Way1_wen = {20'd0,wstrb_RB,40'd0};
-                    4'd11:  Data_Way1_wen = {16'd0,wstrb_RB,44'd0};
-                    4'd12:  Data_Way1_wen = {12'd0,wstrb_RB,48'd0};
-                    4'd13:  Data_Way1_wen = {8'd0,wstrb_RB,52'd0};
-                    4'd14:  Data_Way1_wen = {4'd0,wstrb_RB,56'd0};
-                    default:Data_Way1_wen = {wstrb_RB,60'd0};
+            else if(way_WB == 2'd1) begin
+                case(offset_WB[5:2])
+                    4'd0:   Data_Way1_wen = {60'd0,wstrb_WB};
+                    4'd1:   Data_Way1_wen = {56'd0,wstrb_WB,4'd0};
+                    4'd2:   Data_Way1_wen = {52'd0,wstrb_WB,8'd0};
+                    4'd3:   Data_Way1_wen = {48'd0,wstrb_WB,12'd0};
+                    4'd4:   Data_Way1_wen = {44'd0,wstrb_WB,16'd0};
+                    4'd5:   Data_Way1_wen = {40'd0,wstrb_WB,20'd0};
+                    4'd6:   Data_Way1_wen = {36'd0,wstrb_WB,24'd0};
+                    4'd7:   Data_Way1_wen = {32'd0,wstrb_WB,28'd0};
+                    4'd8:   Data_Way1_wen = {28'd0,wstrb_WB,32'd0};
+                    4'd9:   Data_Way1_wen = {24'd0,wstrb_WB,36'd0};
+                    4'd10:  Data_Way1_wen = {20'd0,wstrb_WB,40'd0};
+                    4'd11:  Data_Way1_wen = {16'd0,wstrb_WB,44'd0};
+                    4'd12:  Data_Way1_wen = {12'd0,wstrb_WB,48'd0};
+                    4'd13:  Data_Way1_wen = {8'd0,wstrb_WB,52'd0};
+                    4'd14:  Data_Way1_wen = {4'd0,wstrb_WB,56'd0};
+                    default:Data_Way1_wen = {wstrb_WB,60'd0};
                 endcase
                 Data_Way0_wen = 64'd0;
                 Data_Way2_wen = 64'd0;
                 Data_Way3_wen = 64'd0;
             end
-            else if(way2_hit) begin
-                case(offset_RB[5:2])
-                    4'd0:   Data_Way2_wen = {60'd0,wstrb_RB};
-                    4'd1:   Data_Way2_wen = {56'd0,wstrb_RB,4'd0};
-                    4'd2:   Data_Way2_wen = {52'd0,wstrb_RB,8'd0};
-                    4'd3:   Data_Way2_wen = {48'd0,wstrb_RB,12'd0};
-                    4'd4:   Data_Way2_wen = {44'd0,wstrb_RB,16'd0};
-                    4'd5:   Data_Way2_wen = {40'd0,wstrb_RB,20'd0};
-                    4'd6:   Data_Way2_wen = {36'd0,wstrb_RB,24'd0};
-                    4'd7:   Data_Way2_wen = {32'd0,wstrb_RB,28'd0};
-                    4'd8:   Data_Way2_wen = {28'd0,wstrb_RB,32'd0};
-                    4'd9:   Data_Way2_wen = {24'd0,wstrb_RB,36'd0};
-                    4'd10:  Data_Way2_wen = {20'd0,wstrb_RB,40'd0};
-                    4'd11:  Data_Way2_wen = {16'd0,wstrb_RB,44'd0};
-                    4'd12:  Data_Way2_wen = {12'd0,wstrb_RB,48'd0};
-                    4'd13:  Data_Way2_wen = {8'd0,wstrb_RB,52'd0};
-                    4'd14:  Data_Way2_wen = {4'd0,wstrb_RB,56'd0};
-                    default:Data_Way2_wen = {wstrb_RB,60'd0};
+            else if(way_WB == 2'd2) begin
+                case(offset_WB[5:2])
+                    4'd0:   Data_Way2_wen = {60'd0,wstrb_WB};
+                    4'd1:   Data_Way2_wen = {56'd0,wstrb_WB,4'd0};
+                    4'd2:   Data_Way2_wen = {52'd0,wstrb_WB,8'd0};
+                    4'd3:   Data_Way2_wen = {48'd0,wstrb_WB,12'd0};
+                    4'd4:   Data_Way2_wen = {44'd0,wstrb_WB,16'd0};
+                    4'd5:   Data_Way2_wen = {40'd0,wstrb_WB,20'd0};
+                    4'd6:   Data_Way2_wen = {36'd0,wstrb_WB,24'd0};
+                    4'd7:   Data_Way2_wen = {32'd0,wstrb_WB,28'd0};
+                    4'd8:   Data_Way2_wen = {28'd0,wstrb_WB,32'd0};
+                    4'd9:   Data_Way2_wen = {24'd0,wstrb_WB,36'd0};
+                    4'd10:  Data_Way2_wen = {20'd0,wstrb_WB,40'd0};
+                    4'd11:  Data_Way2_wen = {16'd0,wstrb_WB,44'd0};
+                    4'd12:  Data_Way2_wen = {12'd0,wstrb_WB,48'd0};
+                    4'd13:  Data_Way2_wen = {8'd0,wstrb_WB,52'd0};
+                    4'd14:  Data_Way2_wen = {4'd0,wstrb_WB,56'd0};
+                    default:Data_Way2_wen = {wstrb_WB,60'd0};
                 endcase
                 Data_Way0_wen = 64'd0;
                 Data_Way1_wen = 64'd0;
                 Data_Way3_wen = 64'd0;
             end
             else begin
-                case(offset_RB[5:2])
-                    4'd0:   Data_Way3_wen = {60'd0,wstrb_RB};
-                    4'd1:   Data_Way3_wen = {56'd0,wstrb_RB,4'd0};
-                    4'd2:   Data_Way3_wen = {52'd0,wstrb_RB,8'd0};
-                    4'd3:   Data_Way3_wen = {48'd0,wstrb_RB,12'd0};
-                    4'd4:   Data_Way3_wen = {44'd0,wstrb_RB,16'd0};
-                    4'd5:   Data_Way3_wen = {40'd0,wstrb_RB,20'd0};
-                    4'd6:   Data_Way3_wen = {36'd0,wstrb_RB,24'd0};
-                    4'd7:   Data_Way3_wen = {32'd0,wstrb_RB,28'd0};
-                    4'd8:   Data_Way3_wen = {28'd0,wstrb_RB,32'd0};
-                    4'd9:   Data_Way3_wen = {24'd0,wstrb_RB,36'd0};
-                    4'd10:  Data_Way3_wen = {20'd0,wstrb_RB,40'd0};
-                    4'd11:  Data_Way3_wen = {16'd0,wstrb_RB,44'd0};
-                    4'd12:  Data_Way3_wen = {12'd0,wstrb_RB,48'd0};
-                    4'd13:  Data_Way3_wen = {8'd0,wstrb_RB,52'd0};
-                    4'd14:  Data_Way3_wen = {4'd0,wstrb_RB,56'd0};
-                    default:Data_Way3_wen = {wstrb_RB,60'd0};
+                case(offset_WB[5:2])
+                    4'd0:   Data_Way3_wen = {60'd0,wstrb_WB};
+                    4'd1:   Data_Way3_wen = {56'd0,wstrb_WB,4'd0};
+                    4'd2:   Data_Way3_wen = {52'd0,wstrb_WB,8'd0};
+                    4'd3:   Data_Way3_wen = {48'd0,wstrb_WB,12'd0};
+                    4'd4:   Data_Way3_wen = {44'd0,wstrb_WB,16'd0};
+                    4'd5:   Data_Way3_wen = {40'd0,wstrb_WB,20'd0};
+                    4'd6:   Data_Way3_wen = {36'd0,wstrb_WB,24'd0};
+                    4'd7:   Data_Way3_wen = {32'd0,wstrb_WB,28'd0};
+                    4'd8:   Data_Way3_wen = {28'd0,wstrb_WB,32'd0};
+                    4'd9:   Data_Way3_wen = {24'd0,wstrb_WB,36'd0};
+                    4'd10:  Data_Way3_wen = {20'd0,wstrb_WB,40'd0};
+                    4'd11:  Data_Way3_wen = {16'd0,wstrb_WB,44'd0};
+                    4'd12:  Data_Way3_wen = {12'd0,wstrb_WB,48'd0};
+                    4'd13:  Data_Way3_wen = {8'd0,wstrb_WB,52'd0};
+                    4'd14:  Data_Way3_wen = {4'd0,wstrb_WB,56'd0};
+                    default:Data_Way3_wen = {wstrb_WB,60'd0};
                 endcase
                 Data_Way0_wen = 64'd0;
                 Data_Way1_wen = 64'd0;
@@ -1027,27 +1148,32 @@ module dcache(       clk, resetn,
     assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
     assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
-    assign D_Way0_wen = (hit_write && way0_hit) || (ret_valid && (replace_way_MB == 0));
-    assign D_Way1_wen = (hit_write && way1_hit) || (ret_valid && (replace_way_MB == 1));
-    assign D_Way2_wen = (hit_write && way2_hit) || (ret_valid && (replace_way_MB == 2));
-    assign D_Way3_wen = (hit_write && way3_hit) || (ret_valid && (replace_way_MB == 3));
-    assign D_in = ret_valid ? 0 : hit_write;
+    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
+    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
+    assign D_Way2_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd2)) || (ret_valid && (replace_way_MB == 2));
+    assign D_Way3_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd3)) || (ret_valid && (replace_way_MB == 3));
+    assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
     assign rd_type = 3'b100;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(hit_write, index_RB, replace_index_MB, index, C_STATE, valid)
-        if(hit_write) begin
+    always@(C_STATE_WB, index_RB, replace_index_MB, index, C_STATE, valid, addr_ok,data_ok, index_WB)
+        if((C_STATE_WB == WRITE) & ~(addr_ok&data_ok)) begin
+            VT_addr = index_RB;
+            D_addr = index_WB;
+            Data_addr = index_WB;
+        end
+        else if((C_STATE_WB == WRITE) & addr_ok &data_ok) begin
             VT_addr = index;
-            D_addr = index_RB;
-            Data_addr = index_RB;
+            D_addr = index_WB;
+            Data_addr = index_WB;
         end
         else if(C_STATE == REFILL)begin
             VT_addr = replace_index_MB;
             D_addr = replace_index_MB;
             Data_addr = replace_index_MB;
         end
-        else if(~valid) begin
+        else if(~valid | ~addr_ok | ~data_ok) begin
             VT_addr = index_RB;
             D_addr = index_RB;
             Data_addr = index_RB;
@@ -1071,20 +1197,28 @@ module dcache(       clk, resetn,
         else
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, 
-            replace_Valid_MB, replace_Dirty_MB, write_conflict, wr_valid)
+            replace_Valid_MB, replace_Dirty_MB, write_conflict1, write_conflict2,
+            wr_valid, C_STATE_WB)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
                     else 
                         N_STATE = IDLE;
-            LOOKUP: if(!cache_hit)
-                        N_STATE = MISS;
-                    else if(write_conflict)
+            LOOKUP: if(!cache_hit) begin
+                        if(C_STATE_WB == WRITE)
+                            N_STATE = LOOKUP;
+                        else
+                            N_STATE = SELECT;
+                    end
+                    else if(write_conflict1)
+                        N_STATE = LOOKUP;
+                    else if(write_conflict2)
                         N_STATE = IDLE;
                     else if(valid)
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
+            SELECT: N_STATE = MISS;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
                         N_STATE = HOLD;
                     else if(!wr_rdy)                                    //data is dirty
@@ -1106,86 +1240,26 @@ module dcache(       clk, resetn,
             default: N_STATE = IDLE;
         endcase
 
+    //Write Buffer FSM
+    always@(posedge clk)
+        if(!resetn)
+            C_STATE_WB <= IDLE_WB;
+        else
+            C_STATE_WB <= N_STATE_WB;
+    always@(hit_write)
+        if(hit_write)
+            N_STATE_WB = WRITE;
+        else
+            N_STATE_WB = IDLE_WB;
+
     //output signals
-    assign addr_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && !write_conflict) ;
+    assign addr_ok = (C_STATE == MISS) | (C_STATE == REPLACE) | (C_STATE == HOLD) | (C_STATE == REFILL) | 
+                    | ((C_STATE == LOOKUP) && !write_conflict1 && !write_conflict2) 
+                    | ((C_STATE == IDLE) && !write_conflict2);
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     assign rd_req = (N_STATE == REFILL) ;
     assign wr_req = (N_STATE == REPLACE) ;
-
-endmodule
-
-module uncache_im(
-        clk, resetn,
-        //CPU_Pipeline side
-        /*input*/   valid, addr,
-        /*output*/  data_ok, rdata,
-        //AXI-Bus side 
-        /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
-);
-
-    input clk;
-    input resetn;
-
-    input valid;
-    input[31:0] addr;
-
-    output data_ok;
-    output[31:0] rdata;
-
-    input rd_rdy;
-    input wr_rdy;
-    input ret_valid;
-    input ret_last;
-    input[31:0] ret_data;
-
-    output rd_req;
-    output wr_req;
-    output[2:0] rd_type;
-    output[2:0] wr_type;
-    output[31:0] rd_addr;
-    output[31:0] wr_addr;
-    output[3:0] wr_wstrb;
-    output[31:0] wr_data;
-
-    reg C_STATE;
-    reg N_STATE;
-
-    parameter DEFAULT = 1'b0;
-    parameter LOAD    = 1'b1;
-
-
-    always@(posedge clk)
-        if(!resetn)
-            C_STATE <= DEFAULT;
-        else
-            C_STATE <= N_STATE;
-
-    always@(C_STATE, rd_rdy, ret_valid, ret_last, valid)
-        case(C_STATE)
-            DEFAULT:    if(valid && rd_rdy)
-                            N_STATE = LOAD;
-                        else
-                            N_STATE = DEFAULT;
-            LOAD:       if(ret_valid && ret_last)
-                            N_STATE = DEFAULT;
-                        else
-                            N_STATE = LOAD;
-            default:    N_STATE = DEFAULT;
-        endcase
-
-    assign data_ok = ~valid ||
-                    (valid && (C_STATE == LOAD) && ret_valid && ret_last);
-    assign rdata = ret_data;
-
-    assign rd_req = (N_STATE == LOAD);
-    assign wr_req = 1'b0;
-    assign rd_type = 3'b010;
-    assign wr_type = 3'b010;
-    assign rd_addr = addr;
-    assign wr_addr = addr;
-    assign wr_wstrb = 4'd0;
-    assign wr_data = 32'd0;
+    
 endmodule
 
 module uncache_dm(

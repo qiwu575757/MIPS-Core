@@ -120,9 +120,9 @@ always @(posedge aclk) begin
 		RHL <= {divider_sign_out[31:0],divider_sign_out[63:32]};
 	else if(m_axis_dout_tvalid_unsign ) //unsign
 		RHL <= {divider_unsign_out[31:0],divider_unsign_out[63:32]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01)
+	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01 && !MEM_Exception && !MEM_eret_flush )
 	    RHL <= {A,RHL[31:0]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00)
+	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00 && !MEM_Exception && !MEM_eret_flush )
 	    RHL <= {RHL[63:32],A};   
 end
 
@@ -644,7 +644,7 @@ always @(*) begin
 end
 // 
 assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
-assign MEM_dcache_ret_valid = (rvalid & rid[0]);
+assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
@@ -657,8 +657,8 @@ assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
 assign arid = IF_icache_rd_req ? 0: 1;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
-assign arlen =  MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
-assign arburst = MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
+assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
+assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 
