@@ -331,7 +331,7 @@ module mips(
 	wire MEM1_TLB_flush;
 	wire MEM1_TLB_writeen;
 	wire MEM1_TLB_readen;
-	wire [31:0] Index_out,EntryLo0_out,EntryLo1_out,EntryHi_out;
+	wire [31:0] Index_out,EntryLo0_out,EntryLo1_out,EntryHi_out,Random_out;
     wire Temp_MEM1_TLB_Exc,Temp_MEM1_TLBRill_Exc;
     wire MEM1_uncache_valid;
     wire MEM1_DMen;
@@ -483,7 +483,7 @@ icache U_ICACHE(
 	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush),
 	// cpu && cache
 	/*input*/
-  	.valid(PF_icache_valid), .index(PPC[13:6]), .tag(PPC[31:14]), .offset(PPC[5:0]),
+  	.valid(PF_icache_valid), .index(NPC[11:6]), .tag(IF_PPC[31:12]), .offset(NPC[5:0]),
 	/*output*/
 	.addr_ok(IF_iCache_addr_ok), .data_ok(IF_iCache_data_ok), .rdata(IF_iCache_rdata), 
 	//cache && axi
@@ -686,6 +686,18 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp)
 	);
 
+CP0 U_CP0(
+		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT), 
+		.MEM_Exc(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush), .MEM_bd(MEM1_isBD),
+        .ext_int_in(ext_int_in), .MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
+		.MEM_PC(MEM1_PC),.EntryHi_Wren(MEM1_TLB_readen),.EntryLo0_Wren(MEM1_TLB_readen),
+		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
+    	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),.BadVAddr_Wren(MEM1_TLB_Exc),
+		.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),.Index_in({!s1_found,27'b0,s1_index}),
+		
+		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
+		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),.Random_out(Random_out)
+	);
 
 mux11 U_MUX11(
 	.vpn2(EntryHi_out[31:13]),.alu1out(MEM1_ALU1Out[31:13]),.MUX11_Sel(MEM1_MUX11Sel),
@@ -693,18 +705,11 @@ mux11 U_MUX11(
 	.out(s1_vpn2)
 );
 
-CP0 U_CP0(
-		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT), 
-		.MEM_Exc(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush), .MEM_bd(MEM1_isBD),
-        .ext_int_in(ext_int_in), .MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
-		.MEM_PC(MEM1_PC),.EntryHi_Wren(MEM1_TLB_readen),.EntryLo0_Wren(MEM1_TLB_readen),
-		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_TLB_readen),.s1_found(s1_found),
-    	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),.BadVAddr_Wren(MEM1_TLB_Exc),
-		.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),.Index_in({!s1_found,27'b0,s1_index}),
-		
-		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
-		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out)
-	);
+mux12 U_MUX12(
+    .index(Index_out[3:0]), .random(Random_out[3:0]), .MUX12_Sel(MEM1_MUX12Sel),
+
+    .out(w_index)
+);
 
 mux6 U_MUX6(
 		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .PC(MEM1_PC),
@@ -729,8 +734,8 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
 
 dcache U_DCACHE(.clk(clk), .resetn(rst),
 	// cpu && cache
-  	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_Paddr[13:6]), 
-    .tag(MEM1_Paddr[31:14]), .offset(MEM1_Paddr[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_wdata), 
+  	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_ALU1Out[11:6]), 
+    .tag(MEM2_Paddr[31:12]), .offset(MEM1_ALU1Out[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_wdata), 
     .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out), 
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr), 
@@ -849,7 +854,7 @@ tlb U_TLB(
     
     //write port
     MEM1_TLB_writeen,//we, write enable
-    Index_out[3:0],//w_index,
+    w_index,//w_index,
     EntryHi_out[31:13],		//w_vpn2,
     EntryHi_out[7:0],		//w_asid,
     EntryLo0_out[0]&EntryLo1_out[0],//w_g,

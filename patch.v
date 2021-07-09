@@ -28,6 +28,7 @@ module instr_fetch_pre(
     assign mapped = (~NPC[31] || (NPC[31]&&NPC[30])) ? 1 : 0;
     assign PF_icache_sel = (PPC[31:16] == 16'h1faf);
 
+    //the tlb exception should influence the cache and uncache valid or not
     assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
     assign  PF_TLB_Exc   = mapped&(!s0_found || (s0_found&!s0_v));
 
@@ -132,14 +133,13 @@ module mem1_cache_prep(
 				//		32'd0;
                 {s1_pfn,MEM1_ALU1Out[11:0]} ;
 
-	assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
-    //assign MEM1_cache_sel = 1'b1;
+	//assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
+    assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
 
     //assign MEM1_dcache_valid_temp = MEM1_dcache_en && ~MEM1_cache_sel;
-    assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
-    assign MEM1_dcache_valid = MEM1_dcache_en && ~MEM1_cache_sel
-                 &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
+    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;
+    assign MEM1_dcache_valid = MEM1_dcache_en &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
 
     assign MEM1_uncache_valid = MEM1_dcache_en && MEM1_cache_sel&!MEM1_Exception&!MEM1_eret_flush;
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
@@ -240,7 +240,7 @@ module mem1_cache_prep(
 		else  begin
 		MEM1_ExcCode <= Temp_M1_ExcCode;
 		MEM1_Exception <= Temp_M1_Exception;
-		MEM1_badvaddr <= MEM1_PC;
+		MEM1_badvaddr <= MEM1_PC;//这里肯定有问题
 		end
 
 endmodule

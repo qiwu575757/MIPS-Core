@@ -14,8 +14,8 @@ module icache(       clk, resetn, exception,
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
-    input[17:0] tag;                //CPU address[31:14]
-    input[7:0] index;               //CPU address[13:6]
+    input[19:0] tag;                //CPU address[31:12]
+    input[5:0] index;               //CPU address[11:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     output addr_ok;                 //to show address and data is received by Cache 
     output data_ok;                 //to show load or store operation is done
@@ -39,32 +39,32 @@ module icache(       clk, resetn, exception,
     //Cache RAM
     /*
     Basic information:
-        256 groups : index 0~255
+        64 groups : index 0~63
         4 ways : way 0/1/2/3
         16 words in a block : block offset 0~15
-        Every block: 1 valid bit + 1 dirty bit + 18 tag bit + 16 * 32 data bit
-        Total memory: 64KB
+        Every block: 1 valid bit + 1 dirty bit + 20 tag bit + 16 * 32 data bit
+        Total memory: 16KB
     */
 
-    reg[7:0] VT_addr;
-    reg[7:0] Data_addr;
+    reg[5:0] VT_addr;
+    reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
     wire VT_Way2_wen;
     wire VT_Way3_wen;
-    wire[18:0] VT_in;
-    wire[18:0] VT_Way0_out;
-    wire[18:0] VT_Way1_out;
-    wire[18:0] VT_Way2_out;
-    wire[18:0] VT_Way3_out;
-    wire Way0_Valid = VT_Way0_out[18];
-    wire Way1_Valid = VT_Way1_out[18];
-    wire Way2_Valid = VT_Way2_out[18];
-    wire Way3_Valid = VT_Way3_out[18];
-    wire[17:0] Way0_Tag = VT_Way0_out[17:0];
-    wire[17:0] Way1_Tag = VT_Way1_out[17:0];
-    wire[17:0] Way2_Tag = VT_Way2_out[17:0];
-    wire[17:0] Way3_Tag = VT_Way3_out[17:0];
+    wire[20:0] VT_in;
+    wire[20:0] VT_Way0_out;
+    wire[20:0] VT_Way1_out;
+    wire[20:0] VT_Way2_out;
+    wire[20:0] VT_Way3_out;
+    wire Way0_Valid = VT_Way0_out[20];
+    wire Way1_Valid = VT_Way1_out[20];
+    wire Way2_Valid = VT_Way2_out[20];
+    wire Way3_Valid = VT_Way3_out[20];
+    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
+    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
+    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     reg[63:0] Data_Way0_wen;
     reg[63:0] Data_Way1_wen;
     reg[63:0] Data_Way2_wen;
@@ -81,14 +81,14 @@ module icache(       clk, resetn, exception,
     parameter IDLE = 2'b00, LOOKUP = 2'b01, MISS = 2'b10, REFILL = 2'b11;
 
     //Request Buffer
-    reg[7:0] index_RB;
-    reg[17:0] tag_RB;
+    reg[5:0] index_RB;
+    // reg[19:0] tag_RB;
     reg[5:0] offset_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
-    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
-    reg[7:0] replace_index_MB;
+    // reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
+    reg[5:0] replace_index_MB;
     reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
@@ -132,10 +132,10 @@ module icache(       clk, resetn, exception,
     );
 
     //tag compare && hit judgement
-    assign way0_hit = Way0_Valid && (Way0_Tag == tag_RB);
-    assign way1_hit = Way1_Valid && (Way1_Tag == tag_RB);
-    assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
-    assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
+    assign way0_hit = Way0_Valid && (Way0_Tag == tag);
+    assign way1_hit = Way1_Valid && (Way1_Tag == tag);
+    assign way2_hit = Way2_Valid && (Way2_Tag == tag);
+    assign way3_hit = Way3_Valid && (Way3_Tag == tag);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
 
     //random replacement strategy with a clock counter
@@ -159,13 +159,13 @@ module icache(       clk, resetn, exception,
     //Request Buffer
     always@(posedge clk)
         if(!resetn) begin
-            index_RB <= 8'd0;
-            tag_RB <= 17'd0;
+            index_RB <= 6'd0;
+            // tag_RB <= 20'd0;
             offset_RB <= 6'd0;
         end
         else if((C_STATE == IDLE && N_STATE == LOOKUP) || (C_STATE == LOOKUP && N_STATE ==LOOKUP)) begin
             index_RB <= index;
-            tag_RB <= tag;
+            // tag_RB <= tag;
             offset_RB <= offset;
         end
     
@@ -174,14 +174,14 @@ module icache(       clk, resetn, exception,
         if(!resetn) begin
             replace_way_MB <= 1'b0;
             replace_data_MB <= 512'd0; 
-            replace_index_MB <= 8'd0;
-            replace_tag_new_MB <= 18'd0;
+            replace_index_MB <= 6'd0;
+            // replace_tag_new_MB <= 20'd0;
         end
         else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
             replace_index_MB <= index_RB;
-            replace_tag_new_MB <= tag_RB;
+            // replace_tag_new_MB <= tag_RB;
         end
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
@@ -388,9 +388,9 @@ module icache(       clk, resetn, exception,
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
     assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
     assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
-    assign VT_in = {1'b1,replace_tag_new_MB};
+    assign VT_in = {1'b1,tag};
     assign rd_type = 3'b100;
-    assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
+    assign rd_addr = {tag, replace_index_MB, 6'b000000};
 
     //block address control
     always@(replace_index_MB, index, C_STATE, valid, index_RB)
@@ -469,8 +469,8 @@ module dcache(       clk, resetn,
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
     input op;                       //CPU opcode: 0 = load , 1 = store
-    input[17:0] tag;                //CPU address[31:14]
-    input[7:0] index;               //CPU address[13:6]
+    input[19:0] tag;                //CPU address[31:12]
+    input[5:0] index;               //CPU address[11:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     input[3:0] wstrb;               //write code,including 0001 , 0010 , 0100, 1000, 0011 , 1100 , 1111
     input[31:0] wdata;              //data to be stored from CPU to Cache
@@ -497,33 +497,33 @@ module dcache(       clk, resetn,
     //Cache RAM
     /*
     Basic information:
-        256 groups : index 0~255
+        64 groups : index 0~63
         4 ways : way 0/1/2/3
         16 words in a block : block offset 0~15
-        Every block: 1 valid bit + 1 dirty bit + 18 tag bit + 16 * 32 data bit
-        Total memory: 64KB
+        Every block: 1 valid bit + 1 dirty bit + 20 tag bit + 16 * 32 data bit
+        Total memory: 16KB
     */
 
-    reg[7:0] VT_addr;
-    reg[7:0] D_addr;
-    reg[7:0] Data_addr;
+    reg[5:0] VT_addr;
+    reg[5:0] D_addr;
+    reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
     wire VT_Way2_wen;
     wire VT_Way3_wen;
-    wire[18:0] VT_in;
-    wire[18:0] VT_Way0_out;
-    wire[18:0] VT_Way1_out;
-    wire[18:0] VT_Way2_out;
-    wire[18:0] VT_Way3_out;
-    wire Way0_Valid = VT_Way0_out[18];
-    wire Way1_Valid = VT_Way1_out[18];
-    wire Way2_Valid = VT_Way2_out[18];
-    wire Way3_Valid = VT_Way3_out[18];
-    wire[17:0] Way0_Tag = VT_Way0_out[17:0];
-    wire[17:0] Way1_Tag = VT_Way1_out[17:0];
-    wire[17:0] Way2_Tag = VT_Way2_out[17:0];
-    wire[17:0] Way3_Tag = VT_Way3_out[17:0];
+    wire[20:0] VT_in;
+    wire[20:0] VT_Way0_out;
+    wire[20:0] VT_Way1_out;
+    wire[20:0] VT_Way2_out;
+    wire[20:0] VT_Way3_out;
+    wire Way0_Valid = VT_Way0_out[20];
+    wire Way1_Valid = VT_Way1_out[20];
+    wire Way2_Valid = VT_Way2_out[20];
+    wire Way3_Valid = VT_Way3_out[20];
+    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
+    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
+    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     wire D_Way0_wen;
     wire D_Way1_wen;
     wire D_Way2_wen;
@@ -550,8 +550,8 @@ module dcache(       clk, resetn,
 
     //Request Buffer
     reg op_RB;
-    reg[7:0] index_RB;
-    reg[17:0] tag_RB;
+    reg[5:0] index_RB;
+    // reg[19:0] tag_RB;
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
@@ -560,9 +560,9 @@ module dcache(       clk, resetn,
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
     reg replace_Valid_MB;           
     reg replace_Dirty_MB;
-    reg[17:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
-    reg[17:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
-    reg[7:0] replace_index_MB;
+    reg[19:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
+    reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
+    reg[5:0] replace_index_MB;
     reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
@@ -570,7 +570,7 @@ module dcache(       clk, resetn,
     reg[511:0] replace_data;
     reg replace_Valid;
     reg replace_Dirty;
-    reg[17:0] replace_tag_old;
+    reg[19:0] replace_tag_old;
     reg[1:0] counter;
 
     //hit
@@ -625,14 +625,19 @@ module dcache(       clk, resetn,
     );
 
     //tag compare && hit judgement
-    assign way0_hit = Way0_Valid && (Way0_Tag == tag_RB);
-    assign way1_hit = Way1_Valid && (Way1_Tag == tag_RB);
-    assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
-    assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
+    assign way0_hit = Way0_Valid && (Way0_Tag == tag);
+    assign way1_hit = Way1_Valid && (Way1_Tag == tag);
+    assign way2_hit = Way2_Valid && (Way2_Tag == tag);
+    assign way3_hit = Way3_Valid && (Way3_Tag == tag);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
-    assign write_conflict = hit_write && !op && valid && ({tag,index,offset[5:2]}!={tag_RB,index_RB,offset_RB});
-    assign write_bypass = hit_write && !op && valid && ({tag,index,offset[5:2]}=={tag_RB,index_RB,offset_RB});
+    // assign write_conflict = hit_write && !op && valid && ({tag,index,offset[5:2]}!={tag_RB,index_RB,offset_RB});
+    // assign write_bypass = hit_write && !op && valid && ({tag,index,offset[5:2]}=={tag_RB,index_RB,offset_RB});
+
+    assign write_conflict = hit_write & !op & valid;
+
+    assign write_bypass = 1'b0;
+
 
     //random replacement strategy with a clock counter
     always@(posedge clk)
@@ -672,8 +677,8 @@ module dcache(       clk, resetn,
     always@(posedge clk)
         if(!resetn) begin
             op_RB <= 1'b0;
-            index_RB <= 8'd0;
-            tag_RB <= 17'd0;
+            index_RB <= 6'd0;
+            // tag_RB <= 20'd0;
             offset_RB <= 6'd0;
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
@@ -682,7 +687,7 @@ module dcache(       clk, resetn,
                 || write_conflict) begin
             op_RB <= op;
             index_RB <= index;
-            tag_RB <= tag;
+            // tag_RB <= tag;
             offset_RB <= offset;
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
@@ -691,13 +696,13 @@ module dcache(       clk, resetn,
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
-            replace_way_MB <= 1'b0;
+            replace_way_MB <= 2'b0;
             replace_data_MB <= 512'd0; 
             replace_Valid_MB <= 1'b0;
             replace_Dirty_MB <= 1'b0;
-            replace_index_MB <= 8'd0;
-            replace_tag_old_MB <= 18'd0;
-            replace_tag_new_MB <= 18'd0;
+            replace_index_MB <= 6'd0;
+            replace_tag_old_MB <= 20'd0;
+            replace_tag_new_MB <= 20'd0;
         end
         else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
@@ -706,7 +711,7 @@ module dcache(       clk, resetn,
             replace_Dirty_MB <= replace_Dirty;
             replace_index_MB <= index_RB;
             replace_tag_old_MB <= replace_tag_old;
-            replace_tag_new_MB <= tag_RB;
+            replace_tag_new_MB <= tag;
         end
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)

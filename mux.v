@@ -175,3 +175,17 @@ module mux11(
 
 	assign out = MUX11_Sel ? vpn2 : alu1out;
 endmodule
+
+module mux12 (
+	index, random, MUX12_Sel,
+
+	out
+);
+	input [3:0] index, random;
+	input MUX12_Sel;
+
+	output [3:0] out;
+
+	assign out = MUX12_Sel ? index : random;
+	
+endmodule
