@@ -86,7 +86,7 @@ module CP0(
     assign count_eq_compare = (Compare == Count);
     assign Interrupt =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
-    assign EPC_out = EPC;
+    assign EPC_out = EPC + epc_sign * 4;
     //used for TLB
 
 
