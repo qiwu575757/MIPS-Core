@@ -28,10 +28,10 @@ assign dout=
 				(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
 							    	   {{16{Din[31]}},Din[31:16]} ) :
 																Din;
-													
-	
+
+
 endmodule
-	
+
 
 
 // 这个模块用于当前与cpu与乘除器的交互。
@@ -44,16 +44,16 @@ module bridge_RHL(
 		aclk,
 		aresetn,
 		A,
-		B, 
+		B,
 		ALU2Op,
-		start, 
-		EX_RHLWr, 
-		EX_RHLSel_Wr, 
-		EX_RHLSel_Rd, 
-		MEM_Exception, 
+		start,
+		EX_RHLWr,
+		EX_RHLSel_Wr,
+		EX_RHLSel_Rd,
+		MEM_Exception,
 		MEM_eret_flush,
 
-		isBusy, 
+		isBusy,
 		RHLOut
 	);
 input aclk;
@@ -123,7 +123,7 @@ always @(posedge aclk) begin
 	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01 && !MEM_Exception && !MEM_eret_flush )
 	    RHL <= {A,RHL[31:0]};
 	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00 && !MEM_Exception && !MEM_eret_flush )
-	    RHL <= {RHL[63:32],A};   
+	    RHL <= {RHL[63:32],A};
 end
 
 always @(posedge aclk ) begin
@@ -131,7 +131,7 @@ always @(posedge aclk ) begin
 	begin
 		present_state_div=state_free;
 	end
-	else 
+	else
 	begin
 		present_state_div=next_state_div;
 	end
@@ -158,7 +158,7 @@ always @(posedge aclk ) begin
 	begin
 		present_state_mult=state_free;
 	end
-	else 
+	else
 	begin
 		present_state_mult=next_state_mult;
 	end
@@ -185,7 +185,7 @@ always @(posedge aclk ) begin
 	begin
 		present_state_multu=state_free;
 	end
-	else 
+	else
 	begin
 		present_state_multu=next_state_multu;
 	end
@@ -207,7 +207,7 @@ always @(present_state_multu, multiplier_unsigned_valid,counter) begin
 
 end
 
-wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush 
+wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
 Divider divider (
   .aclk(aclk),                                      // input wire aclk
@@ -284,14 +284,14 @@ module axi_sram_bridge(
     arprot    ,
     arvalid   ,
     arready   ,
-                
+
     rid       ,
     rdata     ,
     rresp     ,
     rlast     ,
     rvalid    ,
     rready    ,
-               
+
     awid      ,
     awaddr    ,
     awlen     ,
@@ -302,19 +302,19 @@ module axi_sram_bridge(
     awprot    ,
     awvalid   ,
     awready   ,
-    
+
     wid       ,
     wdata     ,
     wstrb     ,
     wlast     ,
     wvalid    ,
     wready    ,
-    
+
     bid       ,
     bresp     ,
     bvalid    ,
     bready    ,
-// icache 
+// icache
 	IF_icache_rd_req,
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
@@ -353,7 +353,7 @@ module axi_sram_bridge(
 // 时钟与复位信号
     input clk      ;
     input rst      ;   //low active
-// 读请求通道 
+// 读请求通道
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -364,8 +364,8 @@ module axi_sram_bridge(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应通道         
-    input [ 3:0]    rid       ;  
+//读相应通道
+    input [ 3:0]    rid       ;
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
@@ -395,7 +395,7 @@ module axi_sram_bridge(
     input           bvalid    ;
     output          bready    ;
 
-// icache 
+// icache
 	input IF_icache_rd_req;
 	input [2:0]IF_icache_rd_type;
 	input [31:0] IF_icache_rd_addr;
@@ -427,14 +427,12 @@ module axi_sram_bridge(
 
 reg [3:0] count_wr16;
 //暂时用不到的信号初始化
-	assign arsize   =   3'b010;
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
     assign awid     =   1;
 	assign rready   =   1;
 
-	assign awsize   =   3'b010;
     assign awlock   =   0;
     assign awcache  =   0;
     assign awprot   =   0;
@@ -478,22 +476,22 @@ end
 
 always @(posedge clk) begin
 	if(!rst)
-		conf_wr=0; 
+		conf_wr=0;
 	if(MEM_dcache_wr_req & conf_sel)
 	 	conf_wr=1;
 	else if (next_wr_state==state_wr_finish)
 		conf_wr=0;
-		
+
 end
 
 always @(posedge clk) begin
 	if(!rst)
-		dram_wr=0; 
+		dram_wr=0;
 	if(MEM_dcache_wr_req & ~conf_sel)
 	 	dram_wr=1;
 	else if (next_wr_state==state_wr_finish)
 		dram_wr=0;
-		
+
 end
 //Write Passway
 always @(posedge clk) begin
@@ -535,7 +533,7 @@ always @(posedge clk) begin
 	begin
 		current_wr_state = state_wr_free;
 	end
-	else 
+	else
 	begin
 		current_wr_state = next_wr_state;
 	end
@@ -543,7 +541,7 @@ end
 
 /*FSM_W*/
 always @(*) begin
-	case(current_wr_state)	
+	case(current_wr_state)
 		state_wr_free,state_wr_finish:
 		begin
 			if (MEM_dcache_wr_req)
@@ -604,7 +602,7 @@ always @(posedge clk) begin
 	begin
 		current_rd_state = state_rd_free;
 	end
-	else 
+	else
 	begin
 		current_rd_state = next_rd_state;
 	end
@@ -642,7 +640,7 @@ always @(*) begin
 		end
 	endcase
 end
-// 
+//
 assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
@@ -656,6 +654,7 @@ assign IF_icache_ret_data = rdata;
 assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
 assign arid = IF_icache_rd_req ? 0: 1;
+assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
 assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
 assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
@@ -663,10 +662,11 @@ assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'
 assign arvalid = (current_rd_state==state_rd_req) ;
 
 assign awaddr =MEM_dcache_wr_addr;
+assign awsize = MEM_dcache_wr_type;
 assign awlen = conf_wr ? 4'b0:4'b1111;
 assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
 assign awburst = conf_wr ? 2'b0 : 2'b1;
-					
+
 assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
 assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
 assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );

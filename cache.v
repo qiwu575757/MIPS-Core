@@ -1,8 +1,8 @@
 module icache(       clk, resetn, exception, stall,
         //CPU_Pipeline side
-        /*input*/   valid, tag, index, offset, 
+        /*input*/   valid, tag, index, offset,
         /*output*/  addr_ok, data_ok, rdata,
-        //AXI-Bus side 
+        //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
         );
@@ -18,14 +18,14 @@ module icache(       clk, resetn, exception, stall,
     input[19:0] tag;                //CPU address[31:14]
     input[5:0] index;               //CPU address[13:6]
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
-    output addr_ok;                 //to show address and data is received by Cache 
+    output addr_ok;                 //to show address and data is received by Cache
     output data_ok;                 //to show load or store operation is done
     output reg[31:0] rdata;         //data to be loaded from Cache to CPU
 
     // Cache && AXI-Bus
     input rd_rdy;                   //AXI-Bus read-ready signal
     input wr_rdy;                   //AXI-Bus write-ready signal
-    input ret_valid;                //to show the data returned from AXI-Bus is valid 
+    input ret_valid;                //to show the data returned from AXI-Bus is valid
     input ret_last;                 //to show the data returned from AXI-Bus is the last one
     input[31:0] ret_data;           //data to be refilled from AXI-Bus to Cache
     output rd_req;                  //Cache read-request signal
@@ -75,7 +75,7 @@ module icache(       clk, resetn, exception, stall,
     wire[511:0] Data_Way1_out;
     wire[511:0] Data_Way2_out;
     wire[511:0] Data_Way3_out;
-    
+
     //FINITE STATE MACHINE
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
@@ -141,7 +141,7 @@ module icache(       clk, resetn, exception, stall,
     assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
-    
+
     always@(posedge clk)
         if(!resetn)
             for(i=0;i<64;i=i+1)
@@ -199,12 +199,12 @@ module icache(       clk, resetn, exception, stall,
             tag_RB <= tag;
             offset_RB <= offset;
         end
-    
+
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
             replace_way_MB <= 2'b0;
-            replace_data_MB <= 512'd0; 
+            replace_data_MB <= 512'd0;
             replace_index_MB <= 6'd0;
             replace_tag_new_MB <= 20'd0;
         end
@@ -302,7 +302,7 @@ module icache(       clk, resetn, exception, stall,
             endcase
         else                //read ret_data when miss
             rdata = ret_data;
-    
+
     //write from cpu to cache (store)
     always@(ret_data)
             Data_in = {16{ret_data}};
@@ -406,12 +406,12 @@ module icache(       clk, resetn, exception, stall,
             Data_Way1_wen = 64'd0;
             Data_Way2_wen = 64'd0;
             Data_Way3_wen = 64'd0;
-        end    
+        end
 
     //replace from cache to mem (write memory)
     assign wr_addr = 32'd0 ;
     assign wr_data = 512'd0;
-    assign wr_type = 3'b100;
+    assign wr_type = 3'b010;
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
@@ -420,7 +420,7 @@ module icache(       clk, resetn, exception, stall,
     assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
     assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
-    assign rd_type = 3'b100;
+    assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
@@ -455,7 +455,7 @@ module icache(       clk, resetn, exception, stall,
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
-                    else 
+                    else
                         N_STATE = IDLE;
             LOOKUP: if(exception)
                         N_STATE = LOOKUP;
@@ -486,9 +486,9 @@ endmodule
 
 module dcache(       clk, resetn, DMRd,
         //CPU_Pipeline side
-        /*input*/   valid, op, tag, index, offset, wstrb, wdata, 
+        /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
-        //AXI-Bus side 
+        //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
         );
@@ -506,14 +506,14 @@ module dcache(       clk, resetn, DMRd,
     input[5:0] offset;              //CPU address[5:0]: [5:2] is block offset , [1:0] is byte offset
     input[3:0] wstrb;               //write code,including 0001 , 0010 , 0100, 1000, 0011 , 1100 , 1111
     input[31:0] wdata;              //data to be stored from CPU to Cache
-    output addr_ok;                 //to show address and data is received by Cache 
+    output addr_ok;                 //to show address and data is received by Cache
     output data_ok;                 //to show load or store operation is done
     output reg[31:0] rdata;         //data to be loaded from Cache to CPU
 
     // Cache && AXI-Bus
     input rd_rdy;                   //AXI-Bus read-ready signal
     input wr_rdy;                   //AXI-Bus write-ready signal
-    input ret_valid;                //to show the data returned from AXI-Bus is valid 
+    input ret_valid;                //to show the data returned from AXI-Bus is valid
     input ret_last;                 //to show the data returned from AXI-Bus is the last one
     input[31:0] ret_data;           //data to be refilled from AXI-Bus to Cache
     input wr_valid;
@@ -574,7 +574,7 @@ module dcache(       clk, resetn, DMRd,
     wire[511:0] Data_Way1_out;
     wire[511:0] Data_Way2_out;
     wire[511:0] Data_Way3_out;
-    
+
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
@@ -596,7 +596,7 @@ module dcache(       clk, resetn, DMRd,
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg[1:0] replace_way_MB;        //the way to be replaced and refilled
-    reg replace_Valid_MB;           
+    reg replace_Valid_MB;
     reg replace_Dirty_MB;
     reg[19:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
     reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
@@ -685,7 +685,7 @@ module dcache(       clk, resetn, DMRd,
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
-    
+
     assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
     assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
@@ -785,12 +785,12 @@ module dcache(       clk, resetn, DMRd,
         end
         else if(~addr_ok && data_ok)
             op_RB <= 1'b0;
-    
+
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
             replace_way_MB <= 2'b0;
-            replace_data_MB <= 512'd0; 
+            replace_data_MB <= 512'd0;
             replace_Valid_MB <= 1'b0;
             replace_Dirty_MB <= 1'b0;
             replace_index_MB <= 6'd0;
@@ -926,7 +926,7 @@ module dcache(       clk, resetn, DMRd,
             endcase
         else                //read ret_data when miss
             rdata = ret_data;
-    
+
     //write from cpu to cache (store)
     always@(wdata_WB, wstrb_WB, C_STATE_WB, ret_data)
         if(C_STATE_WB == WRITE) begin
@@ -1136,12 +1136,12 @@ module dcache(       clk, resetn, DMRd,
             Data_Way1_wen = 64'd0;
             Data_Way2_wen = 64'd0;
             Data_Way3_wen = 64'd0;
-        end    
+        end
 
     //replace from cache to mem (write memory)
     assign wr_addr = {replace_tag_old_MB, replace_index_MB, 6'b000000} ;
     assign wr_data = replace_data_MB;
-    assign wr_type = 3'b100;
+    assign wr_type = 3'b010;
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
@@ -1155,7 +1155,7 @@ module dcache(       clk, resetn, DMRd,
     assign D_Way2_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd2)) || (ret_valid && (replace_way_MB == 2));
     assign D_Way3_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd3)) || (ret_valid && (replace_way_MB == 3));
     assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
-    assign rd_type = 3'b100;
+    assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
@@ -1198,13 +1198,13 @@ module dcache(       clk, resetn, DMRd,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last, 
+    always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last,
             replace_Valid_MB, replace_Dirty_MB, write_conflict1, write_conflict2,
             wr_valid, C_STATE_WB)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
-                    else 
+                    else
                         N_STATE = IDLE;
             LOOKUP: if(!cache_hit) begin
                         if(C_STATE_WB == WRITE)
@@ -1255,13 +1255,13 @@ module dcache(       clk, resetn, DMRd,
             N_STATE_WB = IDLE_WB;
 
     //output signals
-    assign addr_ok = (C_STATE == MISS) | (C_STATE == REPLACE) | (C_STATE == HOLD) | (C_STATE == REFILL) | 
-                    | ((C_STATE == LOOKUP) && !write_conflict1 && !write_conflict2) 
+    assign addr_ok = (C_STATE == MISS) | (C_STATE == REPLACE) | (C_STATE == HOLD) | (C_STATE == REFILL) |
+                    | ((C_STATE == LOOKUP) && !write_conflict1 && !write_conflict2)
                     | ((C_STATE == IDLE) && !write_conflict2);
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     assign rd_req = (N_STATE == REFILL) ;
     assign wr_req = (N_STATE == REPLACE) ;
-    
+
 endmodule
 
 module uncache_dm(
@@ -1269,7 +1269,7 @@ module uncache_dm(
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
-        //AXI-Bus side 
+        //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
@@ -1347,8 +1347,14 @@ module uncache_dm(
 
     assign rd_req = (N_STATE == LOAD);
     assign wr_req = (N_STATE == STORE);
-    assign rd_type = 3'b010;
-    assign wr_type = 3'b010;
+    assign rd_type =
+        ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
+        ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
+                                3'd2;
+    assign wr_type =
+        (MEM2_DMSel==3'b000)  ?  3'd0 :
+        (MEM2_DMSel==3'b001)  ?  3'd1 :
+                                3'd2
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;
