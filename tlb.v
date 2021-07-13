@@ -80,7 +80,7 @@ module tlb(
     reg         tlb_v1      [TLBNUM-1:0];
 
     wire [15:0]     match0 ;
-    wire [15:0]     match1  ;
+    wire [15:0]     match1 ;
 
     integer i;
 
