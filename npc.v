@@ -1,8 +1,8 @@
 module npc(
-	PC, PF_PC, Imm, EPC, ret_addr, NPCOp,
+	PC, PF_PC, Imm, EPC, ret_addr, NPCOp, 
 	MEM_eret_flush, MEM_ex, PCWr,
 
-	NPC, IF_Flush,ID_Flush, EX_Flush,
+	NPC, IF_Flush,ID_Flush, EX_Flush, 
 	PC_Flush, MEM1_Flush, MEM2_Flush, PF_Flush
 	);
 
@@ -24,7 +24,7 @@ module npc(
 
 	always@(PC,PF_PC, Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)
-			NPC = EPC ;
+			NPC = EPC + 4;
 		else if (MEM_ex)		//TLB Rill and normal exception
 			NPC = 32'hBFC0_0380 ;
 		else begin
@@ -47,5 +47,5 @@ module npc(
 	assign PC_Flush = 1'b0 ;
 	assign MEM2_Flush = 1'b0;
 	assign PF_Flush = (((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex) ;
-
+	
 endmodule
