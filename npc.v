@@ -12,7 +12,8 @@ module npc(
 	input[1:0] NPCOp;
 	input PCWr;
 	input MEM_eret_flush;
-	input MEM_ex,MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC;
+	input MEM_ex,MEM1_TLBRill_Exc,WB_TLB_flush;
+	input [31:0] MEM2_PC;
 
 	output reg[31:0] NPC;
 	output IF_Flush;
@@ -24,7 +25,7 @@ module npc(
 
 	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)
-			NPC = EPC + 4;
+			NPC = EPC;
 		else if (MEM_ex)		//TLB Rill and normal exception
 			NPC = !MEM1_TLBRill_Exc ? 32'hBFC0_0380 : 32'hBFC0_0200;
 		else if (WB_TLB_flush)	//TLBWI TLBR clear up

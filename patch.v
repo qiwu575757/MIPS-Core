@@ -1,8 +1,9 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    NPC, PCWr, s0_found,s0_v,s0_pfn, IF_uncache_data_ok,
+    NPC, PCWr, s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,
     isStall,TLB_flush,EX_TLB_flush, MEM1_TLB_flush, MEM2_TLB_flush, WB_TLB_flush,
+    Config_K0_out,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,
     PF_TLBRill_Exc,PF_Exception,PPC, PF_valid, TLB_flush_signal,
@@ -14,6 +15,7 @@ module instr_fetch_pre(
     input [19:0] s0_pfn;
     input isStall,TLB_flush, EX_TLB_flush, MEM1_TLB_flush,MEM2_TLB_flush, WB_TLB_flush;
     input IF_uncache_data_ok;
+    input [2:0] Config_K0_out, s0_c;
 
     output PF_AdEL,PF_TLB_Exc,PF_TLBRill_Exc,PF_Exception;
     output [4:0] PF_ExcCode;
@@ -25,22 +27,27 @@ module instr_fetch_pre(
     output PF_uncache_valid;
 
     wire mapped;
-    assign mapped = (~NPC[31] || (NPC[31]&&NPC[30])) ? 1 : 0;
-    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);
+    wire kseg0, kseg1;
 
     //the tlb exception should influence the cache and uncache valid or not
     assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
-    assign  PF_TLB_Exc   = mapped&(!s0_found || (s0_found&!s0_v));
+    assign mapped = ( ~NPC[31] || (NPC[31]&NPC[30]) ) ? 1 : 0;
+    assign 	PF_TLBRill_Exc	= ~PF_AdEL & mapped&(!s0_found) & PCWr;
+    assign  PF_TLB_Exc   = mapped & (!s0_found || (s0_found&!s0_v) ) & !PF_AdEL;//tlbl
 
-    assign PF_Exception = (PF_AdEL || PF_TLB_Exc);
+    assign PF_Exception = PF_AdEL | PF_TLB_Exc;
     assign PF_ExcCode = 	 PF_AdEL ? `AdEL : 
                             PF_TLB_Exc ? `TLBL : 5'b0;
-    assign 	PF_TLBRill_Exc	= ~PF_AdEL & mapped&(!s0_found);
-    
+
     assign PPC = 
-		!mapped ? {3'b000,NPC[28:0]} : 
-		(PF_ExcCode == 5'd0) ? {s0_pfn,NPC[11:0]} :
-						32'd0;
+		!mapped ? {3'b000,NPC[28:0]} : {s0_pfn,NPC[11:0]};
+					
+    //icache sel 
+    assign kseg0 = (NPC[31:29] == 3'b100);
+    assign kseg1 = (NPC[31:29] == 3'b101);
+    //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
+    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
+
     assign PF_valid = !isStall&!PF_Exception 
             &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush;
     assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
@@ -56,15 +63,16 @@ module mem1_cache_prep(
     MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel, MEM1_RFWr,
     MEM1_Overflow, Temp_M1_Exception, 
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
-    s1_d,s1_pfn,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
-    MEM1_LoadOp,MEM1_StoreOp,MEM1_GPR_RT,Interrupt,
+    s1_d,s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,
+    Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,MEM1_LoadOp,
+    MEM1_StoreOp,MEM1_GPR_RT,Interrupt,Config_K0_out,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
     MEM1_Exception,MEM1_badvaddr,MEM1_TLBRill_Exc,MEM1_TLB_Exc,
     MEM1_uncache_valid, MEM1_DMen,MEM1_wdata
     );
-    input MEM1_dcache_en;
+    input MEM1_dcache_en;//MEM1_dcache_en = 1 => load or store
     input MEM1_eret_flush;
     input[31:0] MEM1_ALU1Out;
     input MEM1_DMWr;
@@ -75,13 +83,14 @@ module mem1_cache_prep(
     input[4:0] Temp_M1_ExcCode;
     input[31:0] MEM1_PC;
     input s1_found,s1_v;
-    input s1_d,Temp_EX_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc;
+    input s1_d,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc;
     input [19:0] s1_pfn;
     input MEM_unCache_data_ok;
     input MEM1_RFWr;
     input [1:0] MEM1_LoadOp,MEM1_StoreOp;
     input [31:0] MEM1_GPR_RT;
-    input Interrupt;
+    input Interrupt;    
+    input [2:0] s1_c, Config_K0_out;
 
     output[31:0] MEM1_Paddr;
     output MEM1_cache_sel;
@@ -99,11 +108,12 @@ module mem1_cache_prep(
     wire data_mapped;
     wire valid;
     wire [4:0] MEM1_TLB_ExCode;
-    //wire MEM1_dcache_valid_temp;
+    wire kseg0, kseg1;
+    wire tlbs, tlbl, tlbmod;
 
-    assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30]));
+    assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30])) & MEM1_dcache_en;//load or store
     assign valid = MEM1_dcache_en &IF_iCache_data_ok;
-	assign 	MEM1_TLBRill_Exc	= ((Temp_M1_ExcCode!=`AdEL)&data_mapped&(!s1_found)&valid) | Temp_MEM1_TLBRill_Exc;          
+	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;          
     /*
     Explain:
         valid --> need to use dcache
@@ -112,40 +122,75 @@ module mem1_cache_prep(
         s1_found&!s1_v --> TLB Invalid
         s1_found&s1_v&!s1_d --> TLB Mod
     */     
-    assign MEM1_TLB_Exc = (data_mapped&(!s1_found || (s1_found&!s1_v) || (s1_found&s1_v&!s1_d))
-                                &valid) | Temp_EX_TLB_Exc;//include tlb rill,tlb invaild     
+    assign MEM1_TLB_Exc = tlbl | tlbs | tlbmod | Temp_MEM1_TLB_Exc;//include tlb rill,tlb invaild
+
+    assign tlbl = data_mapped & ( !DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//load
+    assign tlbs = data_mapped & (DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//store
+    assign tlbmod = data_mapped & ( DMWen_dcache & (s1_found&s1_v&!s1_d) ) & !Temp_M1_Exception ;//store
+
      assign MEM1_TLB_ExCode = 
-                MEM1_TLB_Exc ?
-                (
-                    (DMWen_dcache&(!s1_found||(s1_found&!s1_v))) ? `TLBS :
-                    (
-                        (DMWen_dcache&(s1_found&s1_v&!s1_d)) ? `TLBMod :
-                        (
-                            (MEM1_dcache_en&!DMWen_dcache&(!s1_found||(s1_found&!s1_v))) ? `TLBL 
-                                                : 5'd0 //MEM1_dcache_en&!DMWen_dcache --> load
-                        )
-                    )
-                )
-                                                : 5'b0;            
+                              tlbl      ? `TLBL      :        
+                              tlbs      ? `TLBS      :        
+                              tlbmod    ? `TLBMod    : 
+                              Temp_MEM1_TLB_Exc ? Temp_M1_ExcCode :
+                                        5'b0;       
     assign MEM1_Paddr = 
 		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} : 
-		        //(MEM1_TLB_ExCode == 5'd0) ? {s1_pfn,MEM1_ALU1Out[11:0]} :
-				//		32'd0;
                 {s1_pfn,MEM1_ALU1Out[11:0]} ;
 
-	//assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
-    assign MEM1_cache_sel = 1'b1;
+    //dcache sel 
+    assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
+    assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
+    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)));
+    //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
 
     //assign MEM1_dcache_valid_temp = MEM1_dcache_en && ~MEM1_cache_sel;
-    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;
-    assign MEM1_dcache_valid = MEM1_dcache_en &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
+    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;//0->load,1->store
+    assign MEM1_dcache_valid = MEM1_dcache_en & IF_iCache_data_ok & !MEM1_Exception &
+                        !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel;
 
-    assign MEM1_uncache_valid = MEM1_dcache_en && MEM1_cache_sel&!MEM1_Exception&!MEM1_eret_flush;
+    assign MEM1_uncache_valid = MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception & !MEM1_eret_flush;
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
-// 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�???
+    always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out or MEM1_DMRd or Temp_M1_ExcCode
+		or MEM1_PC or MEM1_TLB_Exc or MEM1_RFWr or Interrupt or MEM1_LoadOp or MEM1_TLB_ExCode)
+        if (Interrupt) begin
+			MEM1_Exception <= 1'b1;
+			MEM1_ExcCode <= `Int;
+            MEM1_badvaddr <= 32'd0;
+		end
+		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
+		    MEM1_ExcCode <= `Ov;
+		    MEM1_Exception <= 1'b1;
+		    MEM1_badvaddr <= 32'd0;
+		end
+		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00)&& ( MEM1_DMSel == 3'b010 
+        && MEM1_ALU1Out[1:0] != 2'b00 || MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
+		    MEM1_ExcCode <= `AdES;
+		    MEM1_Exception <= 1'b1;
+		    MEM1_badvaddr <= MEM1_ALU1Out;
+		end
+		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00) &&(MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
+			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
+		    MEM1_ExcCode <= `AdEL;
+		    MEM1_Exception <= 1'b1;
+		    MEM1_badvaddr <= MEM1_ALU1Out;
+		end
+        else if (MEM1_TLB_Exc & !Temp_M1_Exception)
+        begin
+            MEM1_ExcCode <= MEM1_TLB_ExCode;
+		    MEM1_Exception <= 1'b1;
+		    MEM1_badvaddr <= MEM1_ALU1Out;
+        end
+		else begin
+		    MEM1_ExcCode <= Temp_M1_ExcCode;
+		    MEM1_Exception <= Temp_M1_Exception;
+		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地址有关的例外其出错地址一定为其PC
+		end
+
+// 以下这些东西可以封装成翻译模块，或直接用控制器生成对应信号
+// set writeen signal and store data
     assign MEM1_dCache_wstrb=
                     (~DMWen_dcache)         ?   4'b0  :
                         (MEM1_StoreOp == 2'b00)  ? 
@@ -206,42 +251,6 @@ module mem1_cache_prep(
         else
             MEM1_wdata = MEM1_GPR_RT[31:0];
     end
-
-    always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out or MEM1_DMRd or Temp_M1_ExcCode
-		or MEM1_PC or MEM1_TLB_Exc or MEM1_RFWr)
-        if (Interrupt) begin
-			MEM1_Exception <= 1'b1;
-			MEM1_ExcCode <= `Int;
-            MEM1_badvaddr <= 32'd0;
-		end
-		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
-		MEM1_ExcCode <= `Ov;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= 32'd0;
-		end
-		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00)&& ( MEM1_DMSel == 3'b010 
-        && MEM1_ALU1Out[1:0] != 2'b00 || MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
-		MEM1_ExcCode <= `AdES;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
-		end
-		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00) &&(MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
-			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
-		MEM1_ExcCode <= `AdEL;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
-		end
-        else if (MEM1_TLB_Exc)
-        begin
-        MEM1_ExcCode <= MEM1_TLB_ExCode;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
-        end
-		else  begin
-		MEM1_ExcCode <= Temp_M1_ExcCode;
-		MEM1_Exception <= Temp_M1_Exception;
-		MEM1_badvaddr <= MEM1_PC;//这里肯定有问题
-		end
 
 endmodule
 

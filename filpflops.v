@@ -42,7 +42,7 @@ module PF_IF(
 			IF_Exception <= PF_Exception;
 			PC <= NPC;
 			IF_TLBRill_Exc <= PF_TLBRill_Exc;
-			IF_TLB_Exc <= IF_TLB_Exc;
+			IF_TLB_Exc <= PF_TLB_Exc;
 			IF_valid <= valid;
 			IF_icache_sel <= icache_sel;
 			IF_uncache_valid <= uncache_valid;
@@ -72,7 +72,7 @@ module IF_ID(
 
 	always@(posedge clk)
 		if(!rst || IF_Flush) begin
-			ID_PC <= 32'h0000_0000;
+			//ID_PC <= 32'h0000_0000;
 			ID_Instr <= 32'h0000_0000;
 			Temp_ID_Excetion <= 1'b0;
 			Temp_ID_ExcCode <= 5'b0;
@@ -185,7 +185,7 @@ module ID_EX(
 			EX_RT <= 5'd0;
 			EX_RD <= 5'd0;
 			EX_shamt <= 5'd0;
-			EX_PC <= 32'd0;
+			//EX_PC <= 32'd0;
 			EX_GPR_RS <= 32'd0;
 			EX_GPR_RT <= 32'd0;
 			EX_Imm32 <= 32'd0;
@@ -307,7 +307,7 @@ module EX_MEM1(
 			MEM1_DMSel <= 3'd0;
 			MEM1_MUX2Sel <= 3'd0;
 			MEM1_RD <= 5'd0;
-			MEM1_PC <= 32'd0;
+			//MEM1_PC <= 32'd0;
 			MEM1_RHLOut <= 32'd0;
 			MEM1_ALU1Out <= 32'd0;
 			MEM1_GPR_RT <= 32'd0;
@@ -428,7 +428,7 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 
 	always@(posedge clk)
 		if(!rst || MEM1_Flush) begin
-			MEM2_PC <= 32'd0;
+			//MEM2_PC <= 32'd0;
 			MEM2_RFWr <= 1'b0;
 			MEM2_MUX2Sel <= 3'd0;
 			MEM2_MUX6Out <= 32'd0;
@@ -516,7 +516,7 @@ module MEM2_WB(
 
 	always@(posedge clk)
 		if(!rst || MEM2_Flush) begin
-			WB_PC <= 32'd0;
+			//WB_PC <= 32'd0;
 			WB_MUX2Out <= 32'd0;
 			WB_MUX2Sel <= 3'd0;
 			WB_RD <= 5'd0;

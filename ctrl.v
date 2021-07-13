@@ -562,8 +562,11 @@
 		end
 	end
 
-	////used for the TLBR ,TLBWI or mtc0 entryHi, to clear the instrs after the two instr
-	assign TLB_flush = ( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi || Funct == `tlbwr)) || (CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b01010_000);
+	////used for the TLBR ,TLBWI, mtc0 entryHi, mtc0 Config, to clear the instrs after the two instr
+	assign TLB_flush = 
+		( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi || Funct == `tlbwr)) || 
+		(CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b01010_000)	||
+		(CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b10000_000);
 
 	assign TLB_readen = ( OP == `tlb && (Funct == `tlbr));
 	assign TLB_writeen = ( OP == `tlb && (Funct == `tlbwi || Funct == `tlbwr));

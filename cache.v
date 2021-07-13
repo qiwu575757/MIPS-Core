@@ -1196,7 +1196,7 @@ endmodule
 module uncache_dm(
         clk, resetn,
         //CPU_Pipeline side
-        /*input*/   valid, op, addr, wstrb, wdata,
+        /*input*/   valid, op, addr, wstrb, wdata,MEM2_DMSel,
         /*output*/  data_ok, rdata,
         //AXI-Bus side 
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
@@ -1211,6 +1211,7 @@ module uncache_dm(
     input[31:0] addr;
     input[3:0] wstrb;
     input[31:0] wdata;
+    input [2:0] MEM2_DMSel;
 
     output data_ok;
     output[31:0] rdata;
@@ -1276,8 +1277,14 @@ module uncache_dm(
 
     assign rd_req = (N_STATE == LOAD);
     assign wr_req = (N_STATE == STORE);
-    assign rd_type = 3'b010;
-    assign wr_type = 3'b010;
+    assign rd_type = 
+            ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
+            ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
+                                    3'd2;
+    assign wr_type =   
+            (MEM2_DMSel==3'b000)  ?  3'd0 :
+            (MEM2_DMSel==3'b001)  ?  3'd1 :
+                                    3'd2;
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;
