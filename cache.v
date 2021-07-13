@@ -380,7 +380,7 @@ module icache(       clk, resetn, exception,
     //replace from cache to mem (write memory)
     assign wr_addr = 32'd0 ;
     assign wr_data = 512'd0;
-    assign wr_type = 3'b100;
+    assign wr_type = 3'b010;
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
@@ -389,7 +389,7 @@ module icache(       clk, resetn, exception,
     assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
     assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,tag};
-    assign rd_type = 3'b100;
+    assign rd_type = 3'b010;
     assign rd_addr = {tag, replace_index_MB, 6'b000000};
 
     //block address control
@@ -487,8 +487,8 @@ module dcache(       clk, resetn,
     input wr_valid;
     output rd_req;                  //Cache read-request signal
     output wr_req;                  //Cache write-request signal
-    output[2:0] rd_type;            //read type, assign 3'b100
-    output[2:0] wr_type;            //write type, assign 3'b100
+    output[2:0] rd_type;            //read type, assign 3'b010
+    output[2:0] wr_type;            //write type, assign 3'b010
     output[31:0] rd_addr;           //read address
     output[31:0] wr_addr;           //write address
     output[3:0] wr_wstrb;           //write code,assign 4'b1111
@@ -1023,7 +1023,7 @@ module dcache(       clk, resetn,
     //replace from cache to mem (write memory)
     assign wr_addr = {replace_tag_old_MB, replace_index_MB, 6'b000000} ;
     assign wr_data = replace_data_MB;
-    assign wr_type = 3'b100;
+    assign wr_type = 3'b010;
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
@@ -1037,7 +1037,7 @@ module dcache(       clk, resetn,
     assign D_Way2_wen = (hit_write && way2_hit) || (ret_valid && (replace_way_MB == 2));
     assign D_Way3_wen = (hit_write && way3_hit) || (ret_valid && (replace_way_MB == 3));
     assign D_in = ret_valid ? 0 : hit_write;
-    assign rd_type = 3'b100;
+    assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
