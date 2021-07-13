@@ -1,4 +1,4 @@
-module icache(       clk, resetn, exception,
+module icache(       clk, resetn, exception, stall,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset, 
         /*output*/  addr_ok, data_ok, rdata,
@@ -11,6 +11,7 @@ module icache(       clk, resetn, exception,
     input clk;
     input resetn;
     input exception;
+    input stall;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -423,15 +424,15 @@ module icache(       clk, resetn, exception,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(replace_index_MB, index, C_STATE, valid, index_RB)
-        if(!valid)
+    always@(replace_index_MB, index, C_STATE, stall, index_RB)
+        if(stall)
             VT_addr = index_RB;
         else if(C_STATE == REFILL)
             VT_addr = replace_index_MB;
         else
             VT_addr = index;
-    always@(replace_index_MB, index, C_STATE, valid, index_RB)
-        if(!valid)
+    always@(replace_index_MB, index, C_STATE, stall, index_RB)
+        if(stall)
             Data_addr = index_RB;
         else if(C_STATE == REFILL)
             Data_addr = replace_index_MB;
@@ -483,7 +484,7 @@ module icache(       clk, resetn, exception,
 
 endmodule
 
-module dcache(       clk, resetn,
+module dcache(       clk, resetn, DMRd,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata, 
         /*output*/  addr_ok, data_ok, rdata,
@@ -495,6 +496,7 @@ module dcache(       clk, resetn,
     //clock and reset
     input clk;
     input resetn;
+    input DMRd;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -684,13 +686,13 @@ module dcache(       clk, resetn,
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
     
-    assign write_conflict1 = hit_write && !op && valid 
+    assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
-    assign write_conflict2 = (C_STATE_WB == WRITE) && !op && valid 
+    assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
                             && ({tag,index,offset}!={tag_WB,index_WB,offset_WB});
-    assign write_bypass1 = hit_write && !op && valid 
+    assign write_bypass1 = hit_write && DMRd
                             && ({tag,index,offset}=={tag_RB,index_RB,offset_RB});
-    assign write_bypass2 = (C_STATE_WB == WRITE) && !op && valid 
+    assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});
     /*
     assign write_conflict1 = hit_write && !op && valid;

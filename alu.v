@@ -18,6 +18,15 @@ module alu1(
 	assign Less = ((ALU1Op == 4'b1001) && A[31]^B[31]) ? ~(A < B) : (A < B);
 
 	always@(A, B, ALU1Op, Less, temp)
+		/*if(ALU1Op == 4'b1000)begin					//arithmetical right shift
+						C = B;
+						if(temp[4]) C = {{16{B[31]}},C[31:16]};
+						if(temp[3]) C = {{8{B[31]}},C[31:8]};
+						if(temp[2]) C = {{4{B[31]}},C[31:4]};
+						if(temp[1]) C = {{2{B[31]}},C[31:2]};
+						if(temp[0]) C = {B[31],C[31:1]};*
+					 end
+		else begin*/
 		case(ALU1Op)
 			4'b0000:	C = A + B;			//add
 			4'b1011:	C = A + B;			//addu
@@ -29,23 +38,7 @@ module alu1(
 			4'b0101:	C = A ^ B;			//xor
 			4'b0110:	C = B << temp;		//logical left shift
 			4'b0111:	C = B >> temp;		//logical right shift
-			4'b1000:begin					//arithmetical right shift
-						C = B;
-						if(B[31]) begin
-							if(temp[4]) C = {16'hffff,C[31:16]};
-							if(temp[3]) C = {8'hff,C[31:8]};
-							if(temp[2]) C = {4'hf,C[31:4]};
-							if(temp[1]) C = {2'h3,C[31:2]};
-							if(temp[0]) C = {1'h1,C[31:1]};
-						end
-						else begin
-							if(temp[4]) C = {16'h0000,C[31:16]};
-							if(temp[3]) C = {8'h00,C[31:8]};
-							if(temp[2]) C = {4'h0,C[31:4]};
-							if(temp[1]) C = {2'h0,C[31:2]};
-							if(temp[0]) C = {1'h0,C[31:1]};
-						end
-					 end
+			4'b1000:	C = $signed(B) >>> temp;//arithmetical right shift
 			default:	C = {31'h00000000,Less};//	signed/unsigned compare
 		endcase
 	

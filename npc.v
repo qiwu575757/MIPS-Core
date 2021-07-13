@@ -24,7 +24,7 @@ module npc(
 
 	always@(PC,PF_PC, Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)
-			NPC = EPC + 4;
+			NPC = EPC;
 		else if (MEM_ex)		//TLB Rill and normal exception
 			NPC = 32'hBFC0_0380 ;
 		else begin
