@@ -162,7 +162,7 @@ module icache(       clk, resetn, exception, stall,
             age[index_RB][2] <= 1'b0;
             age[index_RB][0] <= 1'b0;
         end
-    always@(age, index_RB)
+    always@(*)
         if(age[index_RB][2]) begin
             if(age[index_RB][0])
                 counter = 2'd3;
@@ -720,7 +720,7 @@ module dcache(       clk, resetn, DMRd,
             age[index_RB][2] <= 1'b0;
             age[index_RB][0] <= 1'b0;
         end
-    always@(age, index_RB)
+    always@(*)
         if(age[index_RB][2]) begin
             if(age[index_RB][0])
                 counter = 2'd3;
@@ -1265,7 +1265,7 @@ module dcache(       clk, resetn, DMRd,
 endmodule
 
 module uncache_dm(
-        clk, resetn,
+        clk, resetn, DMSel,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
@@ -1276,6 +1276,7 @@ module uncache_dm(
 
     input clk;
     input resetn;
+    input[2:0] DMSel;
 
     input valid;
     input op;
@@ -1348,13 +1349,13 @@ module uncache_dm(
     assign rd_req = (N_STATE == LOAD);
     assign wr_req = (N_STATE == STORE);
     assign rd_type =
-        ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
-        ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
+        ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
+        ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
                                 3'd2;
     assign wr_type =
-        (MEM2_DMSel==3'b000)  ?  3'd0 :
-        (MEM2_DMSel==3'b001)  ?  3'd1 :
-                                3'd2
+        (DMSel==3'b000)  ?  3'd0 :
+        (DMSel==3'b001)  ?  3'd1 :
+                                3'd2;
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;

@@ -604,7 +604,7 @@ mux2 U_MUX2(
 	);
 
 uncache_dm U_UNCACHE_DM(
-        .clk(clk), .resetn(rst),
+        .clk(clk), .resetn(rst), .DMSel(MEM2_DMSel),
         .valid(MEM2_uncache_valid), .op(DMWen_uncache), .addr(MEM2_Paddr), .wstrb(MEM2_unCache_wstrb), 
         .wdata(MEM2_GPR_RT), .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),
         .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid), 
