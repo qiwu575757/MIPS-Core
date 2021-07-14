@@ -479,7 +479,8 @@ module icache(       clk, resetn, exception, stall,
     //output signals
     assign addr_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP)) ;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
-    assign rd_req = (N_STATE == REFILL) ;
+    //assign rd_req = (N_STATE == REFILL) ;
+    assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
 endmodule
@@ -700,6 +701,10 @@ module dcache(       clk, resetn, DMRd, stall,
     //assign addr_select = stall | ~addr_ok | ~data_ok;
     assign addr_select = stall | ~((C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) 
                     & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB}))));
+    /*assign addr_select = stall | (~((C_STATE == IDLE) | cache_hit) 
+                        | ~((C_STATE == IDLE) | (C_STATE == LOOKUP)) 
+                        | (~(C_STATE == IDLE) & op_RB & DMRd 
+                        & ~({tag,index,offset}=={tag_RB,index_RB,offset_RB})));*/
 
 
 
@@ -1257,13 +1262,18 @@ module dcache(       clk, resetn, DMRd, stall,
             N_STATE_WB = IDLE_WB;
 
     //output signals
-    assign addr_ok = (C_STATE == SELECT) | (C_STATE == MISS) | (C_STATE == REPLACE) 
+    /*assign addr_ok = (C_STATE == SELECT) | (C_STATE == MISS) | (C_STATE == REPLACE) 
                     | (C_STATE == HOLD) | (C_STATE == REFILL) |
                     | ((C_STATE == LOOKUP) && !write_conflict1 && !write_conflict2)
-                    | ((C_STATE == IDLE) && !write_conflict2);
+                    | ((C_STATE == IDLE) && !write_conflict2);*/
+    assign addr_ok = ~( ((C_STATE == LOOKUP) & (write_conflict1 | write_conflict2)) 
+                     | ((C_STATE == IDLE) & write_conflict2) );
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
-    assign rd_req = (N_STATE == REFILL) ;
-    assign wr_req = (N_STATE == REPLACE) ;
+    //assign rd_req = (N_STATE == REFILL) ;
+    //assign wr_req = (N_STATE == REPLACE) ;
+    assign rd_req = ((C_STATE == HOLD) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid&ret_last));
+    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) 
+                    | ((C_STATE == REPLACE) & ~wr_valid);
 
 endmodule
 
@@ -1349,8 +1359,10 @@ module uncache_dm(
                     (store && (C_STATE == STORE) && wr_valid)  ;
     assign rdata = ret_data;
 
-    assign rd_req = (N_STATE == LOAD);
-    assign wr_req = (N_STATE == STORE);
+    //assign rd_req = (N_STATE == LOAD);
+    //assign wr_req = (N_STATE == STORE);
+    assign rd_req = ((C_STATE == DEFAULT) & load & rd_rdy) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
+    assign wr_req = ((C_STATE == DEFAULT) & store & wr_rdy) | ((C_STATE == STORE) & ~wr_valid);
     assign rd_type =
         ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
         ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
