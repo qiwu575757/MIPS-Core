@@ -130,9 +130,9 @@ module mux8(
 	
 	always@(GPR_RS, data_MEM1, data_MEM2, MUX8Sel)
 		case(MUX8Sel)
-			2'b00:	out = GPR_RS;
-			2'b01:	out = data_MEM1;
-			default:out = data_MEM2;
+			2'b10:	out = data_MEM1;
+			2'b11:	out = data_MEM2;
+			default:out = GPR_RS;
 		endcase
 endmodule 
 
@@ -147,9 +147,9 @@ module mux9(
 	
 	always@(GPR_RT, data_MEM1, data_MEM2, MUX9Sel)
 		case(MUX9Sel)
-			2'b00:	out = GPR_RT;
-			2'b01:	out = data_MEM1;
-			default:out = data_MEM2;
+			2'b10:	out = data_MEM1;
+			2'b11:	out = data_MEM2;
+			default:out = GPR_RT;
 		endcase
 
 endmodule 
