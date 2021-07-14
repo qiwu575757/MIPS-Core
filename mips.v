@@ -177,6 +177,7 @@ module mips(
 
     wire Temp_ID_Excetion;
 	wire[4:0] Temp_ID_ExcCode,ID_ExcCode;
+    wire[4:0] MUX1Out;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -193,7 +194,7 @@ module mips(
 	wire EX_RFWr;
     wire EX_RHLWr;
     wire[1:0] EX_ALU2Op; 
-    wire[1:0] EX_MUX1Sel; 
+    wire[4:0] EX_MUX1Out; 
 	wire[1:0] EX_RHLSel_Wr;
     wire[2:0] EX_DMSel;
     wire[2:0] EX_MUX2Sel;
@@ -211,7 +212,6 @@ module mips(
     wire EX_start;
     wire EX_dcache_en;
 
-    wire[4:0] MUX1Out;
     wire[31:0] MUX3Out;
     wire[31:0] MUX4Out;
     wire[31:0] MUX5Out;
@@ -258,6 +258,7 @@ module mips(
 	wire [31:0] M1_badvaddr;
     wire MEM1_uncache_valid;
     wire MEM1_DMen;
+    wire MEM1_dcache_valid_except_icache;
 	//-------------MEM2---------------//
     wire MEM2_RFWr;
     wire[4:0] MEM2_RD;
@@ -459,7 +460,7 @@ ctrl U_CTRL(
 	//--------------EX----------------//
 ID_EX U_ID_EX(
 		.clk(clk), .rst(rst), .ID_EXWr(ID_EXWr),.RHLSel_Rd(RHLSel_Rd), .PC(ID_PC), .ALU1Op(ALU1Op), .ALU2Op(ALU2Op), 
-		.MUX1Sel(MUX1Sel), .MUX3Sel(MUX3Sel),.ALU1Sel(ALU1Sel), .DMWr(MUX7Out[2]), .DMSel(DMSel), .DMRd(DMRd), 
+		.MUX1Out(MUX1Out), .MUX3Sel(MUX3Sel),.ALU1Sel(ALU1Sel), .DMWr(MUX7Out[2]), .DMSel(DMSel), .DMRd(DMRd), 
 		.RFWr(MUX7Out[1]), .RHLWr(MUX7Out[0]),.RHLSel_Wr(RHLSel_Wr), .MUX2Sel(MUX2_6Sel),
 		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out), .RS(ID_Instr[25:21]),.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), 
 		.Imm32(Imm32), .shamt(ID_Instr[10:6]), .eret_flush(eret_flush), .ID_Flush(ID_Flush), .CP0WrEn(CP0WrEn), 
@@ -470,7 +471,7 @@ ID_EX U_ID_EX(
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception), 
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
 	 	.EX_DMWr(EX_DMWr), .EX_DMRd(EX_DMRd), .EX_MUX3Sel(EX_MUX3Sel), .EX_ALU1Sel(EX_ALU1Sel), 
-		.EX_RFWr(EX_RFWr), .EX_RHLWr(EX_RHLWr), .EX_ALU2Op(EX_ALU2Op), .EX_MUX1Sel(EX_MUX1Sel), 
+		.EX_RFWr(EX_RFWr), .EX_RHLWr(EX_RHLWr), .EX_ALU2Op(EX_ALU2Op), .EX_MUX1Out(EX_MUX1Out), 
 		.EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_DMSel(EX_DMSel), .EX_MUX2Sel(EX_MUX2Sel), .EX_ALU1Op(EX_ALU1Op), 
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .EX_RD(EX_RD), .EX_shamt(EX_shamt), .EX_PC(EX_PC),
 		.EX_GPR_RS(EX_GPR_RS), .EX_GPR_RT(EX_GPR_RT), .EX_Imm32(EX_Imm32), .EX_CP0Addr(EX_CP0Addr),
@@ -479,7 +480,7 @@ ID_EX U_ID_EX(
 	);
 
 mux1 U_MUX1(
-		.RT(EX_RT), .RD(EX_RD), .MUX1Sel(EX_MUX1Sel),
+		.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), .MUX1Sel(MUX1Sel),
 		
 		 .Addr3(MUX1Out)
 	);
@@ -521,7 +522,7 @@ alu1 U_ALU1(
 EX_MEM1 U_EX_MEM1(
 		.clk(clk), .rst(rst), .EX_MEM1Wr(EX_MEM1Wr),.Imm32(EX_Imm32), .EX_PC(EX_PC), .DMWr(EX_DMWr), 
         .DMSel(EX_DMSel), .DMRd(EX_DMRd), .RFWr(EX_RFWr), .MUX2Sel(EX_MUX2Sel),.RHLOut(RHLOut), 
-        .ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(MUX1Out), .EX_Flush(EX_Flush), .eret_flush(EX_eret_flush), 
+        .ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(EX_MUX1Out), .EX_Flush(EX_Flush), .eret_flush(EX_eret_flush), 
         .CP0WrEn(EX_CP0WrEn), .Exception(EX_Exception), .ExcCode(EX_ExcCode), .isBD(EX_isBD),
         .CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EX_dcache_en(EX_dcache_en),.Overflow(Overflow),
 
@@ -564,7 +565,8 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,
-    MEM1_uncache_valid, MEM1_DMen
+    MEM1_uncache_valid, MEM1_DMen,
+    MEM1_dcache_valid_except_icache
 	);
 
 dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(~(IF_iCache_data_ok&MEM_unCache_data_ok)),
@@ -663,21 +665,21 @@ npc U_NPC(
 
 bypass U_BYPASS(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
-        .MEM1_RD(MEM1_RD), .MEM2_RD(MEM2_RD), .MUX1Out(MUX1Out),
+        .MEM1_RD(MEM1_RD), .MEM2_RD(MEM2_RD), .MUX1Out(EX_MUX1Out),
 		.MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr), .EX_RFWr(EX_RFWr),
 
 		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel)
 	);
 
 stall U_STALL(
-		.EX_RT(MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]), 
+		.EX_RT(EX_MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]), 
 		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd), 
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
 		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
 		.MEM1_eret_flush(MEM1_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
-		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM_dCache_en(MEM2_DMen),
+		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM2_dCache_en(MEM2_DMen),
 		.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
-		.MEM1_dCache_en(MEM1_dcache_valid),
+		.MEM1_dCache_en(MEM1_dcache_valid), .MEM1_dcache_valid_except_icache(MEM1_dcache_valid_except_icache),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.isStall(isStall),
 		.dcache_stall(dcache_stall), .icache_stall(icache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),

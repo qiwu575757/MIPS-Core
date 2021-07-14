@@ -31,7 +31,8 @@ module mem1_cache_prep(
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,
-    MEM1_uncache_valid, MEM1_DMen
+    MEM1_uncache_valid, MEM1_DMen,
+    MEM1_dcache_valid_except_icache
     );
     input MEM1_dcache_en;
     input MEM1_eret_flush;
@@ -49,6 +50,7 @@ module mem1_cache_prep(
     output[3:0] MEM1_dCache_wstrb;
     output MEM1_uncache_valid;
     output MEM1_DMen;
+    output MEM1_dcache_valid_except_icache;
 
     //wire MEM1_dcache_valid_temp;  
     assign MEM1_Paddr =  {3'b000,MEM1_ALU1Out[28:0]};
@@ -60,7 +62,8 @@ module mem1_cache_prep(
     assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
     assign MEM1_dcache_valid = MEM1_dcache_en && ~MEM1_cache_sel
                  &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
-
+    assign MEM1_dcache_valid_except_icache = MEM1_dcache_en && ~MEM1_cache_sel
+                &!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
     assign MEM1_uncache_valid = MEM1_dcache_en && MEM1_cache_sel&!MEM1_Exception&!MEM1_eret_flush;
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 

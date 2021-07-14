@@ -86,13 +86,13 @@ module IF_ID(
 endmodule
 
 module ID_EX(
-	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
+	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Out, MUX3Sel, ALU1Sel, DMWr, DMSel, 
 	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 	MUX8Sel, MUX9Sel,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
-	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
+	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Out, EX_RHLSel_Wr,
 	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,
 	MUX4Sel, MUX5Sel
@@ -104,10 +104,10 @@ module ID_EX(
 	input [4:0] ExcCode;
 	input isBD;
 	input isBranch;
-	input[1:0] ALU2Op, MUX1Sel, RHLSel_Wr;
+	input[1:0] ALU2Op, RHLSel_Wr;
 	input[2:0] DMSel, MUX2Sel;
 	input[3:0] ALU1Op;
-	input[4:0] RS, RT, RD, shamt;
+	input[4:0] RS, RT, RD, shamt, MUX1Out;
 	input[31:0] PC, GPR_RS, GPR_RT, Imm32;
 	input [7:0] CP0Addr;
 	input CP0Rd;
@@ -118,7 +118,7 @@ module ID_EX(
 	output reg EX_eret_flush;
 	output reg EX_CP0WrEn;
 	output reg EX_Exception;
-	output reg [4:0] EX_ExcCode;
+	output reg [4:0] EX_ExcCode, EX_MUX1Out;
 	output reg EX_isBD;
 	output reg EX_isBranch;
 	output reg EX_RHLSel_Rd;
@@ -129,7 +129,6 @@ module ID_EX(
 	output reg EX_RFWr;
 	output reg EX_RHLWr;
 	output reg [1:0] EX_ALU2Op;
-	output reg [1:0] EX_MUX1Sel;
 	output reg [1:0] EX_RHLSel_Wr;
 	output reg [2:0] EX_DMSel;
 	output reg [2:0] EX_MUX2Sel;
@@ -161,7 +160,7 @@ module ID_EX(
 			EX_RFWr <= 1'b0;
 			EX_RHLWr <= 1'b0;
 			EX_ALU2Op <= 2'b00;
-			EX_MUX1Sel <= 2'b00;
+			EX_MUX1Out <= 5'd0;
 			EX_RHLSel_Wr <= 2'b00;
 			EX_DMSel <= 3'b000;
 			EX_MUX2Sel <= 3'b000;
@@ -197,7 +196,7 @@ module ID_EX(
 			EX_RFWr <= RFWr;
 			EX_RHLWr <= RHLWr;
 			EX_ALU2Op <= ALU2Op;
-			EX_MUX1Sel <= MUX1Sel;
+			EX_MUX1Out <= MUX1Out;
 			EX_RHLSel_Wr <= RHLSel_Wr;
 			EX_DMSel <= DMSel;
 			EX_MUX2Sel <= MUX2Sel;
