@@ -104,31 +104,31 @@ module exception(
     always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out 
     or MEM1_DMRd or Temp_M1_ExcCode or MEM1_PC  or MEM1_RFWr or Interrupt)
         if (Interrupt) begin
-            MEM1_ExcCode <= `Int;
-		    MEM1_Exception <= 1'b1;
-		    MEM1_badvaddr <= 32'd0; 
+            MEM1_ExcCode = `Int;
+		    MEM1_Exception = 1'b1;
+		    MEM1_badvaddr = 32'd0; 
         end
 		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
-		MEM1_ExcCode <= `Ov;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= 32'd0;
+		MEM1_ExcCode = `Ov;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = 32'd0;
 		end
 		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
-		MEM1_ExcCode <= `AdES;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
+		MEM1_ExcCode = `AdES;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
-		MEM1_ExcCode <= `AdEL;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
+		MEM1_ExcCode = `AdEL;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else  begin
-		MEM1_ExcCode <= Temp_M1_ExcCode;
-		MEM1_Exception <= Temp_M1_Exception;
-		MEM1_badvaddr <= MEM1_PC;
+		MEM1_ExcCode = Temp_M1_ExcCode;
+		MEM1_Exception = Temp_M1_Exception;
+		MEM1_badvaddr = MEM1_PC;
 		end
 
 endmodule

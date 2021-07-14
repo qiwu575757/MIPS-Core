@@ -1154,8 +1154,8 @@ module dcache(       clk, resetn, DMRd, stall,
     assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
     assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
-    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
-    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
+    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd0)) || (ret_valid && (replace_way_MB == 0));
+    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd1)) || (ret_valid && (replace_way_MB == 1));
     assign D_Way2_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd2)) || (ret_valid && (replace_way_MB == 2));
     assign D_Way3_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd3)) || (ret_valid && (replace_way_MB == 3));
     assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);

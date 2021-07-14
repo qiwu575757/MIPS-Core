@@ -232,7 +232,7 @@ module CP0(
             `cause_ip1 <= 6'b0;
         else begin
             Cause[15] <= ext_int_in[5] | `cause_ti;
-            Cause[14:11] <= ext_int_in[4:0];
+            Cause[14:10] <= ext_int_in[4:0];
         end
     end
 
