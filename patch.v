@@ -16,7 +16,7 @@ module instr_fetch_pre(
 
     assign PF_Exception = NPC[1:0] != 2'b00 && PCWr;
     assign PF_ExcCode = PF_Exception ? `AdEL : 5'b0;
-    
+
     assign PPC = {3'b000,NPC[28:0]} ;
     assign PF_icache_valid = !isStall&!PF_Exception ;
 
@@ -29,7 +29,7 @@ module mem1_cache_prep(
     MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel,
     IF_iCache_data_ok, MEM_unCache_data_ok,
 
-    MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
+    MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,
     DMWen_dcache, MEM1_dCache_wstrb,
     MEM1_uncache_valid, MEM1_DMen
     );
@@ -50,7 +50,7 @@ module mem1_cache_prep(
     output MEM1_uncache_valid;
     output MEM1_DMen;
 
-    //wire MEM1_dcache_valid_temp;  
+    //wire MEM1_dcache_valid_temp;
     assign MEM1_Paddr =  {3'b000,MEM1_ALU1Out[28:0]};
 	assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
     //assign MEM1_cache_sel = 1'b1;
@@ -75,7 +75,7 @@ module mem1_cache_prep(
 							(MEM1_DMSel==3'b001)?   // sh
 								(MEM1_Paddr[1]==1'b0 ? 4'b0011 :
 								  				4'b1100 ):
-		
+
 												4'b1111 ;//sw
 
 endmodule
@@ -83,7 +83,7 @@ endmodule
 module exception(
     MEM1_Overflow, Temp_M1_Exception, MEM1_DMWr, MEM1_DMSel, MEM1_ALU1Out,
     MEM1_DMRd, Temp_M1_ExcCode, MEM1_PC, MEM1_RFWr, Interrupt,
-    
+
     MEM1_Exception, MEM1_ExcCode, MEM1_badvaddr
     );
     input MEM1_Overflow;
@@ -101,34 +101,34 @@ module exception(
     output reg[4:0] MEM1_ExcCode;
     output reg[31:0] MEM1_badvaddr;
 
-    always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out 
+    always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out
     or MEM1_DMRd or Temp_M1_ExcCode or MEM1_PC  or MEM1_RFWr or Interrupt)
         if (Interrupt) begin
-            MEM1_ExcCode <= `Int;
-		    MEM1_Exception <= 1'b1;
-		    MEM1_badvaddr <= 32'd0; 
+            MEM1_ExcCode = `Int;
+		    MEM1_Exception = 1'b1;
+		    MEM1_badvaddr = 32'd0;
         end
 		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
-		MEM1_ExcCode <= `Ov;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= 32'd0;
+		MEM1_ExcCode = `Ov;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = 32'd0;
 		end
 		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
-		MEM1_ExcCode <= `AdES;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
+		MEM1_ExcCode = `AdES;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
 			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
-		MEM1_ExcCode <= `AdEL;
-		MEM1_Exception <= 1'b1;
-		MEM1_badvaddr <= MEM1_ALU1Out;
+		MEM1_ExcCode = `AdEL;
+		MEM1_Exception = 1'b1;
+		MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else  begin
-		MEM1_ExcCode <= Temp_M1_ExcCode;
-		MEM1_Exception <= Temp_M1_Exception;
-		MEM1_badvaddr <= MEM1_PC;
+		MEM1_ExcCode = Temp_M1_ExcCode;
+		MEM1_Exception = Temp_M1_Exception;
+		MEM1_badvaddr = MEM1_PC;
 		end
 
 endmodule
@@ -197,15 +197,15 @@ module debug(MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
     output[31:0] debug_wb_rf_wdata;
     output[31:0] debug_wb_pc;
     output[3:0] debug_wb_rf_wen;
-    output[4:0] debug_wb_rf_wnum; 
+    output[4:0] debug_wb_rf_wnum;
 
-assign 
+assign
 	debug_wb_rf_wdata = MUX10Out;
-assign 
+assign
 	debug_wb_pc  = WB_PC;
-assign 
+assign
 	debug_wb_rf_wen  = {4{WB_RFWr&MEM2_WBWr&(WB_RD!=5'd0)}};
-assign 
+assign
 	debug_wb_rf_wnum  = WB_RD;
 
 endmodule
