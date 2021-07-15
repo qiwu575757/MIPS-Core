@@ -1,4 +1,4 @@
-module icache(       clk, resetn, exception, stall,
+module icache(       clk, resetn, exception, stall, 
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset,
         /*output*/  addr_ok, data_ok, rdata,
@@ -141,6 +141,7 @@ module icache(       clk, resetn, exception, stall,
     assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
+
 
     always@(posedge clk)
         if(!resetn)
@@ -424,21 +425,15 @@ module icache(       clk, resetn, exception, stall,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(replace_index_MB, index, C_STATE, stall, index_RB)
-        if(stall)
+    always@(index, C_STATE, stall, index_RB)
+        if(stall | C_STATE == REFILL) begin
             VT_addr = index_RB;
-        else if(C_STATE == REFILL)
-            VT_addr = replace_index_MB;
-        else
-            VT_addr = index;
-    always@(replace_index_MB, index, C_STATE, stall, index_RB)
-        if(stall)
             Data_addr = index_RB;
-        else if(C_STATE == REFILL)
-            Data_addr = replace_index_MB;
-        else
+        end
+        else begin
+            VT_addr = index;
             Data_addr = index;
-
+        end
     //main FSM
     /*
         LOOKUP: Cache checks hit (if hit,begin read/write)
@@ -580,7 +575,7 @@ module dcache(       clk, resetn, DMRd, stall,
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001, SELECT = 3'b010,
+    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010,
               MISS = 3'b011, REPLACE = 3'b100, HOLD = 3'b101, REFILL = 3'b110;
 
     reg C_STATE_WB;
@@ -699,13 +694,7 @@ module dcache(       clk, resetn, DMRd, stall,
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});
 
     //assign addr_select = stall | ~addr_ok | ~data_ok;
-    assign addr_select = stall | ~((C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) 
-                    & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB}))));
-    /*assign addr_select = stall | (~((C_STATE == IDLE) | cache_hit) 
-                        | ~((C_STATE == IDLE) | (C_STATE == LOOKUP)) 
-                        | (~(C_STATE == IDLE) & op_RB & DMRd 
-                        & ~({tag,index,offset}=={tag_RB,index_RB,offset_RB})));*/
-
+    assign addr_select = stall | ~((C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB}))));
 
 
     /*
@@ -1168,7 +1157,7 @@ module dcache(       clk, resetn, DMRd, stall,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(C_STATE_WB, index_RB, replace_index_MB, index, C_STATE, addr_select, addr_ok,data_ok, index_WB)
+    always@(C_STATE_WB, index_RB, index, addr_select, addr_ok,data_ok, index_WB)
         if(C_STATE_WB == WRITE) begin
             if(addr_ok &data_ok)
                 VT_addr = index;
@@ -1176,11 +1165,6 @@ module dcache(       clk, resetn, DMRd, stall,
                 VT_addr = index_RB;
             D_addr = index_WB;
             Data_addr = index_WB;
-        end
-        else if(C_STATE == REFILL)begin
-            VT_addr = replace_index_MB;
-            D_addr = replace_index_MB;
-            Data_addr = replace_index_MB;
         end
         else if(addr_select) begin
             VT_addr = index_RB;
@@ -1322,9 +1306,11 @@ module uncache_dm(
     parameter DEFAULT = 2'b00;
     parameter LOAD    = 2'b01;
     parameter STORE   = 2'b10;
+    parameter FINISH  = 2'b11;
 
     wire load;
     wire store;
+    reg[31:0] data_reg;
 
     assign load = valid & ~op;
     assign store = valid & op;
@@ -1344,20 +1330,28 @@ module uncache_dm(
                         else
                             N_STATE = DEFAULT;
             LOAD:       if(ret_valid && ret_last)
-                            N_STATE = DEFAULT;
+                            N_STATE = FINISH;
                         else
                             N_STATE = LOAD;
             STORE:      if(wr_valid)
-                            N_STATE = DEFAULT;
+                            N_STATE = FINISH;
                         else
                             N_STATE = STORE;
+            FINISH:     N_STATE = DEFAULT;
             default:    N_STATE = DEFAULT;
         endcase
 
-    assign data_ok = ~valid ||
-                    (load && (C_STATE == LOAD) && ret_valid && ret_last) ||
-                    (store && (C_STATE == STORE) && wr_valid)  ;
-    assign rdata = ret_data;
+    /*assign data_ok = ~valid |
+                    ((C_STATE == LOAD) & ret_valid & ret_last) |
+                    ((C_STATE == STORE) & wr_valid);*/
+    assign data_ok = ~valid | (C_STATE == FINISH);
+    assign rdata = data_reg;
+
+    always@(posedge clk)
+        if(!resetn)
+            data_reg <= 32'd0;
+        else if(ret_valid & ret_last)
+            data_reg <= ret_data;
 
     //assign rd_req = (N_STATE == LOAD);
     //assign wr_req = (N_STATE == STORE);
