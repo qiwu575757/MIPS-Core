@@ -300,6 +300,7 @@ module mips(
     wire dcache_last_stall;
     wire uncache_last_stall;
     wire MEM_last_stall;
+    wire dcache_last_conflict;
 
     wire MUX7Sel;
     wire[1:0] MUX8Sel;
@@ -575,7 +576,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
 	);
 
 dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(icache_last_stall|uncache_last_stall),
-    .last_stall(dcache_last_stall),
+    .last_stall(dcache_last_stall), .last_conflict(dcache_last_conflict),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_Paddr[11:6]), 
     .tag(MEM1_Paddr[31:12]), .offset(MEM1_Paddr[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_GPR_RT), 
@@ -686,7 +687,7 @@ stall U_STALL(
 		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM2_dCache_en(MEM2_DMen),
 		.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
 		.MEM1_dCache_en(MEM1_dcache_valid), .MEM1_dcache_valid_except_icache(MEM1_dcache_valid_except_icache),
-        .MEM_last_stall(MEM_last_stall),
+        .MEM_last_stall(MEM_last_stall), .dcache_last_conflict(dcache_last_conflict),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.isStall(isStall),
 		.dcache_stall(dcache_stall), .icache_stall(icache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),

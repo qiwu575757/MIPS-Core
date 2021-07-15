@@ -482,7 +482,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
 
 endmodule
 
-module dcache(       clk, resetn, DMRd, stall, last_stall,
+module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -497,6 +497,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall,
     input DMRd;
     input stall;
     output last_stall;
+    output last_conflict;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -1263,6 +1264,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall,
                     | ((C_STATE == REPLACE) & ~wr_valid);
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
+    assign last_conflict = write_conflict2;
 
 endmodule
 
