@@ -141,10 +141,10 @@ module cache_select_dm(
     MEM_uncache_rd_req, MEM_dcache_rd_req, MEM_uncache_wr_req, MEM_dcache_wr_req,
     MEM_uncache_rd_type, MEM_dcache_rd_type, MEM_uncache_wr_type, MEM_dcache_wr_type,
     MEM_uncache_rd_addr, MEM_dcache_rd_addr, MEM_uncache_wr_addr, MEM_dcache_wr_addr,
-    MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb,
+    MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb, dcache_last_stall, uncache_last_stall,
 
     cache_Out, MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
-    MEM_wr_addr, MEM_wr_wstrb
+    MEM_wr_addr, MEM_wr_wstrb, MEM_last_stall
                 );
     input MEM_cache_sel;
     input[31:0] uncache_Out;
@@ -165,6 +165,8 @@ module cache_select_dm(
     input[31:0] MEM_dcache_wr_addr;
     input[3:0] MEM_uncache_wr_wstrb;
     input[3:0] MEM_dcache_wr_wstrb;
+    input dcache_last_stall;
+    input uncache_last_stall;
 
     output[31:0] cache_Out;
     output MEM_data_ok;
@@ -175,6 +177,7 @@ module cache_select_dm(
     output[31:0] MEM_rd_addr;
     output[31:0] MEM_wr_addr;
     output[3:0] MEM_wr_wstrb;
+    output MEM_last_stall;
 
 	assign cache_Out = MEM_cache_sel ? uncache_Out : dcache_Out;
 	assign MEM_data_ok = MEM_cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
@@ -185,7 +188,8 @@ module cache_select_dm(
 	assign MEM_rd_addr = MEM_cache_sel ? MEM_uncache_rd_addr : MEM_dcache_rd_addr;
 	assign MEM_wr_addr = MEM_cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
 	assign MEM_wr_wstrb = MEM_cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
-
+    assign MEM_last_stall = MEM_cache_sel ? uncache_last_stall : dcache_last_stall;
+    
 endmodule
 
 

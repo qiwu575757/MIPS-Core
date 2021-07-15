@@ -1,4 +1,4 @@
-module icache(       clk, resetn, exception, stall, 
+module icache(       clk, resetn, exception, stall, last_stall,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset,
         /*output*/  addr_ok, data_ok, rdata,
@@ -12,6 +12,7 @@ module icache(       clk, resetn, exception, stall,
     input resetn;
     input exception;
     input stall;
+    output last_stall;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -141,7 +142,6 @@ module icache(       clk, resetn, exception, stall,
     assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
-
 
     always@(posedge clk)
         if(!resetn)
@@ -478,9 +478,11 @@ module icache(       clk, resetn, exception, stall,
     assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
+    assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
+
 endmodule
 
-module dcache(       clk, resetn, DMRd, stall,
+module dcache(       clk, resetn, DMRd, stall, last_stall,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -494,6 +496,7 @@ module dcache(       clk, resetn, DMRd, stall,
     input resetn;
     input DMRd;
     input stall;
+    output last_stall;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -1259,10 +1262,12 @@ module dcache(       clk, resetn, DMRd, stall,
     assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) 
                     | ((C_STATE == REPLACE) & ~wr_valid);
 
+    assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
+
 endmodule
 
 module uncache_dm(
-        clk, resetn, DMSel,
+        clk, resetn, DMSel, last_stall,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
@@ -1274,6 +1279,7 @@ module uncache_dm(
     input clk;
     input resetn;
     input[2:0] DMSel;
+    output last_stall;
 
     input valid;
     input op;
@@ -1346,6 +1352,8 @@ module uncache_dm(
                     ((C_STATE == STORE) & wr_valid);*/
     assign data_ok = ~valid | (C_STATE == FINISH);
     assign rdata = data_reg;
+
+    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) | ((C_STATE == STORE) & wr_valid);
 
     always@(posedge clk)
         if(!resetn)

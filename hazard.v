@@ -43,6 +43,7 @@ module stall(
 	MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok, MEM2_dCache_en,MEM_dCache_addr_ok,
     MEM1_cache_sel,MEM1_dCache_en, MEM1_dcache_valid_except_icache,
+	MEM_last_stall,
 
 	PCWr, IF_IDWr, MUX7Sel,isStall,
 	dcache_stall, icache_stall, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr, PF_IFWr
@@ -60,6 +61,7 @@ module stall(
 	input MEM_dCache_addr_ok;
 	input MEM1_dCache_en;
 	input MEM1_dcache_valid_except_icache;
+	input MEM_last_stall;
 
 	output reg PCWr, IF_IDWr, MUX7Sel;
 	output isStall;
@@ -74,7 +76,7 @@ module stall(
 	assign dcache_stall = ((~dCache_data_ok &MEM2_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
 	assign isStall=~PCWr;
 	assign icache_stall = 
-				(~dCache_data_ok &MEM2_dCache_en) | (~addr_ok &MEM1_dcache_valid_except_icache) | 
+				(MEM_last_stall &MEM2_dCache_en) | (~addr_ok &MEM1_dcache_valid_except_icache) | 
 				(rst_sign | (isbusy && RHL_visit) | 
 				((EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC)) |
 				((MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC)) |
