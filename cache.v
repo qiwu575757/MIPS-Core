@@ -494,12 +494,17 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     ValidTag_Block VT_Way1(
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );
-    Dirty_Block D_Way0(
+    /*Dirty_Block D_Way0(
         clk, 1, D_Way0_wen, D_addr, D_in, Way0_Dirty
     );
     Dirty_Block D_Way1(
         clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
-    );
+    );*/
+    dirty_block D_Way0(
+        clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
+    dirty_block D_Way1(
+        clk, resetn, D_Way1_wen, D_addr, D_in, Way1_Dirty);
+
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
@@ -1023,4 +1028,31 @@ module uncache_dm(
             4'b1100:wr_data = {2{wdata[15:0]}};
             default:wr_data = wdata;
         endcase
+endmodule
+
+module dirty_block(clk, rst, wen, addr, din, dout);
+    input clk;
+    input rst;
+    input wen;
+    input[5:0] addr;
+    input din;
+
+    output reg dout;
+    reg[63:0] dirty;
+
+    always@(posedge clk)
+        if(!rst)
+            dirty <= 64'd0;
+        else if(wen)
+            dirty[addr] <= din;
+    
+    always@(posedge clk)
+        if(!rst)
+            dout <= 1'b0;
+        else if(wen)    //write first
+            dout <= din;
+        else
+            dout <= dirty[addr];
+            
+
 endmodule

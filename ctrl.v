@@ -51,6 +51,8 @@
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
+	reg[3:0] BJType;			//分支跳转类型
+
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -63,6 +65,8 @@
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
 		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal);
+
+	
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -393,59 +397,66 @@
 		endcase
 	end
 
-	always @(OP or rt or Funct or CMPOut1 or CMPOut2) begin		/* the genenration of NPCOp */
-		 case (OP)
-			6'b000100:				/* BEQ */
+	always @(OP or rt or Funct) begin							/* the generation of BJType */
+		case (OP)
+			6'b000100: BJType = 4'b0000;				/* BEQ */
+			6'b000101: BJType = 4'b0001;				/* BNE */
+			6'b000001:
+			case (rt)
+				5'b00001: BJType = 4'b0010; 			/* BGEZ */
+				5'b00000: BJType = 4'b0011;				/* BLTZ */
+				5'b10001: BJType = 4'b0010;				/* BGEZAL */
+				5'b10000: BJType = 4'b0011;				/* BLTZAL */
+				default: BJType = 4'b1000;
+			endcase
+			6'b000010: BJType = 4'b0100;				/* J */
+			6'b000011: BJType = 4'b0100;				/* JAL */
+			6'b000110: BJType = 4'b0101;				/* BLEZ */
+			6'b000111: BJType = 4'b0110;				/* BGTZ */
+			6'b000000: 
+			case (Funct)
+				6'b001000: BJType = 4'b0111;			/* JR */
+				6'b001001: BJType = 4'b0111;			/* JALR */
+			default: BJType = 4'b1000;
+			endcase
+			default: BJType = 4'b1000;
+		endcase
+	end
+
+	always @(BJType or CMPOut1 or CMPOut2) begin		/* the genenration of NPCOp */
+		 case (BJType)
+			4'b0000:				/* BEQ */
 			if (CMPOut1 == 0)
 				NPCOp = 2'b01;
 			else
 				NPCOp = 2'b00;
-			6'b000101:				/* BNE */
+			4'b0001:				/* BNE */
 			if (CMPOut1 == 1)
 				NPCOp = 2'b01;
 			else
 				NPCOp = 2'b00;
-			6'b000001:
-			case (rt)
-				5'b00001:			/* BGEZ */
-				if (CMPOut2 != 2'b10)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-				5'b00000:			/* BLTZ */
-				if (CMPOut2 == 2'b10)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-				5'b10001:			/* BGEZAL */
-				if (CMPOut2 != 2'b10)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-				5'b10000:			/* BLTZAL */
-				if (CMPOut2 == 2'b10)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-				default: NPCOp = 2'b00;
-			endcase
-			6'b000010: NPCOp = 2'b10;	/* J */
-			6'b000011: NPCOp = 2'b10;	/* JAL */
-			6'b000110:				/* BLEZ */
+			4'b0010:				/* BGEZ or BGEZAL */
+			if (CMPOut2 != 2'b10)
+				NPCOp = 2'b01;
+			else
+				NPCOp = 2'b00;
+			4'b0011:			/* BLTZ or BLTZAL */
+			if (CMPOut2 == 2'b10)
+				NPCOp = 2'b01;
+			else
+				NPCOp = 2'b00;
+			4'b0100: NPCOp = 2'b10;	/* J or JAL */
+			4'b0101:				/* BLEZ */
 			if(CMPOut2 != 2'b01)
 				NPCOp = 2'b01;
 			else
 				NPCOp = 2'b00;
-			6'b000111:				/* BGTZ */
+			4'b0110:				/* BGTZ */
 			if(CMPOut2 == 2'b01)
 				NPCOp = 2'b01;
 			else
 				NPCOp = 2'b00;
-			6'b000000: 
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR or JALR */
-				NPCOp = 2'b11;
-			else
-				NPCOp = 2'b00;
+			4'b0111: NPCOp = 2'b11; 	/* JR or JALR */
 			default: NPCOp = 2'b00;
 		endcase
 	end
