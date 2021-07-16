@@ -511,7 +511,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		uncache_wr_data_reg=0;
+		uncache_wr_data_reg<=0;
 	end
 	else if(current_wr_state==state_wr_req)
 	begin
@@ -585,7 +585,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		arid_reg=0;
+		arid_reg<=0;
 	end
 	else if(current_rd_state==state_rd_free
 	||current_rd_state==state_rd_finish)
