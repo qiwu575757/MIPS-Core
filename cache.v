@@ -105,6 +105,13 @@ module icache(       clk, resetn, exception, stall, last_stall,
     wire way2_hit;
     wire way3_hit;
     wire cache_hit;
+    wire[3:0] hit_code;
+
+    reg[31:0] rdata_way0;
+    reg[31:0] rdata_way1;
+    reg[31:0] rdata_way2;
+    reg[31:0] rdata_way3;
+    reg[63:0] byte_write;
 
     integer i;
 
@@ -142,27 +149,31 @@ module icache(       clk, resetn, exception, stall, last_stall,
     assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
+    assign hit_code = {way3_hit,way2_hit,way1_hit,way0_hit};
 
     always@(posedge clk)
         if(!resetn)
             for(i=0;i<64;i=i+1)
                 age[i] <= 3'b000;
-        else if(way0_hit) begin
-            age[index_RB][2] <= 1'b1;
-            age[index_RB][1] <= 1'b1;
-        end
-        else if(way1_hit) begin
-            age[index_RB][2] <= 1'b1;
-            age[index_RB][1] <= 1'b0;
-        end
-        else if(way2_hit) begin
-            age[index_RB][2] <= 1'b0;
-            age[index_RB][0] <= 1'b1;
-        end
-        else if(way3_hit) begin
-            age[index_RB][2] <= 1'b0;
-            age[index_RB][0] <= 1'b0;
-        end
+        else 
+            case(hit_code)
+                4'b0001: begin
+                        age[index_RB][2] <= 1'b1;
+                        age[index_RB][1] <= 1'b1;
+                    end
+                4'b0010: begin
+                        age[index_RB][2] <= 1'b1;
+                        age[index_RB][1] <= 1'b0;
+                    end
+                4'b0100: begin
+                        age[index_RB][2] <= 1'b0;
+                        age[index_RB][0] <= 1'b1;
+                    end
+                4'b1000: begin
+                        age[index_RB][2] <= 1'b0;
+                        age[index_RB][0] <= 1'b0;
+                    end
+            endcase
     always@(*)
         if(age[index_RB][2]) begin
             if(age[index_RB][0])
@@ -224,183 +235,141 @@ module icache(       clk, resetn, exception, stall, last_stall,
             ret_number_MB <= ret_number_MB + 1;
 
     //reading from cache to cpu (load)
-    always@(*)
-        if(way0_hit)        //read way0
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way0_out[ 31:  0];
-                4'd1:   rdata = Data_Way0_out[ 63: 32];
-                4'd2:   rdata = Data_Way0_out[ 95: 64];
-                4'd3:   rdata = Data_Way0_out[127: 96];
-                4'd4:   rdata = Data_Way0_out[159:128];
-                4'd5:   rdata = Data_Way0_out[191:160];
-                4'd6:   rdata = Data_Way0_out[223:192];
-                4'd7:   rdata = Data_Way0_out[255:224];
-                4'd8:   rdata = Data_Way0_out[287:256];
-                4'd9:   rdata = Data_Way0_out[319:288];
-                4'd10:  rdata = Data_Way0_out[351:320];
-                4'd11:  rdata = Data_Way0_out[383:352];
-                4'd12:  rdata = Data_Way0_out[415:384];
-                4'd13:  rdata = Data_Way0_out[447:416];
-                4'd14:  rdata = Data_Way0_out[479:448];
-                default:rdata = Data_Way0_out[511:480];
-            endcase
-        else if(way1_hit)   //read way1
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way1_out[ 31:  0];
-                4'd1:   rdata = Data_Way1_out[ 63: 32];
-                4'd2:   rdata = Data_Way1_out[ 95: 64];
-                4'd3:   rdata = Data_Way1_out[127: 96];
-                4'd4:   rdata = Data_Way1_out[159:128];
-                4'd5:   rdata = Data_Way1_out[191:160];
-                4'd6:   rdata = Data_Way1_out[223:192];
-                4'd7:   rdata = Data_Way1_out[255:224];
-                4'd8:   rdata = Data_Way1_out[287:256];
-                4'd9:   rdata = Data_Way1_out[319:288];
-                4'd10:  rdata = Data_Way1_out[351:320];
-                4'd11:  rdata = Data_Way1_out[383:352];
-                4'd12:  rdata = Data_Way1_out[415:384];
-                4'd13:  rdata = Data_Way1_out[447:416];
-                4'd14:  rdata = Data_Way1_out[479:448];
-                default:rdata = Data_Way1_out[511:480];
-            endcase
-        else if(way2_hit)   //read way2
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way2_out[ 31:  0];
-                4'd1:   rdata = Data_Way2_out[ 63: 32];
-                4'd2:   rdata = Data_Way2_out[ 95: 64];
-                4'd3:   rdata = Data_Way2_out[127: 96];
-                4'd4:   rdata = Data_Way2_out[159:128];
-                4'd5:   rdata = Data_Way2_out[191:160];
-                4'd6:   rdata = Data_Way2_out[223:192];
-                4'd7:   rdata = Data_Way2_out[255:224];
-                4'd8:   rdata = Data_Way2_out[287:256];
-                4'd9:   rdata = Data_Way2_out[319:288];
-                4'd10:  rdata = Data_Way2_out[351:320];
-                4'd11:  rdata = Data_Way2_out[383:352];
-                4'd12:  rdata = Data_Way2_out[415:384];
-                4'd13:  rdata = Data_Way2_out[447:416];
-                4'd14:  rdata = Data_Way2_out[479:448];
-                default:rdata = Data_Way2_out[511:480];
-            endcase
-        else if(way3_hit)   //read way3
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way3_out[ 31:  0];
-                4'd1:   rdata = Data_Way3_out[ 63: 32];
-                4'd2:   rdata = Data_Way3_out[ 95: 64];
-                4'd3:   rdata = Data_Way3_out[127: 96];
-                4'd4:   rdata = Data_Way3_out[159:128];
-                4'd5:   rdata = Data_Way3_out[191:160];
-                4'd6:   rdata = Data_Way3_out[223:192];
-                4'd7:   rdata = Data_Way3_out[255:224];
-                4'd8:   rdata = Data_Way3_out[287:256];
-                4'd9:   rdata = Data_Way3_out[319:288];
-                4'd10:  rdata = Data_Way3_out[351:320];
-                4'd11:  rdata = Data_Way3_out[383:352];
-                4'd12:  rdata = Data_Way3_out[415:384];
-                4'd13:  rdata = Data_Way3_out[447:416];
-                4'd14:  rdata = Data_Way3_out[479:448];
-                default:rdata = Data_Way3_out[511:480];
-            endcase
-        else                //read ret_data when miss
-            rdata = ret_data;
+    always@(offset_RB,Data_Way0_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way0 = Data_Way0_out[ 31:  0];
+            4'd1:   rdata_way0 = Data_Way0_out[ 63: 32];
+            4'd2:   rdata_way0 = Data_Way0_out[ 95: 64];
+            4'd3:   rdata_way0 = Data_Way0_out[127: 96];
+            4'd4:   rdata_way0 = Data_Way0_out[159:128];
+            4'd5:   rdata_way0 = Data_Way0_out[191:160];
+            4'd6:   rdata_way0 = Data_Way0_out[223:192];
+            4'd7:   rdata_way0 = Data_Way0_out[255:224];
+            4'd8:   rdata_way0 = Data_Way0_out[287:256];
+            4'd9:   rdata_way0 = Data_Way0_out[319:288];
+            4'd10:  rdata_way0 = Data_Way0_out[351:320];
+            4'd11:  rdata_way0 = Data_Way0_out[383:352];
+            4'd12:  rdata_way0 = Data_Way0_out[415:384];
+            4'd13:  rdata_way0 = Data_Way0_out[447:416];
+            4'd14:  rdata_way0 = Data_Way0_out[479:448];
+            default:rdata_way0 = Data_Way0_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way1_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way1 = Data_Way1_out[ 31:  0];
+            4'd1:   rdata_way1 = Data_Way1_out[ 63: 32];
+            4'd2:   rdata_way1 = Data_Way1_out[ 95: 64];
+            4'd3:   rdata_way1 = Data_Way1_out[127: 96];
+            4'd4:   rdata_way1 = Data_Way1_out[159:128];
+            4'd5:   rdata_way1 = Data_Way1_out[191:160];
+            4'd6:   rdata_way1 = Data_Way1_out[223:192];
+            4'd7:   rdata_way1 = Data_Way1_out[255:224];
+            4'd8:   rdata_way1 = Data_Way1_out[287:256];
+            4'd9:   rdata_way1 = Data_Way1_out[319:288];
+            4'd10:  rdata_way1 = Data_Way1_out[351:320];
+            4'd11:  rdata_way1 = Data_Way1_out[383:352];
+            4'd12:  rdata_way1 = Data_Way1_out[415:384];
+            4'd13:  rdata_way1 = Data_Way1_out[447:416];
+            4'd14:  rdata_way1 = Data_Way1_out[479:448];
+            default:rdata_way1 = Data_Way1_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way2_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way2 = Data_Way2_out[ 31:  0];
+            4'd1:   rdata_way2 = Data_Way2_out[ 63: 32];
+            4'd2:   rdata_way2 = Data_Way2_out[ 95: 64];
+            4'd3:   rdata_way2 = Data_Way2_out[127: 96];
+            4'd4:   rdata_way2 = Data_Way2_out[159:128];
+            4'd5:   rdata_way2 = Data_Way2_out[191:160];
+            4'd6:   rdata_way2 = Data_Way2_out[223:192];
+            4'd7:   rdata_way2 = Data_Way2_out[255:224];
+            4'd8:   rdata_way2 = Data_Way2_out[287:256];
+            4'd9:   rdata_way2 = Data_Way2_out[319:288];
+            4'd10:  rdata_way2 = Data_Way2_out[351:320];
+            4'd11:  rdata_way2 = Data_Way2_out[383:352];
+            4'd12:  rdata_way2 = Data_Way2_out[415:384];
+            4'd13:  rdata_way2 = Data_Way2_out[447:416];
+            4'd14:  rdata_way2 = Data_Way2_out[479:448];
+            default:rdata_way2 = Data_Way2_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way3_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way3 = Data_Way3_out[ 31:  0];
+            4'd1:   rdata_way3 = Data_Way3_out[ 63: 32];
+            4'd2:   rdata_way3 = Data_Way3_out[ 95: 64];
+            4'd3:   rdata_way3 = Data_Way3_out[127: 96];
+            4'd4:   rdata_way3 = Data_Way3_out[159:128];
+            4'd5:   rdata_way3 = Data_Way3_out[191:160];
+            4'd6:   rdata_way3 = Data_Way3_out[223:192];
+            4'd7:   rdata_way3 = Data_Way3_out[255:224];
+            4'd8:   rdata_way3 = Data_Way3_out[287:256];
+            4'd9:   rdata_way3 = Data_Way3_out[319:288];
+            4'd10:  rdata_way3 = Data_Way3_out[351:320];
+            4'd11:  rdata_way3 = Data_Way3_out[383:352];
+            4'd12:  rdata_way3 = Data_Way3_out[415:384];
+            4'd13:  rdata_way3 = Data_Way3_out[447:416];
+            4'd14:  rdata_way3 = Data_Way3_out[479:448];
+            default:rdata_way3 = Data_Way3_out[511:480];
+        endcase
+    always@(hit_code, rdata_way0, rdata_way1, rdata_way2, rdata_way3, ret_data)
+        case(hit_code)
+            4'b0001: rdata = rdata_way0;
+            4'b0010: rdata = rdata_way1;
+            4'b0100: rdata = rdata_way2;
+            4'b1000: rdata = rdata_way3;
+            default: rdata = ret_data;
+        endcase
 
     //write from cpu to cache (store)
     always@(ret_data)
             Data_in = {16{ret_data}};
-    always@(*)
+    always@(ret_number_MB)
+        case(ret_number_MB)
+            4'd0:   byte_write = {60'd0,4'b1111};
+            4'd1:   byte_write = {56'd0,4'b1111,4'd0};
+            4'd2:   byte_write = {52'd0,4'b1111,8'd0};
+            4'd3:   byte_write = {48'd0,4'b1111,12'd0};
+            4'd4:   byte_write = {44'd0,4'b1111,16'd0};
+            4'd5:   byte_write = {40'd0,4'b1111,20'd0};
+            4'd6:   byte_write = {36'd0,4'b1111,24'd0};
+            4'd7:   byte_write = {32'd0,4'b1111,28'd0};
+            4'd8:   byte_write = {28'd0,4'b1111,32'd0};
+            4'd9:   byte_write = {24'd0,4'b1111,36'd0};
+            4'd10:  byte_write = {20'd0,4'b1111,40'd0};
+            4'd11:  byte_write = {16'd0,4'b1111,44'd0};
+            4'd12:  byte_write = {12'd0,4'b1111,48'd0};
+            4'd13:  byte_write = {8'd0,4'b1111,52'd0};
+            4'd14:  byte_write = {4'd0,4'b1111,56'd0};
+            default:byte_write = {4'b1111,60'd0};
+        endcase
+    always@(ret_valid, C_STATE, replace_way_MB, byte_write)
         if(ret_valid &&(C_STATE == REFILL)) begin
-            if(replace_way_MB == 2'd0) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way0_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way0_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way0_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way0_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way0_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way0_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way0_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way0_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way0_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way0_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way0_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way0_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way0_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way0_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way0_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way0_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(replace_way_MB == 2'd1) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way1_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way1_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way1_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way1_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way1_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way1_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way1_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way1_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way1_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way1_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way1_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way1_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way1_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way1_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way1_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way1_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(replace_way_MB == 2'd2) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way2_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way2_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way2_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way2_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way2_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way2_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way2_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way2_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way2_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way2_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way2_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way2_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way2_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way2_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way2_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way2_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way3_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way3_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way3_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way3_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way3_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way3_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way3_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way3_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way3_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way3_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way3_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way3_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way3_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way3_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way3_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way3_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-            end
+            case(replace_way_MB)
+                2'b00:  begin
+                            Data_Way0_wen = byte_write;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b01:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = byte_write;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b10:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = byte_write;
+                            Data_Way3_wen = 64'd0;
+                        end
+                default:begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = byte_write;
+                        end
+            endcase
         end
         else begin
             Data_Way0_wen = 64'd0;
@@ -627,6 +596,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     wire way2_hit;
     wire way3_hit;
     wire cache_hit;
+    wire[3:0] hit_code;
     wire hit_write;
     wire write_conflict1;
     wire write_conflict2;
@@ -636,6 +606,13 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     reg[31:0] wdata_bypass2;
     reg write_bypass1_delay;
     reg write_bypass2_delay;
+
+    reg[31:0] rdata_way0;
+    reg[31:0] rdata_way1;
+    reg[31:0] rdata_way2;
+    reg[31:0] rdata_way3;
+    reg[63:0] byte_write1;
+    reg[63:0] byte_write2;
 
     integer i;
     wire addr_select;
@@ -687,6 +664,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
     assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
+    assign hit_code = {way3_hit,way2_hit,way1_hit,way0_hit};
 
     assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
@@ -711,22 +689,25 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         if(!resetn)
             for(i=0;i<64;i=i+1)
                 age[i] <= 3'b000;
-        else if(way0_hit) begin
-            age[index_RB][2] <= 1'b1;
-            age[index_RB][1] <= 1'b1;
-        end
-        else if(way1_hit) begin
-            age[index_RB][2] <= 1'b1;
-            age[index_RB][1] <= 1'b0;
-        end
-        else if(way2_hit) begin
-            age[index_RB][2] <= 1'b0;
-            age[index_RB][0] <= 1'b1;
-        end
-        else if(way3_hit) begin
-            age[index_RB][2] <= 1'b0;
-            age[index_RB][0] <= 1'b0;
-        end
+        else 
+            case(hit_code)
+                4'b0001: begin
+                        age[index_RB][2] <= 1'b1;
+                        age[index_RB][1] <= 1'b1;
+                    end
+                4'b0010: begin
+                        age[index_RB][2] <= 1'b1;
+                        age[index_RB][1] <= 1'b0;
+                    end
+                4'b0100: begin
+                        age[index_RB][2] <= 1'b0;
+                        age[index_RB][0] <= 1'b1;
+                    end
+                4'b1000: begin
+                        age[index_RB][2] <= 1'b0;
+                        age[index_RB][0] <= 1'b0;
+                    end
+            endcase
     always@(*)
         if(age[index_RB][2]) begin
             if(age[index_RB][0])
@@ -845,89 +826,96 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         end
 
     //reading from cache to cpu (load)
-    always@(*)
+    always@(offset_RB,Data_Way0_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way0 = Data_Way0_out[ 31:  0];
+            4'd1:   rdata_way0 = Data_Way0_out[ 63: 32];
+            4'd2:   rdata_way0 = Data_Way0_out[ 95: 64];
+            4'd3:   rdata_way0 = Data_Way0_out[127: 96];
+            4'd4:   rdata_way0 = Data_Way0_out[159:128];
+            4'd5:   rdata_way0 = Data_Way0_out[191:160];
+            4'd6:   rdata_way0 = Data_Way0_out[223:192];
+            4'd7:   rdata_way0 = Data_Way0_out[255:224];
+            4'd8:   rdata_way0 = Data_Way0_out[287:256];
+            4'd9:   rdata_way0 = Data_Way0_out[319:288];
+            4'd10:  rdata_way0 = Data_Way0_out[351:320];
+            4'd11:  rdata_way0 = Data_Way0_out[383:352];
+            4'd12:  rdata_way0 = Data_Way0_out[415:384];
+            4'd13:  rdata_way0 = Data_Way0_out[447:416];
+            4'd14:  rdata_way0 = Data_Way0_out[479:448];
+            default:rdata_way0 = Data_Way0_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way1_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way1 = Data_Way1_out[ 31:  0];
+            4'd1:   rdata_way1 = Data_Way1_out[ 63: 32];
+            4'd2:   rdata_way1 = Data_Way1_out[ 95: 64];
+            4'd3:   rdata_way1 = Data_Way1_out[127: 96];
+            4'd4:   rdata_way1 = Data_Way1_out[159:128];
+            4'd5:   rdata_way1 = Data_Way1_out[191:160];
+            4'd6:   rdata_way1 = Data_Way1_out[223:192];
+            4'd7:   rdata_way1 = Data_Way1_out[255:224];
+            4'd8:   rdata_way1 = Data_Way1_out[287:256];
+            4'd9:   rdata_way1 = Data_Way1_out[319:288];
+            4'd10:  rdata_way1 = Data_Way1_out[351:320];
+            4'd11:  rdata_way1 = Data_Way1_out[383:352];
+            4'd12:  rdata_way1 = Data_Way1_out[415:384];
+            4'd13:  rdata_way1 = Data_Way1_out[447:416];
+            4'd14:  rdata_way1 = Data_Way1_out[479:448];
+            default:rdata_way1 = Data_Way1_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way2_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way2 = Data_Way2_out[ 31:  0];
+            4'd1:   rdata_way2 = Data_Way2_out[ 63: 32];
+            4'd2:   rdata_way2 = Data_Way2_out[ 95: 64];
+            4'd3:   rdata_way2 = Data_Way2_out[127: 96];
+            4'd4:   rdata_way2 = Data_Way2_out[159:128];
+            4'd5:   rdata_way2 = Data_Way2_out[191:160];
+            4'd6:   rdata_way2 = Data_Way2_out[223:192];
+            4'd7:   rdata_way2 = Data_Way2_out[255:224];
+            4'd8:   rdata_way2 = Data_Way2_out[287:256];
+            4'd9:   rdata_way2 = Data_Way2_out[319:288];
+            4'd10:  rdata_way2 = Data_Way2_out[351:320];
+            4'd11:  rdata_way2 = Data_Way2_out[383:352];
+            4'd12:  rdata_way2 = Data_Way2_out[415:384];
+            4'd13:  rdata_way2 = Data_Way2_out[447:416];
+            4'd14:  rdata_way2 = Data_Way2_out[479:448];
+            default:rdata_way2 = Data_Way2_out[511:480];
+        endcase
+    always@(offset_RB,Data_Way3_out)
+        case(offset_RB[5:2])
+            4'd0:   rdata_way3 = Data_Way3_out[ 31:  0];
+            4'd1:   rdata_way3 = Data_Way3_out[ 63: 32];
+            4'd2:   rdata_way3 = Data_Way3_out[ 95: 64];
+            4'd3:   rdata_way3 = Data_Way3_out[127: 96];
+            4'd4:   rdata_way3 = Data_Way3_out[159:128];
+            4'd5:   rdata_way3 = Data_Way3_out[191:160];
+            4'd6:   rdata_way3 = Data_Way3_out[223:192];
+            4'd7:   rdata_way3 = Data_Way3_out[255:224];
+            4'd8:   rdata_way3 = Data_Way3_out[287:256];
+            4'd9:   rdata_way3 = Data_Way3_out[319:288];
+            4'd10:  rdata_way3 = Data_Way3_out[351:320];
+            4'd11:  rdata_way3 = Data_Way3_out[383:352];
+            4'd12:  rdata_way3 = Data_Way3_out[415:384];
+            4'd13:  rdata_way3 = Data_Way3_out[447:416];
+            4'd14:  rdata_way3 = Data_Way3_out[479:448];
+            default:rdata_way3 = Data_Way3_out[511:480];
+        endcase
+    always@(hit_code, rdata_way0, rdata_way1, rdata_way2, rdata_way3, ret_data,
+            write_bypass1_delay,wdata_bypass1,write_bypass2_delay,wdata_bypass2)
         if(write_bypass1_delay)
             rdata = wdata_bypass1;
         else if(write_bypass2_delay)
             rdata = wdata_bypass2;
-        else if(way0_hit)        //read way0
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way0_out[ 31:  0];
-                4'd1:   rdata = Data_Way0_out[ 63: 32];
-                4'd2:   rdata = Data_Way0_out[ 95: 64];
-                4'd3:   rdata = Data_Way0_out[127: 96];
-                4'd4:   rdata = Data_Way0_out[159:128];
-                4'd5:   rdata = Data_Way0_out[191:160];
-                4'd6:   rdata = Data_Way0_out[223:192];
-                4'd7:   rdata = Data_Way0_out[255:224];
-                4'd8:   rdata = Data_Way0_out[287:256];
-                4'd9:   rdata = Data_Way0_out[319:288];
-                4'd10:  rdata = Data_Way0_out[351:320];
-                4'd11:  rdata = Data_Way0_out[383:352];
-                4'd12:  rdata = Data_Way0_out[415:384];
-                4'd13:  rdata = Data_Way0_out[447:416];
-                4'd14:  rdata = Data_Way0_out[479:448];
-                default:rdata = Data_Way0_out[511:480];
+        else
+            case(hit_code)
+                4'b0001: rdata = rdata_way0;
+                4'b0010: rdata = rdata_way1;
+                4'b0100: rdata = rdata_way2;
+                4'b1000: rdata = rdata_way3;
+                default: rdata = ret_data;
             endcase
-        else if(way1_hit)   //read way1
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way1_out[ 31:  0];
-                4'd1:   rdata = Data_Way1_out[ 63: 32];
-                4'd2:   rdata = Data_Way1_out[ 95: 64];
-                4'd3:   rdata = Data_Way1_out[127: 96];
-                4'd4:   rdata = Data_Way1_out[159:128];
-                4'd5:   rdata = Data_Way1_out[191:160];
-                4'd6:   rdata = Data_Way1_out[223:192];
-                4'd7:   rdata = Data_Way1_out[255:224];
-                4'd8:   rdata = Data_Way1_out[287:256];
-                4'd9:   rdata = Data_Way1_out[319:288];
-                4'd10:  rdata = Data_Way1_out[351:320];
-                4'd11:  rdata = Data_Way1_out[383:352];
-                4'd12:  rdata = Data_Way1_out[415:384];
-                4'd13:  rdata = Data_Way1_out[447:416];
-                4'd14:  rdata = Data_Way1_out[479:448];
-                default:rdata = Data_Way1_out[511:480];
-            endcase
-        else if(way2_hit)   //read way2
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way2_out[ 31:  0];
-                4'd1:   rdata = Data_Way2_out[ 63: 32];
-                4'd2:   rdata = Data_Way2_out[ 95: 64];
-                4'd3:   rdata = Data_Way2_out[127: 96];
-                4'd4:   rdata = Data_Way2_out[159:128];
-                4'd5:   rdata = Data_Way2_out[191:160];
-                4'd6:   rdata = Data_Way2_out[223:192];
-                4'd7:   rdata = Data_Way2_out[255:224];
-                4'd8:   rdata = Data_Way2_out[287:256];
-                4'd9:   rdata = Data_Way2_out[319:288];
-                4'd10:  rdata = Data_Way2_out[351:320];
-                4'd11:  rdata = Data_Way2_out[383:352];
-                4'd12:  rdata = Data_Way2_out[415:384];
-                4'd13:  rdata = Data_Way2_out[447:416];
-                4'd14:  rdata = Data_Way2_out[479:448];
-                default:rdata = Data_Way2_out[511:480];
-            endcase
-        else if(way3_hit)   //read way3
-            case(offset_RB[5:2])
-                4'd0:   rdata = Data_Way3_out[ 31:  0];
-                4'd1:   rdata = Data_Way3_out[ 63: 32];
-                4'd2:   rdata = Data_Way3_out[ 95: 64];
-                4'd3:   rdata = Data_Way3_out[127: 96];
-                4'd4:   rdata = Data_Way3_out[159:128];
-                4'd5:   rdata = Data_Way3_out[191:160];
-                4'd6:   rdata = Data_Way3_out[223:192];
-                4'd7:   rdata = Data_Way3_out[255:224];
-                4'd8:   rdata = Data_Way3_out[287:256];
-                4'd9:   rdata = Data_Way3_out[319:288];
-                4'd10:  rdata = Data_Way3_out[351:320];
-                4'd11:  rdata = Data_Way3_out[383:352];
-                4'd12:  rdata = Data_Way3_out[415:384];
-                4'd13:  rdata = Data_Way3_out[447:416];
-                4'd14:  rdata = Data_Way3_out[479:448];
-                default:rdata = Data_Way3_out[511:480];
-            endcase
-        else                //read ret_data when miss
-            rdata = ret_data;
 
     //write from cpu to cache (store)
     always@(wdata_WB, wstrb_WB, C_STATE_WB, ret_data)
@@ -944,194 +932,100 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         end
         else
             Data_in = {16{ret_data}};
-    always@(*)
+    always@(offset_WB, wstrb_WB)
+        case(offset_WB[5:2])
+            4'd0:   byte_write1 = {60'd0,wstrb_WB};
+            4'd1:   byte_write1 = {56'd0,wstrb_WB,4'd0};
+            4'd2:   byte_write1 = {52'd0,wstrb_WB,8'd0};
+            4'd3:   byte_write1 = {48'd0,wstrb_WB,12'd0};
+            4'd4:   byte_write1 = {44'd0,wstrb_WB,16'd0};
+            4'd5:   byte_write1 = {40'd0,wstrb_WB,20'd0};
+            4'd6:   byte_write1 = {36'd0,wstrb_WB,24'd0};
+            4'd7:   byte_write1 = {32'd0,wstrb_WB,28'd0};
+            4'd8:   byte_write1 = {28'd0,wstrb_WB,32'd0};
+            4'd9:   byte_write1 = {24'd0,wstrb_WB,36'd0};
+            4'd10:  byte_write1 = {20'd0,wstrb_WB,40'd0};
+            4'd11:  byte_write1 = {16'd0,wstrb_WB,44'd0};
+            4'd12:  byte_write1 = {12'd0,wstrb_WB,48'd0};
+            4'd13:  byte_write1 = {8'd0,wstrb_WB,52'd0};
+            4'd14:  byte_write1 = {4'd0,wstrb_WB,56'd0};
+            default:byte_write1 = {wstrb_WB,60'd0};
+        endcase
+    always@(ret_number_MB)
+        case(ret_number_MB)
+            4'd0:   byte_write2 = {60'd0,4'b1111};
+            4'd1:   byte_write2 = {56'd0,4'b1111,4'd0};
+            4'd2:   byte_write2 = {52'd0,4'b1111,8'd0};
+            4'd3:   byte_write2 = {48'd0,4'b1111,12'd0};
+            4'd4:   byte_write2 = {44'd0,4'b1111,16'd0};
+            4'd5:   byte_write2 = {40'd0,4'b1111,20'd0};
+            4'd6:   byte_write2 = {36'd0,4'b1111,24'd0};
+            4'd7:   byte_write2 = {32'd0,4'b1111,28'd0};
+            4'd8:   byte_write2 = {28'd0,4'b1111,32'd0};
+            4'd9:   byte_write2 = {24'd0,4'b1111,36'd0};
+            4'd10:  byte_write2 = {20'd0,4'b1111,40'd0};
+            4'd11:  byte_write2 = {16'd0,4'b1111,44'd0};
+            4'd12:  byte_write2 = {12'd0,4'b1111,48'd0};
+            4'd13:  byte_write2 = {8'd0,4'b1111,52'd0};
+            4'd14:  byte_write2 = {4'd0,4'b1111,56'd0};
+            default:byte_write2 = {4'b1111,60'd0};
+        endcase
+    always@(C_STATE_WB,C_STATE,way_WB,byte_write1,byte_write2,ret_valid,replace_way_MB)
         if(C_STATE_WB) begin
-            if(way_WB == 2'd0) begin
-                case(offset_WB[5:2])
-                    4'd0:   Data_Way0_wen = {60'd0,wstrb_WB};
-                    4'd1:   Data_Way0_wen = {56'd0,wstrb_WB,4'd0};
-                    4'd2:   Data_Way0_wen = {52'd0,wstrb_WB,8'd0};
-                    4'd3:   Data_Way0_wen = {48'd0,wstrb_WB,12'd0};
-                    4'd4:   Data_Way0_wen = {44'd0,wstrb_WB,16'd0};
-                    4'd5:   Data_Way0_wen = {40'd0,wstrb_WB,20'd0};
-                    4'd6:   Data_Way0_wen = {36'd0,wstrb_WB,24'd0};
-                    4'd7:   Data_Way0_wen = {32'd0,wstrb_WB,28'd0};
-                    4'd8:   Data_Way0_wen = {28'd0,wstrb_WB,32'd0};
-                    4'd9:   Data_Way0_wen = {24'd0,wstrb_WB,36'd0};
-                    4'd10:  Data_Way0_wen = {20'd0,wstrb_WB,40'd0};
-                    4'd11:  Data_Way0_wen = {16'd0,wstrb_WB,44'd0};
-                    4'd12:  Data_Way0_wen = {12'd0,wstrb_WB,48'd0};
-                    4'd13:  Data_Way0_wen = {8'd0,wstrb_WB,52'd0};
-                    4'd14:  Data_Way0_wen = {4'd0,wstrb_WB,56'd0};
-                    default:Data_Way0_wen = {wstrb_WB,60'd0};
-                endcase
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(way_WB == 2'd1) begin
-                case(offset_WB[5:2])
-                    4'd0:   Data_Way1_wen = {60'd0,wstrb_WB};
-                    4'd1:   Data_Way1_wen = {56'd0,wstrb_WB,4'd0};
-                    4'd2:   Data_Way1_wen = {52'd0,wstrb_WB,8'd0};
-                    4'd3:   Data_Way1_wen = {48'd0,wstrb_WB,12'd0};
-                    4'd4:   Data_Way1_wen = {44'd0,wstrb_WB,16'd0};
-                    4'd5:   Data_Way1_wen = {40'd0,wstrb_WB,20'd0};
-                    4'd6:   Data_Way1_wen = {36'd0,wstrb_WB,24'd0};
-                    4'd7:   Data_Way1_wen = {32'd0,wstrb_WB,28'd0};
-                    4'd8:   Data_Way1_wen = {28'd0,wstrb_WB,32'd0};
-                    4'd9:   Data_Way1_wen = {24'd0,wstrb_WB,36'd0};
-                    4'd10:  Data_Way1_wen = {20'd0,wstrb_WB,40'd0};
-                    4'd11:  Data_Way1_wen = {16'd0,wstrb_WB,44'd0};
-                    4'd12:  Data_Way1_wen = {12'd0,wstrb_WB,48'd0};
-                    4'd13:  Data_Way1_wen = {8'd0,wstrb_WB,52'd0};
-                    4'd14:  Data_Way1_wen = {4'd0,wstrb_WB,56'd0};
-                    default:Data_Way1_wen = {wstrb_WB,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(way_WB == 2'd2) begin
-                case(offset_WB[5:2])
-                    4'd0:   Data_Way2_wen = {60'd0,wstrb_WB};
-                    4'd1:   Data_Way2_wen = {56'd0,wstrb_WB,4'd0};
-                    4'd2:   Data_Way2_wen = {52'd0,wstrb_WB,8'd0};
-                    4'd3:   Data_Way2_wen = {48'd0,wstrb_WB,12'd0};
-                    4'd4:   Data_Way2_wen = {44'd0,wstrb_WB,16'd0};
-                    4'd5:   Data_Way2_wen = {40'd0,wstrb_WB,20'd0};
-                    4'd6:   Data_Way2_wen = {36'd0,wstrb_WB,24'd0};
-                    4'd7:   Data_Way2_wen = {32'd0,wstrb_WB,28'd0};
-                    4'd8:   Data_Way2_wen = {28'd0,wstrb_WB,32'd0};
-                    4'd9:   Data_Way2_wen = {24'd0,wstrb_WB,36'd0};
-                    4'd10:  Data_Way2_wen = {20'd0,wstrb_WB,40'd0};
-                    4'd11:  Data_Way2_wen = {16'd0,wstrb_WB,44'd0};
-                    4'd12:  Data_Way2_wen = {12'd0,wstrb_WB,48'd0};
-                    4'd13:  Data_Way2_wen = {8'd0,wstrb_WB,52'd0};
-                    4'd14:  Data_Way2_wen = {4'd0,wstrb_WB,56'd0};
-                    default:Data_Way2_wen = {wstrb_WB,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else begin
-                case(offset_WB[5:2])
-                    4'd0:   Data_Way3_wen = {60'd0,wstrb_WB};
-                    4'd1:   Data_Way3_wen = {56'd0,wstrb_WB,4'd0};
-                    4'd2:   Data_Way3_wen = {52'd0,wstrb_WB,8'd0};
-                    4'd3:   Data_Way3_wen = {48'd0,wstrb_WB,12'd0};
-                    4'd4:   Data_Way3_wen = {44'd0,wstrb_WB,16'd0};
-                    4'd5:   Data_Way3_wen = {40'd0,wstrb_WB,20'd0};
-                    4'd6:   Data_Way3_wen = {36'd0,wstrb_WB,24'd0};
-                    4'd7:   Data_Way3_wen = {32'd0,wstrb_WB,28'd0};
-                    4'd8:   Data_Way3_wen = {28'd0,wstrb_WB,32'd0};
-                    4'd9:   Data_Way3_wen = {24'd0,wstrb_WB,36'd0};
-                    4'd10:  Data_Way3_wen = {20'd0,wstrb_WB,40'd0};
-                    4'd11:  Data_Way3_wen = {16'd0,wstrb_WB,44'd0};
-                    4'd12:  Data_Way3_wen = {12'd0,wstrb_WB,48'd0};
-                    4'd13:  Data_Way3_wen = {8'd0,wstrb_WB,52'd0};
-                    4'd14:  Data_Way3_wen = {4'd0,wstrb_WB,56'd0};
-                    default:Data_Way3_wen = {wstrb_WB,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-            end
+            case(way_WB)
+                2'b00:  begin
+                            Data_Way0_wen = byte_write1;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b01:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = byte_write1;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b10:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = byte_write1;
+                            Data_Way3_wen = 64'd0;
+                        end
+                default:begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = byte_write1;
+                        end
+            endcase
         end
         else if(ret_valid &&(C_STATE == REFILL)) begin
-            if(replace_way_MB == 2'd0) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way0_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way0_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way0_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way0_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way0_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way0_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way0_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way0_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way0_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way0_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way0_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way0_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way0_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way0_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way0_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way0_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(replace_way_MB == 2'd1) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way1_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way1_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way1_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way1_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way1_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way1_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way1_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way1_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way1_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way1_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way1_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way1_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way1_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way1_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way1_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way1_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else if(replace_way_MB == 2'd2) begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way2_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way2_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way2_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way2_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way2_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way2_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way2_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way2_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way2_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way2_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way2_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way2_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way2_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way2_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way2_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way2_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way3_wen = 64'd0;
-            end
-            else begin
-                case(ret_number_MB)
-                    4'd0:   Data_Way3_wen = {60'd0,4'b1111};
-                    4'd1:   Data_Way3_wen = {56'd0,4'b1111,4'd0};
-                    4'd2:   Data_Way3_wen = {52'd0,4'b1111,8'd0};
-                    4'd3:   Data_Way3_wen = {48'd0,4'b1111,12'd0};
-                    4'd4:   Data_Way3_wen = {44'd0,4'b1111,16'd0};
-                    4'd5:   Data_Way3_wen = {40'd0,4'b1111,20'd0};
-                    4'd6:   Data_Way3_wen = {36'd0,4'b1111,24'd0};
-                    4'd7:   Data_Way3_wen = {32'd0,4'b1111,28'd0};
-                    4'd8:   Data_Way3_wen = {28'd0,4'b1111,32'd0};
-                    4'd9:   Data_Way3_wen = {24'd0,4'b1111,36'd0};
-                    4'd10:  Data_Way3_wen = {20'd0,4'b1111,40'd0};
-                    4'd11:  Data_Way3_wen = {16'd0,4'b1111,44'd0};
-                    4'd12:  Data_Way3_wen = {12'd0,4'b1111,48'd0};
-                    4'd13:  Data_Way3_wen = {8'd0,4'b1111,52'd0};
-                    4'd14:  Data_Way3_wen = {4'd0,4'b1111,56'd0};
-                    default:Data_Way3_wen = {4'b1111,60'd0};
-                endcase
-                Data_Way0_wen = 64'd0;
-                Data_Way1_wen = 64'd0;
-                Data_Way2_wen = 64'd0;
-            end
+            case(replace_way_MB)
+                2'b00:  begin
+                            Data_Way0_wen = byte_write2;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b01:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = byte_write2;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = 64'd0;
+                        end
+                2'b10:  begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = byte_write2;
+                            Data_Way3_wen = 64'd0;
+                        end
+                default:begin
+                            Data_Way0_wen = 64'd0;
+                            Data_Way1_wen = 64'd0;
+                            Data_Way2_wen = 64'd0;
+                            Data_Way3_wen = byte_write2;
+                        end
+            endcase
         end
         else begin
             Data_Way0_wen = 64'd0;

@@ -544,10 +544,10 @@ EX_MEM1 U_EX_MEM1(
 
 
 CP0 U_CP0(
-		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn & ~dcache_stall), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT),
+		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT),
 		.MEM_Exc(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush), .MEM_bd(MEM1_isBD),
         .ext_int_in(ext_int_in), .MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
-		.MEM_PC(MEM1_PC),
+		.MEM_PC(MEM1_PC), .dcache_stall(dcache_stall),
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt)
 	);

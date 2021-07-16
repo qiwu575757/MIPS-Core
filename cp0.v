@@ -36,7 +36,7 @@
 
 module CP0(
     clk, rst, CP0WrEn, addr, data_in, MEM_Exc, MEM_eret_flush, 
-    MEM_bd,ext_int_in, MEM_ExcCode, MEM_badvaddr, MEM_PC,
+    MEM_bd,ext_int_in, MEM_ExcCode, MEM_badvaddr, MEM_PC, dcache_stall,
 
     data_out, EPC_out, Interrupt
 );
@@ -52,8 +52,9 @@ module CP0(
     input [4:0] MEM_ExcCode;        //M级例外编码
     input [31:0]  MEM_badvaddr;      //bad virtual address
     input [31:0] MEM_PC;  
+    input dcache_stall;
 
-    output [31:0] data_out;
+    output reg[31:0] data_out;
     output [31:0] EPC_out;
     output Interrupt;           //中断
 
@@ -81,38 +82,41 @@ module CP0(
          
     wire count_eq_compare;       //Count == Compare
     reg tick;                   
-    reg epc_sign;               //epc_sign = 0,例外改写epc；epc_sign = 1,指令改写epc；
 
     assign count_eq_compare = (Compare == Count);
     assign Interrupt = 
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
-    assign EPC_out = EPC + epc_sign * 4;
+    assign EPC_out = EPC;
     //used for TLB
 
 
     //MFC0 read CP0
-    assign data_out = 
-                (addr == `Index_index   )     ?     Index               :  
-                (addr == `Random_index  )     ?     Random              :  
-                (addr == `EntryLo0_index)     ?     EntryLo0            :  
-                (addr == `EntryLo1_index)     ?     EntryLo1            :  
-                (addr == `Context_index )     ?     Context             :  
-                (addr == `PageMask_index)     ?     PageMask            :  
-                (addr == `Wired_index   )     ?     Wired               :  
-                (addr == `BadVAddr_index)     ?     BadVAddr            :  
-                (addr == `Count_index   )     ?     Count               :  
-                (addr == `EntryHi_index )     ?     EntryHi             :  
-                (addr == `Compare_index )     ?     Compare             :  
-                (addr == `Status_index  )     ?     Status              :  
-                (addr == `Cause_index   )     ?     Cause               :  
-                (addr == `EPC_index     )     ?     EPC + epc_sign * 4  :  
-                (addr == `PRId_index    )     ?     PRId                :  
-                (addr == `Ebase_index   )     ?     Ebase               :  
-                (addr == `Config_index  )     ?     Config              :  
-                (addr == `Config1_index )     ?     Config1             :  
-                (addr == `TagLo_index   )     ?     TagLo               :  
-                (addr == `TagHi_index   )     ?     TagHi               : 
-                                                        32'b0;
+    always @(*) begin
+        case (addr)
+            `Index_index: data_out = Index;
+            `Random_index: data_out = Random;
+            `EntryLo0_index: data_out = EntryLo0;
+            `EntryLo1_index: data_out = EntryLo1;
+            `Context_index: data_out = Context;
+            `PageMask_index: data_out = PageMask;
+            `Wired_index: data_out = Wired;
+            `BadVAddr_index: data_out = BadVAddr;
+            `Count_index: data_out = Count;
+            `EntryHi_index: data_out = EntryHi;
+            `Compare_index: data_out = Compare;
+            `Status_index: data_out = Status;
+            `Cause_index: data_out = Cause;
+            `EPC_index: data_out = EPC;
+            `PRId_index: data_out = PRId;
+            `Ebase_index: data_out = Ebase;
+            `Config_index: data_out = Config;
+            `Config1_index: data_out = Config1;
+            `TagLo_index: data_out = TagLo;
+            `TagHi_index: data_out = TagHi;
+            default: data_out = 32'd0;
+        endcase  
+    end
+
             
     /*CP0 generation by mtc0 and tlb instr*/
     //Index generation
@@ -175,7 +179,7 @@ module CP0(
 
     //Status
     always @(posedge clk) begin
-        if (CP0WrEn && addr == `Status_index)
+        if ((CP0WrEn && addr == `Status_index) & ~dcache_stall)
             `status_im <= data_in[15:8];
     end
 
@@ -187,7 +191,7 @@ module CP0(
             `status_exl <= 1'b1;
         else if (MEM_eret_flush)
             `status_exl <= 1'b0;
-        else if (CP0WrEn && addr == `Status_index)
+        else if ((CP0WrEn && addr == `Status_index & ~dcache_stall))
             `status_exl <= data_in[1];
     end
 
@@ -195,7 +199,7 @@ module CP0(
     always @(posedge clk) begin
         if (!rst)
             `status_ie <= 1'b0;
-        else if (CP0WrEn && addr == `Status_index)
+        else if ((CP0WrEn && addr == `Status_index) & ~dcache_stall)
             `status_ie <= data_in[0];
     end
 
@@ -240,7 +244,7 @@ module CP0(
     always @(posedge clk) begin
         if (!rst)
             `cause_ip2 <= 2'b0;
-        else if (CP0WrEn && addr == `Cause_index)
+        else if ((CP0WrEn && addr == `Cause_index) & ~dcache_stall)
             `cause_ip2 <= data_in[9:8];
     end
 
@@ -263,15 +267,11 @@ module CP0(
 
     //EPC
     always @(posedge clk) begin
-        if (!rst)
-            epc_sign <= 0;
         if (MEM_Exc && !`status_exl) begin
             EPC <= MEM_bd ? MEM_PC - 4 : MEM_PC;
-            epc_sign <= 0;
         end   
         else if (CP0WrEn && addr == `EPC_index) begin
-            EPC <= data_in - 4;
-            epc_sign <= 1;
+            EPC <= data_in;
          end  
     end
     

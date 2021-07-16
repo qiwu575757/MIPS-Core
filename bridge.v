@@ -8,27 +8,32 @@ module  bridge_dm(
 	input [31:0] addr2;
 	input [31:0] Din;
 	input [2:0] DMSel2;
-	output [31:0] dout;
+	output reg[31:0] dout;
 
-assign dout=
-				DMSel2==3'b011 ?  // zero
-				(  	addr2[1:0]==2'b00 ? {24'b0,Din[7:0]} :
-					addr2[1:0]==2'b01 ? {24'b0,Din[15:8]} :
-					addr2[1:0]==2'b10 ? {24'b0,Din[23:16]} :
-									   {24'b0,Din[31:24]}) :
-				DMSel2==3'b100 ?
-				(   addr2[1:0]==2'b00 ? {{24{Din[ 7]}},Din[ 7: 0]} :
-					addr2[1:0]==2'b01 ? {{24{Din[15]}},Din[15: 8]} :
-					addr2[1:0]==2'b10 ? {{24{Din[23]}},Din[23:16]} :
-									   {{24{Din[31]}},Din[31:24]}) :
-				DMSel2==3'b101 ?
-				( 	addr2[1]==1'b0 	 ? {16'h0000,Din[15:0]}  :
-								 	   {16'h0000,Din[31:16]})  :
-				DMSel2==3'b110 ?
-				(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
-							    	   {{16{Din[31]}},Din[31:16]} ) :
-																Din;
-
+	always@(DMSel2,addr2,Din)
+		case(DMSel2)
+			3'b011: case(addr2[1:0])
+						2'b00:	dout = {24'b0,Din[ 7: 0]};
+						2'b01:	dout = {24'b0,Din[15: 8]};
+						2'b10:	dout = {24'b0,Din[23:16]};
+						default:dout = {24'b0,Din[31:24]};
+					endcase
+			3'b100: case(addr2[1:0])
+						2'b00:	dout = {{24{Din[ 7]}},Din[ 7: 0]};
+						2'b01:	dout = {{24{Din[15]}},Din[15: 8]};
+						2'b10:	dout = {{24{Din[23]}},Din[23:16]};
+						default:dout = {{24{Din[31]}},Din[31:24]};
+					endcase
+			3'b101:	case(addr2[1])
+						1'b0:	dout = {16'h0000,Din[15: 0]};
+						default:dout = {16'h0000,Din[31:16]};
+					endcase
+			3'b110: case(addr2[1])
+						1'b0:	dout = {{16{Din[15]}},Din[15: 0]};
+						default:dout = {{16{Din[31]}},Din[31:16]};
+					endcase
+			default: dout = Din;
+		endcase
 
 endmodule
 
