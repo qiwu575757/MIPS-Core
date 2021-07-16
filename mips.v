@@ -292,6 +292,8 @@ module mips(
 	wire WB_RFWr;
     wire[31:0] WB_DMOut;
     wire[31:0] MUX10Out;
+    wire[31:0] WB_ALU1Out;
+    wire[2:0] WB_DMSel;
 
     //-------------ELSE---------------//
     wire isStall;
@@ -627,9 +629,9 @@ uncache_dm U_UNCACHE_DM(
 );
 
 bridge_dm U_BRIDGE_DM(
-		 .addr2(MEM2_ALU1Out),
-		 .DMSel2(MEM2_DMSel),
-		 .Din(cache_Out),
+		 .addr2(WB_ALU1Out),
+		 .DMSel2(WB_DMSel),
+		 .Din(WB_DMOut),
 
 		 .dout(DMOut)
 	);
@@ -649,14 +651,16 @@ cache_select_dm U_CACHE_SELECT_DM(
 MEM2_WB U_MEM2_WB(
             .clk(clk), .rst(rst), .MEM2_WBWr(MEM2_WBWr), .MEM2_Flush(MEM2_Flush),
 			.PC(MEM2_PC), .MUX2Out(MUX2Out), .MUX2Sel(MEM2_MUX2Sel), .RD(MEM2_RD), .RFWr(MEM2_RFWr),
-            .DMOut(DMOut),
+            .DMOut(cache_Out), 
+            .ALU1Out(MEM2_ALU1Out), .DMSel(MEM2_DMSel),
 
 			.WB_PC(WB_PC), .WB_MUX2Out(WB_MUX2Out), .WB_MUX2Sel(WB_MUX2Sel),
-            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut)
+            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut),
+            .WB_ALU1Out(WB_ALU1Out), .WB_DMSel(WB_DMSel)
             );
 
 mux10 U_MUX10(
-            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
+            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(DMOut), .WB_MUX2Sel(WB_MUX2Sel),
             .MUX10Out(MUX10Out)
         );
     //-------------ELSE---------------//

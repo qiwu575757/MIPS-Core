@@ -52,30 +52,18 @@ module icache(       clk, resetn, exception, stall, last_stall,
     reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
-    wire VT_Way2_wen;
-    wire VT_Way3_wen;
     wire[20:0] VT_in;
     wire[20:0] VT_Way0_out;
     wire[20:0] VT_Way1_out;
-    wire[20:0] VT_Way2_out;
-    wire[20:0] VT_Way3_out;
     wire Way0_Valid = VT_Way0_out[20];
     wire Way1_Valid = VT_Way1_out[20];
-    wire Way2_Valid = VT_Way2_out[20];
-    wire Way3_Valid = VT_Way3_out[20];
     wire[19:0] Way0_Tag = VT_Way0_out[19:0];
     wire[19:0] Way1_Tag = VT_Way1_out[19:0];
-    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
-    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     reg[63:0] Data_Way0_wen;
     reg[63:0] Data_Way1_wen;
-    reg[63:0] Data_Way2_wen;
-    reg[63:0] Data_Way3_wen;
     reg[511:0] Data_in;
     wire[511:0] Data_Way0_out;
     wire[511:0] Data_Way1_out;
-    wire[511:0] Data_Way2_out;
-    wire[511:0] Data_Way3_out;
 
     //FINITE STATE MACHINE
     reg[1:0] C_STATE;
@@ -88,7 +76,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     reg[5:0] offset_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
-    reg[1:0] replace_way_MB;        //the way to be replaced and refilled
+    reg replace_way_MB;        //the way to be replaced and refilled
     reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
     reg[5:0] replace_index_MB;
     reg[511:0] replace_data_MB;
@@ -96,21 +84,17 @@ module icache(       clk, resetn, exception, stall, last_stall,
 
     //replace select
     reg[511:0] replace_data;
-    reg[1:0] counter;
-    reg[2:0] age[63:0];
+    reg counter;
+    reg age[63:0];
 
     //hit
     wire way0_hit;
     wire way1_hit;
-    wire way2_hit;
-    wire way3_hit;
     wire cache_hit;
-    wire[3:0] hit_code;
+    wire[1:0] hit_code;
 
     reg[31:0] rdata_way0;
     reg[31:0] rdata_way1;
-    reg[31:0] rdata_way2;
-    reg[31:0] rdata_way3;
     reg[63:0] byte_write;
 
     integer i;
@@ -124,79 +108,43 @@ module icache(       clk, resetn, exception, stall, last_stall,
     ValidTag_Block VT_Way1(
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );
-    ValidTag_Block VT_Way2(
-        clk, 1, VT_Way2_wen, VT_addr, VT_in, VT_Way2_out
-    );
-    ValidTag_Block VT_Way3(
-        clk, 1, VT_Way3_wen, VT_addr, VT_in, VT_Way3_out
-    );
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
     Data_Block Data_Way1(
         clk, 1, Data_Way1_wen, Data_addr, Data_in, Data_Way1_out
     );
-    Data_Block Data_Way2(
-        clk, 1, Data_Way2_wen, Data_addr, Data_in, Data_Way2_out
-    );
-    Data_Block Data_Way3(
-        clk, 1, Data_Way3_wen, Data_addr, Data_in, Data_Way3_out
-    );
 
     //tag compare && hit judgement
     assign way0_hit = Way0_Valid && (Way0_Tag == tag_RB);
     assign way1_hit = Way1_Valid && (Way1_Tag == tag_RB);
-    assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
-    assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
-    assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
-    assign hit_code = {way3_hit,way2_hit,way1_hit,way0_hit};
+    assign cache_hit = way0_hit || way1_hit ;
+    assign hit_code = {way1_hit,way0_hit};
 
     always@(posedge clk)
         if(!resetn)
             for(i=0;i<64;i=i+1)
-                age[i] <= 3'b000;
+                age[i] <= 1'b0;
         else 
             case(hit_code)
-                4'b0001: begin
-                        age[index_RB][2] <= 1'b1;
-                        age[index_RB][1] <= 1'b1;
+                2'b01: begin
+                        age[index_RB] <= 1'b1;
                     end
-                4'b0010: begin
-                        age[index_RB][2] <= 1'b1;
-                        age[index_RB][1] <= 1'b0;
-                    end
-                4'b0100: begin
-                        age[index_RB][2] <= 1'b0;
-                        age[index_RB][0] <= 1'b1;
-                    end
-                4'b1000: begin
-                        age[index_RB][2] <= 1'b0;
-                        age[index_RB][0] <= 1'b0;
+                2'b10: begin
+                        age[index_RB] <= 1'b0;
                     end
             endcase
     always@(*)
-        if(age[index_RB][2]) begin
-            if(age[index_RB][0])
-                counter = 2'd3;
+            if(age[index_RB])
+                counter = 1'd1;
             else
-                counter = 2'd2;
-        end
-        else begin
-            if(age[index_RB][1])
-                counter = 2'd1;
-            else
-                counter = 2'd0;
-        end
+                counter = 1'd0;
     always@(*)
         case(counter)
             2'b00:  //choose way0
                     replace_data = Data_Way0_out;
-            2'b01:  //choose way1
+            default://choose way1
                     replace_data = Data_Way1_out;
-            2'b10:  //choose way2
-                    replace_data = Data_Way2_out;
-            default://choose way3
-                    replace_data = Data_Way3_out;
         endcase
 
     //Request Buffer
@@ -215,7 +163,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
-            replace_way_MB <= 2'b0;
+            replace_way_MB <= 1'b0;
             replace_data_MB <= 512'd0;
             replace_index_MB <= 6'd0;
             replace_tag_new_MB <= 20'd0;
@@ -273,51 +221,11 @@ module icache(       clk, resetn, exception, stall, last_stall,
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(offset_RB,Data_Way2_out)
-        case(offset_RB[5:2])
-            4'd0:   rdata_way2 = Data_Way2_out[ 31:  0];
-            4'd1:   rdata_way2 = Data_Way2_out[ 63: 32];
-            4'd2:   rdata_way2 = Data_Way2_out[ 95: 64];
-            4'd3:   rdata_way2 = Data_Way2_out[127: 96];
-            4'd4:   rdata_way2 = Data_Way2_out[159:128];
-            4'd5:   rdata_way2 = Data_Way2_out[191:160];
-            4'd6:   rdata_way2 = Data_Way2_out[223:192];
-            4'd7:   rdata_way2 = Data_Way2_out[255:224];
-            4'd8:   rdata_way2 = Data_Way2_out[287:256];
-            4'd9:   rdata_way2 = Data_Way2_out[319:288];
-            4'd10:  rdata_way2 = Data_Way2_out[351:320];
-            4'd11:  rdata_way2 = Data_Way2_out[383:352];
-            4'd12:  rdata_way2 = Data_Way2_out[415:384];
-            4'd13:  rdata_way2 = Data_Way2_out[447:416];
-            4'd14:  rdata_way2 = Data_Way2_out[479:448];
-            default:rdata_way2 = Data_Way2_out[511:480];
-        endcase
-    always@(offset_RB,Data_Way3_out)
-        case(offset_RB[5:2])
-            4'd0:   rdata_way3 = Data_Way3_out[ 31:  0];
-            4'd1:   rdata_way3 = Data_Way3_out[ 63: 32];
-            4'd2:   rdata_way3 = Data_Way3_out[ 95: 64];
-            4'd3:   rdata_way3 = Data_Way3_out[127: 96];
-            4'd4:   rdata_way3 = Data_Way3_out[159:128];
-            4'd5:   rdata_way3 = Data_Way3_out[191:160];
-            4'd6:   rdata_way3 = Data_Way3_out[223:192];
-            4'd7:   rdata_way3 = Data_Way3_out[255:224];
-            4'd8:   rdata_way3 = Data_Way3_out[287:256];
-            4'd9:   rdata_way3 = Data_Way3_out[319:288];
-            4'd10:  rdata_way3 = Data_Way3_out[351:320];
-            4'd11:  rdata_way3 = Data_Way3_out[383:352];
-            4'd12:  rdata_way3 = Data_Way3_out[415:384];
-            4'd13:  rdata_way3 = Data_Way3_out[447:416];
-            4'd14:  rdata_way3 = Data_Way3_out[479:448];
-            default:rdata_way3 = Data_Way3_out[511:480];
-        endcase
-    always@(hit_code, rdata_way0, rdata_way1, rdata_way2, rdata_way3, ret_data)
+    always@(hit_code, rdata_way0, rdata_way1, ret_data)
         case(hit_code)
-            4'b0001: rdata = rdata_way0;
-            4'b0010: rdata = rdata_way1;
-            4'b0100: rdata = rdata_way2;
-            4'b1000: rdata = rdata_way3;
-            default: rdata = ret_data;
+            2'b01:  rdata = rdata_way0;
+            2'b10:  rdata = rdata_way1;
+            default:rdata = ret_data;
         endcase
 
     //write from cpu to cache (store)
@@ -348,34 +256,16 @@ module icache(       clk, resetn, exception, stall, last_stall,
                 2'b00:  begin
                             Data_Way0_wen = byte_write;
                             Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b01:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = byte_write;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b10:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = byte_write;
-                            Data_Way3_wen = 64'd0;
                         end
                 default:begin
                             Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = byte_write;
+                            Data_Way1_wen = byte_write;
                         end
             endcase
         end
         else begin
             Data_Way0_wen = 64'd0;
             Data_Way1_wen = 64'd0;
-            Data_Way2_wen = 64'd0;
-            Data_Way3_wen = 64'd0;
         end
 
     //replace from cache to mem (write memory)
@@ -387,8 +277,6 @@ module icache(       clk, resetn, exception, stall, last_stall,
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
-    assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
-    assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
@@ -511,39 +399,23 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     reg[5:0] Data_addr;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
-    wire VT_Way2_wen;
-    wire VT_Way3_wen;
     wire[20:0] VT_in;
     wire[20:0] VT_Way0_out;
     wire[20:0] VT_Way1_out;
-    wire[20:0] VT_Way2_out;
-    wire[20:0] VT_Way3_out;
     wire Way0_Valid = VT_Way0_out[20];
     wire Way1_Valid = VT_Way1_out[20];
-    wire Way2_Valid = VT_Way2_out[20];
-    wire Way3_Valid = VT_Way3_out[20];
     wire[19:0] Way0_Tag = VT_Way0_out[19:0];
     wire[19:0] Way1_Tag = VT_Way1_out[19:0];
-    wire[19:0] Way2_Tag = VT_Way2_out[19:0];
-    wire[19:0] Way3_Tag = VT_Way3_out[19:0];
     wire D_Way0_wen;
     wire D_Way1_wen;
-    wire D_Way2_wen;
-    wire D_Way3_wen;
     wire D_in;
     wire Way0_Dirty;
     wire Way1_Dirty;
-    wire Way2_Dirty;
-    wire Way3_Dirty;
     reg[63:0] Data_Way0_wen;
     reg[63:0] Data_Way1_wen;
-    reg[63:0] Data_Way2_wen;
-    reg[63:0] Data_Way3_wen;
     reg[511:0] Data_in;
     wire[511:0] Data_Way0_out;
     wire[511:0] Data_Way1_out;
-    wire[511:0] Data_Way2_out;
-    wire[511:0] Data_Way3_out;
 
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
@@ -565,7 +437,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     reg[31:0] wdata_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
-    reg[1:0] replace_way_MB;        //the way to be replaced and refilled
+    reg replace_way_MB;        //the way to be replaced and refilled
     reg replace_Valid_MB;
     reg replace_Dirty_MB;
     reg[19:0] replace_tag_old_MB;   //unmatched tag in cache(to be replaced)
@@ -576,7 +448,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
 
     //Write Buffer
     reg[31:0] wdata_WB;
-    reg[1:0] way_WB;
+    reg way_WB;
     reg[3:0] wstrb_WB;
     reg[5:0] offset_WB;
     reg[5:0] index_WB;
@@ -587,16 +459,14 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     reg replace_Valid;
     reg replace_Dirty;
     reg[19:0] replace_tag_old;
-    reg[1:0] counter;
-    reg[2:0] age[63:0];
+    reg counter;
+    reg age[63:0];
 
     //hit
     wire way0_hit;
     wire way1_hit;
-    wire way2_hit;
-    wire way3_hit;
     wire cache_hit;
-    wire[3:0] hit_code;
+    wire[1:0] hit_code;
     wire hit_write;
     wire write_conflict1;
     wire write_conflict2;
@@ -609,8 +479,6 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
 
     reg[31:0] rdata_way0;
     reg[31:0] rdata_way1;
-    reg[31:0] rdata_way2;
-    reg[31:0] rdata_way3;
     reg[63:0] byte_write1;
     reg[63:0] byte_write2;
 
@@ -626,23 +494,11 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     ValidTag_Block VT_Way1(
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );
-    ValidTag_Block VT_Way2(
-        clk, 1, VT_Way2_wen, VT_addr, VT_in, VT_Way2_out
-    );
-    ValidTag_Block VT_Way3(
-        clk, 1, VT_Way3_wen, VT_addr, VT_in, VT_Way3_out
-    );
     Dirty_Block D_Way0(
         clk, 1, D_Way0_wen, D_addr, D_in, Way0_Dirty
     );
     Dirty_Block D_Way1(
         clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
-    );
-    Dirty_Block D_Way2(
-        clk, 1, D_Way2_wen, D_addr, D_in, Way2_Dirty
-    );
-    Dirty_Block D_Way3(
-        clk, 1, D_Way3_wen, D_addr, D_in, Way3_Dirty
     );
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
@@ -650,21 +506,13 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     Data_Block Data_Way1(
         clk, 1, Data_Way1_wen, Data_addr, Data_in, Data_Way1_out
     );
-    Data_Block Data_Way2(
-        clk, 1, Data_Way2_wen, Data_addr, Data_in, Data_Way2_out
-    );
-    Data_Block Data_Way3(
-        clk, 1, Data_Way3_wen, Data_addr, Data_in, Data_Way3_out
-    );
 
     //tag compare && hit judgement
     assign way0_hit = Way0_Valid && (Way0_Tag == tag_RB);
     assign way1_hit = Way1_Valid && (Way1_Tag == tag_RB);
-    assign way2_hit = Way2_Valid && (Way2_Tag == tag_RB);
-    assign way3_hit = Way3_Valid && (Way3_Tag == tag_RB);
-    assign cache_hit = way0_hit || way1_hit || way2_hit || way3_hit;
+    assign cache_hit = way0_hit || way1_hit ;
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
-    assign hit_code = {way3_hit,way2_hit,way1_hit,way0_hit};
+    assign hit_code = {way1_hit,way0_hit};
 
     assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
@@ -688,64 +536,35 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     always@(posedge clk)
         if(!resetn)
             for(i=0;i<64;i=i+1)
-                age[i] <= 3'b000;
+                age[i] <= 1'b0;
         else 
             case(hit_code)
-                4'b0001: begin
-                        age[index_RB][2] <= 1'b1;
-                        age[index_RB][1] <= 1'b1;
+                2'b01: begin
+                        age[index_RB] <= 1'b1;
                     end
-                4'b0010: begin
-                        age[index_RB][2] <= 1'b1;
-                        age[index_RB][1] <= 1'b0;
-                    end
-                4'b0100: begin
-                        age[index_RB][2] <= 1'b0;
-                        age[index_RB][0] <= 1'b1;
-                    end
-                4'b1000: begin
-                        age[index_RB][2] <= 1'b0;
-                        age[index_RB][0] <= 1'b0;
+                2'b10: begin
+                        age[index_RB] <= 1'b0;
                     end
             endcase
     always@(*)
-        if(age[index_RB][2]) begin
-            if(age[index_RB][0])
-                counter = 2'd3;
+            if(age[index_RB])
+                counter = 1'd1;
             else
-                counter = 2'd2;
-        end
-        else begin
-            if(age[index_RB][1])
-                counter = 2'd1;
-            else
-                counter = 2'd0;
-        end
+                counter = 1'd0;
+
     always@(*)
         case(counter)
-            2'b00:  begin   //choose way0
+            1'b0:  begin   //choose way0
                     replace_Valid = Way0_Valid;
                     replace_Dirty = Way0_Dirty;
                     replace_tag_old = Way0_Tag;
                     replace_data = Data_Way0_out;
             end
-            2'b01:  begin   //choose way1
+            default:begin   //choose way1
                     replace_Valid = Way1_Valid;
                     replace_Dirty = Way1_Dirty;
                     replace_tag_old = Way1_Tag;
                     replace_data = Data_Way1_out;
-            end
-            2'b10:  begin   //choose way2
-                    replace_Valid = Way2_Valid;
-                    replace_Dirty = Way2_Dirty;
-                    replace_tag_old = Way2_Tag;
-                    replace_data = Data_Way2_out;
-            end
-            default:begin   //choose way3
-                    replace_Valid = Way3_Valid;
-                    replace_Dirty = Way3_Dirty;
-                    replace_tag_old = Way3_Tag;
-                    replace_data = Data_Way3_out;
             end
         endcase
 
@@ -781,7 +600,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     //Miss Buffer
     always@(posedge clk)
         if(!resetn) begin
-            replace_way_MB <= 2'b0;
+            replace_way_MB <= 1'b0;
             replace_data_MB <= 512'd0;
             replace_Valid_MB <= 1'b0;
             replace_Dirty_MB <= 1'b0;
@@ -810,7 +629,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     always@(posedge clk)
         if(!resetn) begin
             wdata_WB <= 32'd0;
-            way_WB <= 2'b0;
+            way_WB <= 1'b0;
             wstrb_WB <= 4'd0;
             offset_WB <= 6'd0;
             index_WB <= 6'd0;
@@ -818,7 +637,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         end
         else if(hit_write) begin
             wdata_WB <= wdata_RB;
-            way_WB <= way0_hit ? 2'd0 : way1_hit ? 2'd1 : way2_hit ? 2'd2 : 2'd3;
+            way_WB <= way0_hit ? 2'd0 : 2'd1;
             wstrb_WB <= wstrb_RB;
             offset_WB <= offset_RB;
             index_WB <= index_RB;
@@ -864,45 +683,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(offset_RB,Data_Way2_out)
-        case(offset_RB[5:2])
-            4'd0:   rdata_way2 = Data_Way2_out[ 31:  0];
-            4'd1:   rdata_way2 = Data_Way2_out[ 63: 32];
-            4'd2:   rdata_way2 = Data_Way2_out[ 95: 64];
-            4'd3:   rdata_way2 = Data_Way2_out[127: 96];
-            4'd4:   rdata_way2 = Data_Way2_out[159:128];
-            4'd5:   rdata_way2 = Data_Way2_out[191:160];
-            4'd6:   rdata_way2 = Data_Way2_out[223:192];
-            4'd7:   rdata_way2 = Data_Way2_out[255:224];
-            4'd8:   rdata_way2 = Data_Way2_out[287:256];
-            4'd9:   rdata_way2 = Data_Way2_out[319:288];
-            4'd10:  rdata_way2 = Data_Way2_out[351:320];
-            4'd11:  rdata_way2 = Data_Way2_out[383:352];
-            4'd12:  rdata_way2 = Data_Way2_out[415:384];
-            4'd13:  rdata_way2 = Data_Way2_out[447:416];
-            4'd14:  rdata_way2 = Data_Way2_out[479:448];
-            default:rdata_way2 = Data_Way2_out[511:480];
-        endcase
-    always@(offset_RB,Data_Way3_out)
-        case(offset_RB[5:2])
-            4'd0:   rdata_way3 = Data_Way3_out[ 31:  0];
-            4'd1:   rdata_way3 = Data_Way3_out[ 63: 32];
-            4'd2:   rdata_way3 = Data_Way3_out[ 95: 64];
-            4'd3:   rdata_way3 = Data_Way3_out[127: 96];
-            4'd4:   rdata_way3 = Data_Way3_out[159:128];
-            4'd5:   rdata_way3 = Data_Way3_out[191:160];
-            4'd6:   rdata_way3 = Data_Way3_out[223:192];
-            4'd7:   rdata_way3 = Data_Way3_out[255:224];
-            4'd8:   rdata_way3 = Data_Way3_out[287:256];
-            4'd9:   rdata_way3 = Data_Way3_out[319:288];
-            4'd10:  rdata_way3 = Data_Way3_out[351:320];
-            4'd11:  rdata_way3 = Data_Way3_out[383:352];
-            4'd12:  rdata_way3 = Data_Way3_out[415:384];
-            4'd13:  rdata_way3 = Data_Way3_out[447:416];
-            4'd14:  rdata_way3 = Data_Way3_out[479:448];
-            default:rdata_way3 = Data_Way3_out[511:480];
-        endcase
-    always@(hit_code, rdata_way0, rdata_way1, rdata_way2, rdata_way3, ret_data,
+    always@(hit_code, rdata_way0, rdata_way1, ret_data,
             write_bypass1_delay,wdata_bypass1,write_bypass2_delay,wdata_bypass2)
         if(write_bypass1_delay)
             rdata = wdata_bypass1;
@@ -910,10 +691,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             rdata = wdata_bypass2;
         else
             case(hit_code)
-                4'b0001: rdata = rdata_way0;
-                4'b0010: rdata = rdata_way1;
-                4'b0100: rdata = rdata_way2;
-                4'b1000: rdata = rdata_way3;
+                2'b01: rdata = rdata_way0;
+                2'b10: rdata = rdata_way1;
                 default: rdata = ret_data;
             endcase
 
@@ -973,65 +752,31 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     always@(C_STATE_WB,C_STATE,way_WB,byte_write1,byte_write2,ret_valid,replace_way_MB)
         if(C_STATE_WB) begin
             case(way_WB)
-                2'b00:  begin
+                1'b0:   begin
                             Data_Way0_wen = byte_write1;
                             Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b01:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = byte_write1;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b10:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = byte_write1;
-                            Data_Way3_wen = 64'd0;
                         end
                 default:begin
                             Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = byte_write1;
+                            Data_Way1_wen = byte_write1;
                         end
             endcase
         end
         else if(ret_valid &&(C_STATE == REFILL)) begin
             case(replace_way_MB)
-                2'b00:  begin
+                1'b0:   begin
                             Data_Way0_wen = byte_write2;
                             Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b01:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = byte_write2;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = 64'd0;
-                        end
-                2'b10:  begin
-                            Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = byte_write2;
-                            Data_Way3_wen = 64'd0;
                         end
                 default:begin
                             Data_Way0_wen = 64'd0;
-                            Data_Way1_wen = 64'd0;
-                            Data_Way2_wen = 64'd0;
-                            Data_Way3_wen = byte_write2;
+                            Data_Way1_wen = byte_write2;
                         end
             endcase
         end
         else begin
             Data_Way0_wen = 64'd0;
             Data_Way1_wen = 64'd0;
-            Data_Way2_wen = 64'd0;
-            Data_Way3_wen = 64'd0;
         end
 
     //replace from cache to mem (write memory)
@@ -1043,13 +788,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
-    assign VT_Way2_wen = ret_valid && (replace_way_MB == 2) && (ret_number_MB == 4'h8);
-    assign VT_Way3_wen = ret_valid && (replace_way_MB == 3) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
     assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd0)) || (ret_valid && (replace_way_MB == 0));
     assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd1)) || (ret_valid && (replace_way_MB == 1));
-    assign D_Way2_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd2)) || (ret_valid && (replace_way_MB == 2));
-    assign D_Way3_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd3)) || (ret_valid && (replace_way_MB == 3));
     assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
