@@ -177,7 +177,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
             ret_number_MB <= 4'b0000;
-        else if(rd_rdy)
+        else if(/*rd_rdy*/C_STATE == MISS)
             ret_number_MB <= 4'b0000;
         else if(ret_valid)
             ret_number_MB <= ret_number_MB + 1;
@@ -303,7 +303,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, rd_rdy, ret_valid, ret_last, exception)
+    always@(C_STATE, valid, cache_hit, /*rd_rdy,*/ ret_valid, ret_last, exception)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
@@ -317,9 +317,9 @@ module icache(       clk, resetn, exception, stall, last_stall,
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            MISS:   if(!rd_rdy)
+            MISS:   /*if(!rd_rdy)
                         N_STATE = MISS;
-                    else
+                    else*/
                         N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
@@ -332,7 +332,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     assign addr_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP)) ;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     //assign rd_req = (N_STATE == REFILL) ;
-    assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
+    assign rd_req = ((C_STATE == MISS) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
@@ -625,7 +625,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
             ret_number_MB <= 4'b0000;
-        else if(rd_rdy)
+        else if(/*rd_rdy*/C_STATE == MISS)
             ret_number_MB <= 4'b0000;
         else if(ret_valid)
             ret_number_MB <= ret_number_MB + 1;
@@ -833,7 +833,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, wr_rdy, rd_rdy, ret_valid, ret_last,
+    always@(C_STATE, valid, cache_hit, /*wr_rdy, rd_rdy,*/ ret_valid, ret_last,
             replace_Valid_MB, replace_Dirty_MB, write_conflict1, write_conflict2,
             wr_valid, C_STATE_WB)
         case(C_STATE)
@@ -858,17 +858,17 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             SELECT: N_STATE = MISS;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
                         N_STATE = HOLD;
-                    else if(!wr_rdy)                                    //data is dirty
-                        N_STATE = MISS;
+                    /*else if(!wr_rdy)                                    //data is dirty
+                        N_STATE = MISS;*/
                     else
                         N_STATE = REPLACE;
             REPLACE:if(!wr_valid)
                         N_STATE = REPLACE;
                     else
                         N_STATE = HOLD;
-            HOLD:   if(!rd_rdy)
+            HOLD:   /*if(!rd_rdy)
                         N_STATE = HOLD;
-                    else
+                    else*/
                         N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
@@ -899,8 +899,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     //assign rd_req = (N_STATE == REFILL) ;
     //assign wr_req = (N_STATE == REPLACE) ;
-    assign rd_req = ((C_STATE == HOLD) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid&ret_last));
-    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) 
+    assign rd_req = ((C_STATE == HOLD) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid&ret_last));
+    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB /*& wr_rdy*/) 
                     | ((C_STATE == REPLACE) & ~wr_valid);
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
@@ -969,11 +969,11 @@ module uncache_dm(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last, wr_valid)
+    always@(C_STATE, load, store, /*rd_rdy, wr_rdy,*/ ret_valid, ret_last, wr_valid)
         case(C_STATE)
-            DEFAULT:    if(load && rd_rdy)
+            DEFAULT:    if(load /*&& rd_rdy*/)
                             N_STATE = LOAD;
-                        else if(store && wr_rdy)
+                        else if(store /*&& wr_rdy*/)
                             N_STATE = STORE;
                         else
                             N_STATE = DEFAULT;
@@ -1005,8 +1005,8 @@ module uncache_dm(
 
     //assign rd_req = (N_STATE == LOAD);
     //assign wr_req = (N_STATE == STORE);
-    assign rd_req = ((C_STATE == DEFAULT) & load & rd_rdy) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
-    assign wr_req = ((C_STATE == DEFAULT) & store & wr_rdy) | ((C_STATE == STORE) & ~wr_valid);
+    assign rd_req = ((C_STATE == DEFAULT) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
+    assign wr_req = ((C_STATE == DEFAULT) & store /*& wr_rdy*/) | ((C_STATE == STORE) & ~wr_valid);
     assign rd_type =
         ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
         ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
