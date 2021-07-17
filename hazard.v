@@ -39,7 +39,7 @@ module stall(
 	EX_RT, MEM1_RT, MEM2_RT, ID_RS, ID_RT,
 	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd, 
 	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,
-	rst_sign, MEM1_ex, MEM1_RFWr, MEM2_RFWr,
+	MEM1_ex, MEM1_RFWr, MEM2_RFWr,
 	MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok, MEM2_dCache_en,MEM_dCache_addr_ok,
     MEM1_cache_sel,MEM1_dCache_en, MEM1_dcache_valid_except_icache,
@@ -52,7 +52,6 @@ module stall(
 	input [31:0] ID_PC, EX_PC, MEM1_PC;
 	input EX_DMRd, MEM1_DMRd, MEM2_DMRd, BJOp, EX_RFWr, MEM1_RFWr, MEM2_RFWr;
 	input EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd, MEM1_ex, MEM1_eret_flush;
-	input rst_sign;
 	input isbusy, RHL_visit;
 	input iCache_data_ok;
 	input dCache_data_ok;
@@ -72,34 +71,27 @@ module stall(
 
 	wire addr_ok;
 	wire conflict;
+	wire stall_0, stall_1,stall_2,stall_3;
+	wire data_stall;
 	
 	assign addr_ok = MEM1_cache_sel | MEM_dCache_addr_ok;
 	assign conflict = ~MEM1_cache_sel & dcache_last_conflict;
+
+	assign stall_0 = (EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
+	assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
+	assign stall_2 = BJOp && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT));
+	assign stall_3 = BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT));
+
+	assign data_stall = (stall_0|stall_1)|(stall_2|stall_3);
 
 	assign dcache_stall = ((~dCache_data_ok &MEM2_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
 	assign isStall=~PCWr;
 	assign icache_stall = 
 				(MEM_last_stall &MEM2_dCache_en) | (conflict &MEM1_dcache_valid_except_icache) | 
-				(rst_sign | (isbusy && RHL_visit) | 
-				((EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC)) |
-				((MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC)) |
-				(BJOp && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) )) |
-				(BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ))) ;
+				(isbusy && RHL_visit) | data_stall ;
 
-	always@(EX_RT, ID_RS, ID_RT, EX_DMRd, MEM1_RT,MEM1_DMRd, BJOp, EX_RFWr, MEM1_RFWr, rst_sign,
-	        MEM1_ex, MEM1_eret_flush, isbusy, RHL_visit, EX_CP0Rd, ID_PC, EX_PC, MEM1_CP0Rd, dcache_stall,
-			MEM1_PC, MEM2_RT, MEM2_RFWr, MEM2_DMRd, MEM2_CP0Rd)
-	    if(rst_sign) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if(MEM1_ex || MEM1_eret_flush) begin
+	always@(data_stall,MEM1_ex, MEM1_eret_flush, isbusy, RHL_visit, dcache_stall)
+	    if(MEM1_ex | MEM1_eret_flush) begin
 			PCWr = 1'b1;
 			PF_IFWr = 1'b1;
 			IF_IDWr = 1'b1;
@@ -129,37 +121,7 @@ module stall(
 			MEM2_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
-		else if((EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC)) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if((MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC)) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if (BJOp && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) ) ) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if(BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ) begin
+		else if(data_stall) begin
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;

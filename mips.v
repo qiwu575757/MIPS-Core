@@ -119,6 +119,7 @@ module mips(
     wire[1:0] NPC_NPCOp;
     wire NPC_MEM_eret_flush;
     wire NPC_MEM_ex;
+    wire NPC_PCWr;
 	//--------------IF----------------//
     wire[31:0] PC;
     wire[31:0] PPC;
@@ -385,7 +386,7 @@ PC U_PC(
 
 		.NPC_IF_PC(NPC_IF_PC), .NPC_PF_PC(NPC_PF_PC), .NPC_Imm(NPC_Imm), .NPC_EPC(NPC_EPC), 
         .NPC_ret_addr(NPC_ret_addr), .NPC_NPCOp(NPC_NPCOp), .NPC_MEM_eret_flush(NPC_MEM_eret_flush), 
-        .NPC_MEM_ex(NPC_MEM_ex)
+        .NPC_MEM_ex(NPC_MEM_ex), .NPC_PCWr(NPC_PCWr)
 );
 
 
@@ -403,7 +404,7 @@ PF_IF U_PF_IF(
         .NPC(PF_PC),.PF_Exception(PF_Exception),.PF_ExcCode(PF_ExcCode), .PF_icache_valid(PF_icache_valid),
 		//input signals and output signals are separate
 		//output
-		.PC(PC),.IF_Exception(IF_Exception), .IF_ExcCode(IF_ExcCode), .flush_signal(flush_signal),
+		.PC(PC),.IF_Exception(IF_Exception), .IF_ExcCode(IF_ExcCode),
         .IF_icache_valid(IF_icache_valid)
 	);
 
@@ -428,8 +429,8 @@ icache U_ICACHE(
     //--------------ID----------------//
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),
-		.PC(PC), .Instr(IF_iCache_rdata &{32{~flush_signal}}&{32{IF_icache_valid}}),
-        .IF_Exception(IF_Exception), .IF_ExcCode(IF_ExcCode),
+		.PC(flush_signal ? PF_PC : PC), .Instr(IF_iCache_rdata &{32{~flush_signal}}&{32{IF_icache_valid}}),
+        .IF_Exception(IF_Exception&{~flush_signal}), .IF_ExcCode(IF_ExcCode&{5{~flush_signal}}),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode)
@@ -687,9 +688,9 @@ mux10 U_MUX10(
 
 npc U_NPC(
 		.IF_PC(NPC_IF_PC), .PF_PC(NPC_PF_PC), .Imm(NPC_Imm), .ret_addr(NPC_ret_addr), .NPCOp(NPC_NPCOp),
-		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex),
+		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex), .PCWr(NPC_PCWr),
 
-		.NPC(PF_PC)
+		.NPC(PF_PC), .flush_signal(flush_signal)
 	);
 
 flush U_FLUSH(
@@ -711,7 +712,7 @@ stall U_STALL(
 		.EX_RT(EX_MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
 		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd),
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
-		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
+		.MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
 		.MEM1_eret_flush(MEM1_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
 		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM2_dCache_en(MEM2_DMen),
 		.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),

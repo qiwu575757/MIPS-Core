@@ -57,10 +57,10 @@ module mycpu_top(
     input [5:0] ext_int      ;  //interrupt,high active;
 
 
-// 时钟与复位信号
+// 时钟与复位信�?
     input aclk      ;
     input aresetn   ;  //low active
-// 读请求通道 
+// 读请求�?�道 
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -71,14 +71,14 @@ module mycpu_top(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应通道         
+//读相应�?�道         
     input [ 3:0]    rid       ;  
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求通道
+//写请求�?�道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 3:0]   awlen     ;
@@ -89,14 +89,14 @@ module mycpu_top(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据通道
+// 写数据�?�道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应通道
+// 写相应�?�道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;

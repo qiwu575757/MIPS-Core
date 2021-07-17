@@ -2,7 +2,8 @@
 
 module PC(clk, rst, wr, flush,
 		IF_PC, PF_PC, Imm, EPC, ret_addr, NPCOp, MEM_eret_flush, MEM_ex,
-		NPC_IF_PC, NPC_PF_PC, NPC_Imm, NPC_EPC, NPC_ret_addr, NPC_NPCOp, NPC_MEM_eret_flush, NPC_MEM_ex
+		NPC_IF_PC, NPC_PF_PC, NPC_Imm, NPC_EPC, NPC_ret_addr, NPC_NPCOp, NPC_MEM_eret_flush, NPC_MEM_ex,
+		NPC_PCWr
 );
 	input clk,rst,wr,flush;
 	input[31:0] IF_PC, PF_PC, EPC, ret_addr;
@@ -12,7 +13,7 @@ module PC(clk, rst, wr, flush,
 	output reg[31:0] NPC_IF_PC, NPC_PF_PC, NPC_EPC, NPC_ret_addr;
 	output reg[25:0] NPC_Imm;
 	output reg[1:0] NPC_NPCOp;
-	output reg NPC_MEM_eret_flush, NPC_MEM_ex;
+	output reg NPC_MEM_eret_flush, NPC_MEM_ex, NPC_PCWr;
 
 	always@(posedge clk)
 		if(!rst || flush) begin
@@ -24,6 +25,7 @@ module PC(clk, rst, wr, flush,
 			NPC_NPCOp <= 2'd0;
 			NPC_MEM_eret_flush <= 1'd0;
 			NPC_MEM_ex <= 1'd0;
+			NPC_PCWr <= 1'b0;
 		end
 		else if(wr) begin
 			NPC_IF_PC <= IF_PC;
@@ -34,6 +36,7 @@ module PC(clk, rst, wr, flush,
 			NPC_NPCOp <= NPCOp;
 			NPC_MEM_eret_flush <= MEM_eret_flush;
 			NPC_MEM_ex <= MEM_ex;
+			NPC_PCWr <= wr;
 		end
 endmodule
 
@@ -42,7 +45,7 @@ module PF_IF(
 	clk, rst, wr, flush,
 	NPC,PF_Exception,PF_ExcCode, PF_icache_valid,
 
-	PC,IF_Exception,IF_ExcCode, flush_signal, IF_icache_valid
+	PC,IF_Exception,IF_ExcCode, IF_icache_valid
 );
 	input clk, rst, wr,flush;
 	input PF_Exception;
@@ -53,7 +56,6 @@ module PF_IF(
 	output reg [31:0] PC;
 	output reg IF_Exception;
 	output reg [4:0] IF_ExcCode;
-	output reg flush_signal;
 	output reg IF_icache_valid;
 
 
@@ -64,7 +66,6 @@ module PF_IF(
 			IF_Exception <= 1'b0;
 			PC <= 32'd0;
 			IF_icache_valid <= 1'b0;
-			flush_signal <= 1'b1;
 		end
 		else if(wr)
 		begin
@@ -72,7 +73,6 @@ module PF_IF(
 			IF_Exception <= PF_Exception;
 			PC <= NPC;
 			IF_icache_valid <= PF_icache_valid;
-			flush_signal <= 1'b0;
 		end
 
 endmodule

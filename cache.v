@@ -96,18 +96,23 @@ module icache(       clk, resetn, exception, stall, last_stall,
     reg[31:0] rdata_way0;
     reg[31:0] rdata_way1;
     reg[63:0] byte_write;
+    wire RBWr;
 
     integer i;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //Block Ram
-    ValidTag_Block VT_Way0(
+    /*ValidTag_Block VT_Way0(
         clk, 1, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out
     );
     ValidTag_Block VT_Way1(
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
-    );
+    );*/
+    validtag_block VT_Way0(
+        clk, resetn, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+    validtag_block VT_Way1(
+        clk, resetn, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
@@ -155,7 +160,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
             tag_RB <= 20'd0;
             offset_RB <= 6'd0;
         end
-        else if((C_STATE == IDLE && N_STATE == LOOKUP) || (C_STATE == LOOKUP && N_STATE ==LOOKUP)) begin
+        else if(RBWr) begin
             index_RB <= index;
             tag_RB <= tag;
             offset_RB <= offset;
@@ -337,6 +342,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     assign wr_req = 1'b0 ;
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
+    assign RBWr = (data_ok & valid) | ((C_STATE == LOOKUP) & exception) ;
 
 endmodule
 
@@ -422,7 +428,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
     parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010,
-              MISS = 3'b011, REPLACE = 3'b100, HOLD = 3'b101, REFILL = 3'b110;
+              MISS = 3'b011, REPLACE = 3'b100, REFILL = 3'b101;
 
     reg C_STATE_WB;
     reg N_STATE_WB;
@@ -485,22 +491,27 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
 
     integer i;
     wire addr_select;
+    wire ok;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     //Block Ram
-    ValidTag_Block VT_Way0(
+    /*ValidTag_Block VT_Way0(
         clk, 1, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out
     );
     ValidTag_Block VT_Way1(
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );
-    /*Dirty_Block D_Way0(
+    Dirty_Block D_Way0(
         clk, 1, D_Way0_wen, D_addr, D_in, Way0_Dirty
     );
     Dirty_Block D_Way1(
         clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
     );*/
+    validtag_block VT_Way0(
+        clk, resetn, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+    validtag_block VT_Way1(
+        clk, resetn, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     dirty_block D_Way0(
         clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
     dirty_block D_Way1(
@@ -530,8 +541,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});
 
     //assign addr_select = stall | ~addr_ok | ~data_ok;
-    assign addr_select = stall | ~((C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB}))));
-
+    assign addr_select = stall | ~ok;
+    assign ok =  (C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB})));
 
     /*
     assign write_conflict1 = hit_write && !op && valid;
@@ -589,7 +600,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             wdata_bypass1 <= 32'd0;
             wdata_bypass2 <= 32'd0;
         end
-        else if(valid && addr_ok && data_ok) begin
+        else if(valid && ok) begin
             op_RB <= op;
             index_RB <= index;
             tag_RB <= tag;
@@ -803,9 +814,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(C_STATE_WB, index_RB, index, addr_select, addr_ok,data_ok, index_WB)
+    always@(C_STATE_WB, index_RB, index, addr_select, index_WB, ok)
         if(C_STATE_WB == WRITE) begin
-            if(addr_ok &data_ok)
+            if(ok)
                 VT_addr = index;
             else
                 VT_addr = index_RB;
@@ -859,7 +870,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
                         N_STATE = IDLE;
             SELECT: N_STATE = MISS;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
-                        N_STATE = HOLD;
+                        N_STATE = REFILL;
                     /*else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;*/
                     else
@@ -867,10 +878,6 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             REPLACE:if(!wr_valid)
                         N_STATE = REPLACE;
                     else
-                        N_STATE = HOLD;
-            HOLD:   /*if(!rd_rdy)
-                        N_STATE = HOLD;
-                    else*/
                         N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
@@ -901,8 +908,10 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     //assign rd_req = (N_STATE == REFILL) ;
     //assign wr_req = (N_STATE == REPLACE) ;
-    assign rd_req = ((C_STATE == HOLD) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid&ret_last));
-    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB /*& wr_rdy*/) 
+    assign rd_req = ((C_STATE == MISS) & ~(replace_Valid_MB &replace_Dirty_MB)) |
+                    ((C_STATE == REPLACE) & wr_valid) |
+                    ((C_STATE == REFILL) & ~(ret_valid&ret_last));
+    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB ) 
                     | ((C_STATE == REPLACE) & ~wr_valid);
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
@@ -1058,3 +1067,36 @@ module dirty_block(clk, rst, wen, addr, din, dout);
             
 
 endmodule
+
+module validtag_block(clk, rst, wen, addr, din, dout);
+    input clk;
+    input rst;
+    input wen;
+    input[5:0] addr;
+    input[20:0] din;
+
+    output reg[20:0] dout;
+    
+    reg[20:0] validtag[63:0];
+
+    integer i;
+
+always@(posedge clk)
+        if(!rst)
+            for(i=0;i<64;i=i+1)
+            validtag[i] <= 21'd0;
+        else if(wen)
+            validtag[addr] <= din;
+
+    
+    always@(posedge clk)
+        if(!rst)
+            dout <= 21'd0;
+        else if(wen)    //write first
+            dout <= din;
+        else
+            dout <= validtag[addr];
+            
+
+endmodule
+
