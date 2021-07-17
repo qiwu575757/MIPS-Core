@@ -477,7 +477,7 @@ mux9 U_MUX9(
 
 ctrl U_CTRL(
 		.clk(clk), .rst(rst), .OP(ID_Instr[31:26]), .Funct(ID_Instr[5:0]), .rt(ID_Instr[20:16]), .CMPOut1(CMPOut1),
-		.CMPOut2(CMPOut2), .rs(ID_Instr[25:21]), .EXE_isBranch(EX_isBranch), .Interrupt(Interrupt),
+		.CMPOut2(CMPOut2), .rs(ID_Instr[25:21]), .EXE_isBranch(EX_isBranch),
 		.Temp_ID_Excetion(Temp_ID_Excetion), .IF_Flush(IF_Flush),.Temp_ID_ExcCode(Temp_ID_ExcCode),
 
 		.MUX1Sel(MUX1Sel), .MUX2Sel(MUX2_6Sel), .MUX3Sel(MUX3Sel), .RFWr(RFWr), .RHLWr(RHLWr), .DMWr(DMWr), .DMRd(DMRd),

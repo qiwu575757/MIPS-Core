@@ -100,39 +100,44 @@ module exception(
     input MEM1_RFWr;
     input Interrupt;
 
-    output reg MEM1_Exception;
+    output MEM1_Exception;
     output reg[4:0] MEM1_ExcCode;
     output reg[31:0] MEM1_badvaddr;
 
-    always@(MEM1_Overflow or Temp_M1_Exception or MEM1_DMWr or MEM1_DMSel or MEM1_ALU1Out 
-    or MEM1_DMRd or Temp_M1_ExcCode or MEM1_PC  or MEM1_RFWr or Interrupt)
+    wire exception_0;
+    wire exception_1;
+    wire exception_2;
+
+    assign exception_0 = MEM1_Overflow  && !Temp_M1_Exception;
+    assign exception_1 = MEM1_DMWr && !Temp_M1_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
+			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0);
+    assign exception_2 = MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
+			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0);
+
+    always@(Temp_M1_ExcCode or Temp_M1_Exception  or MEM1_ALU1Out or MEM1_PC or Interrupt
+            or exception_0 or exception_1 or exception_2)
         if (Interrupt) begin
             MEM1_ExcCode = `Int;
-		    MEM1_Exception = 1'b1;
 		    MEM1_badvaddr = 32'd0; 
         end
-		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
+		else if (exception_0) begin
 		MEM1_ExcCode = `Ov;
-		MEM1_Exception = 1'b1;
 		MEM1_badvaddr = 32'd0;
 		end
-		else if (MEM1_DMWr && !Temp_M1_Exception && (MEM1_DMSel == 3'b010 && MEM1_ALU1Out[1:0] != 2'b00 ||
-			MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0) )begin
+		else if (exception_1)begin
 		MEM1_ExcCode = `AdES;
-		MEM1_Exception = 1'b1;
 		MEM1_badvaddr = MEM1_ALU1Out;
 		end
-		else if (MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00 ||
-			(MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0) ) begin
+		else if (exception_2) begin
 		MEM1_ExcCode = `AdEL;
-		MEM1_Exception = 1'b1;
 		MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else  begin
 		MEM1_ExcCode = Temp_M1_ExcCode;
-		MEM1_Exception = Temp_M1_Exception;
 		MEM1_badvaddr = MEM1_PC;
 		end
+
+        assign MEM1_Exception = Interrupt | exception_0 | exception_1 | exception_2 | Temp_M1_Exception;
 
 endmodule
 

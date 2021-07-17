@@ -1,7 +1,7 @@
  `include "MacroDef.v"
 
  module ctrl(
-	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
+	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch,
  		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
@@ -17,7 +17,6 @@
 	input CMPOut1;
 	input [1:0] CMPOut2;
 	input EXE_isBranch;
-	input Interrupt;
 	input Temp_ID_Excetion;
 	input IF_Flush;
 	input [4:0] Temp_ID_ExcCode;
@@ -83,12 +82,8 @@
 	end
 
 	always @(OP or Funct or ri or rst or IF_Flush or Temp_ID_ExcCode
-	or Temp_ID_Excetion or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
-		/*if (Interrupt) begin
-			ID_Exception = 1'b1;
-			ID_ExcCode = `Int;
-		end
-		else*/ if (Temp_ID_Excetion) begin
+	or Temp_ID_Excetion or rst_sign) begin	/* the generation of Exception and ExcCode */
+		if (Temp_ID_Excetion) begin
 			ID_Exception = 1'b1;
 			ID_ExcCode = Temp_ID_ExcCode;
 		end
