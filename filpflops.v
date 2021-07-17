@@ -405,10 +405,8 @@ endmodule
 module MEM2_WB(
 	clk, rst,MEM2_WBWr, MEM2_Flush,
 	PC, MUX2Out, MUX2Sel, RD, RFWr, DMOut,
-	ALU1Out, DMSel,
 
-	WB_PC, WB_MUX2Out, WB_MUX2Sel, WB_RD, WB_RFWr, WB_DMOut,
-	WB_ALU1Out, WB_DMSel
+	WB_PC, WB_MUX2Out, WB_MUX2Sel, WB_RD, WB_RFWr, WB_DMOut
 	);
 	input clk;
 	input rst;
@@ -422,8 +420,6 @@ module MEM2_WB(
 	input[4:0] RD;
 	input RFWr;
 	input[31:0] DMOut;
-	input[31:0] ALU1Out;
-	input[2:0] DMSel;
 
 	output reg[31:0] WB_PC;
 	output reg[31:0] WB_MUX2Out;
@@ -431,8 +427,6 @@ module MEM2_WB(
 	output reg[4:0] WB_RD;
 	output reg WB_RFWr;
 	output reg[31:0] WB_DMOut;
-	output reg[31:0] WB_ALU1Out;
-	output reg[2:0] WB_DMSel;
 
 	always@(posedge clk)
 		if(!rst || MEM2_Flush) begin
@@ -442,8 +436,6 @@ module MEM2_WB(
 			WB_RD <= 5'd0;
 			WB_RFWr <= 1'b0;
 			WB_DMOut <= 32'd0;
-			WB_ALU1Out <= 32'd0;
-			WB_DMSel <= 3'd0;
 		end
 		else if(MEM2_WBWr) begin
 			WB_PC <= PC;
@@ -452,8 +444,6 @@ module MEM2_WB(
 			WB_RD <= RD;
 			WB_RFWr <= RFWr;
 			WB_DMOut <= DMOut;
-			WB_ALU1Out <= ALU1Out;
-			WB_DMSel <= DMSel;
 		end
 
 endmodule

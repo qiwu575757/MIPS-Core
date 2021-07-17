@@ -120,35 +120,44 @@ module mux7(
 endmodule
 
 module mux8(
-	GPR_RS, data_MEM1, data_MEM2, MUX8Sel, 
+	GPR_RS, data_MEM1, data_MEM2, MUX8Sel, bypass_WB_rs, WD,
 	
 	out
 	);
-	input[31:0] GPR_RS, data_MEM1, data_MEM2;
+	input[31:0] GPR_RS, data_MEM1, data_MEM2, WD;
 	input[1:0] MUX8Sel;
+	input bypass_WB_rs;
 	output reg[31:0] out;
 	
-	always@(GPR_RS, data_MEM1, data_MEM2, MUX8Sel)
-		case(MUX8Sel)
-			2'b10:	out = data_MEM1;
-			2'b11:	out = data_MEM2;
+	wire[2:0] sel = {bypass_WB_rs, MUX8Sel};
+
+	always@(GPR_RS, data_MEM1, data_MEM2, sel, WD)
+		case(sel)
+			3'b010, 3'b110:	out = data_MEM1;
+			3'b011, 3'b111:	out = data_MEM2;
+			3'b100, 3'b101: out = WD;
 			default:out = GPR_RS;
 		endcase
 endmodule 
 
 module mux9(
-	GPR_RT, data_MEM1, data_MEM2, MUX9Sel, 
+	GPR_RT, data_MEM1, data_MEM2, MUX9Sel, bypass_WB_rt, WD,
 	
 	out
 	);
-	input[31:0] GPR_RT, data_MEM1, data_MEM2;
+	input[31:0] GPR_RT, data_MEM1, data_MEM2, WD;
 	input[1:0] MUX9Sel;
+	input bypass_WB_rt;
 	output reg[31:0] out;
+
+	wire[2:0] sel = {bypass_WB_rt, MUX9Sel};
 	
-	always@(GPR_RT, data_MEM1, data_MEM2, MUX9Sel)
-		case(MUX9Sel)
-			2'b10:	out = data_MEM1;
-			2'b11:	out = data_MEM2;
+	
+	always@(GPR_RT, data_MEM1, data_MEM2, sel)
+		case(sel)
+			3'b010, 3'b110:	out = data_MEM1;
+			3'b011, 3'b111:	out = data_MEM2;
+			3'b100, 3'b101: out = WD;
 			default:out = GPR_RT;
 		endcase
 

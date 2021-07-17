@@ -179,6 +179,8 @@ module mips(
 	wire[4:0] Temp_ID_ExcCode,ID_ExcCode;
     wire ID_Exception;
     wire[4:0] MUX1Out;
+    wire bypass_WB_rs;
+    wire bypass_WB_rt;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -292,8 +294,6 @@ module mips(
 	wire WB_RFWr;
     wire[31:0] WB_DMOut;
     wire[31:0] MUX10Out;
-    wire[31:0] WB_ALU1Out;
-    wire[2:0] WB_DMSel;
 
     //-------------ELSE---------------//
     wire isStall;
@@ -421,7 +421,7 @@ rf U_RF(
 		.Addr1(ID_Instr[25:21]), .Addr2(ID_Instr[20:16]), .Addr3(WB_RD),
 		.WD(MUX10Out), .RFWr(WB_RFWr), .clk(clk),
 
-		.rst(rst), .RD1(GPR_RS), .RD2(GPR_RT)
+		.rst(rst), .RD1(GPR_RS), .RD2(GPR_RT), .bypass_WB_rs(bypass_WB_rs), .bypass_WB_rt(bypass_WB_rt)
 	);
 
 ext U_EXT(
@@ -444,12 +444,14 @@ mux7 U_MUX7(
 
 mux8 U_MUX8(
 		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX8Sel(MUX8Sel),
+        .bypass_WB_rs(bypass_WB_rs), .WD(MUX10Out),
 
 		.out(MUX8Out)
 	);
 
 mux9 U_MUX9(
 		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX9Sel(MUX9Sel),
+        .bypass_WB_rt(bypass_WB_rt), .WD(MUX10Out),
 
 		.out(MUX9Out)
 	);
@@ -466,6 +468,11 @@ ctrl U_CTRL(
 		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en)
 	);
 
+mux1 U_MUX1(
+		.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), .MUX1Sel(MUX1Sel),
+
+		 .Addr3(MUX1Out)
+	);
 	//--------------EX----------------//
 ID_EX U_ID_EX(
 		.clk(clk), .rst(rst), .ID_EXWr(ID_EXWr),.RHLSel_Rd(RHLSel_Rd), .PC(ID_PC), .ALU1Op(ALU1Op), .ALU2Op(ALU2Op),
@@ -488,11 +495,6 @@ ID_EX U_ID_EX(
         .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel)
 	);
 
-mux1 U_MUX1(
-		.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), .MUX1Sel(MUX1Sel),
-
-		 .Addr3(MUX1Out)
-	);
 
 mux3 U_MUX3(
 		.RD2(MUX5Out), .Imm32(EX_Imm32), .MUX3Sel(EX_MUX3Sel),
@@ -629,9 +631,9 @@ uncache_dm U_UNCACHE_DM(
 );
 
 bridge_dm U_BRIDGE_DM(
-		 .addr2(WB_ALU1Out),
-		 .DMSel2(WB_DMSel),
-		 .Din(WB_DMOut),
+		 .addr2(MEM2_ALU1Out),
+		 .DMSel2(MEM2_DMSel),
+		 .Din(cache_Out),
 
 		 .dout(DMOut)
 	);
@@ -651,16 +653,14 @@ cache_select_dm U_CACHE_SELECT_DM(
 MEM2_WB U_MEM2_WB(
             .clk(clk), .rst(rst), .MEM2_WBWr(MEM2_WBWr), .MEM2_Flush(MEM2_Flush),
 			.PC(MEM2_PC), .MUX2Out(MUX2Out), .MUX2Sel(MEM2_MUX2Sel), .RD(MEM2_RD), .RFWr(MEM2_RFWr),
-            .DMOut(cache_Out), 
-            .ALU1Out(MEM2_ALU1Out), .DMSel(MEM2_DMSel),
+            .DMOut(DMOut), 
 
 			.WB_PC(WB_PC), .WB_MUX2Out(WB_MUX2Out), .WB_MUX2Sel(WB_MUX2Sel),
-            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut),
-            .WB_ALU1Out(WB_ALU1Out), .WB_DMSel(WB_DMSel)
+            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut)
             );
 
 mux10 U_MUX10(
-            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(DMOut), .WB_MUX2Sel(WB_MUX2Sel),
+            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
             .MUX10Out(MUX10Out)
         );
     //-------------ELSE---------------//
