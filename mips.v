@@ -110,8 +110,16 @@ module mips(
 	wire [4:0] PF_ExcCode;
     wire PF_icache_valid;
     wire[31:0] PF_PC;
+
+    wire[31:0] NPC_IF_PC;
+    wire[31:0] NPC_PF_PC;
+    wire[31:0] NPC_EPC;
+    wire[31:0] NPC_ret_addr;
+    wire[25:0] NPC_Imm;
+    wire[1:0] NPC_NPCOp;
+    wire NPC_MEM_eret_flush;
+    wire NPC_MEM_ex;
 	//--------------IF----------------//
-    wire[31:0] NPC;
     wire[31:0] PC;
     wire[31:0] PPC;
 
@@ -221,6 +229,7 @@ module mips(
     wire[31:0] RHLOut;
     wire[31:0] ALU1Out;
     wire Overflow;
+    wire[31:0] PC_8;
 
     wire Temp_EX_Excetion;
 	wire[4:0] Temp_EX_ExcCode;
@@ -262,6 +271,7 @@ module mips(
     wire MEM1_uncache_valid;
     wire MEM1_DMen;
     wire MEM1_dcache_valid_except_icache;
+    wire[31:0] MEM1_PC_8;
 	//-------------MEM2---------------//
     wire MEM2_RFWr;
     wire[4:0] MEM2_RD;
@@ -367,10 +377,18 @@ module mips(
 
 /**************DATA PATH***************/
     //--------------PF----------------//
+
 PC U_PC(
         .clk(clk), .rst(rst), .wr(PCWr), .flush(PC_Flush),
-        .NPC(NPC), .PC(PF_PC)
-    );
+		.IF_PC(PC), .PF_PC(PF_PC), .Imm(ID_Instr[25:0]), .EPC(EPCOut), .ret_addr(MUX8Out),
+        .NPCOp(NPCOp), .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception),
+
+		.NPC_IF_PC(NPC_IF_PC), .NPC_PF_PC(NPC_PF_PC), .NPC_Imm(NPC_Imm), .NPC_EPC(NPC_EPC), 
+        .NPC_ret_addr(NPC_ret_addr), .NPC_NPCOp(NPC_NPCOp), .NPC_MEM_eret_flush(NPC_MEM_eret_flush), 
+        .NPC_MEM_ex(NPC_MEM_ex)
+);
+
+
 instr_fetch_pre U_INSTR_FETCH(
     PF_PC, PCWr, isStall,
 
@@ -525,9 +543,9 @@ bridge_RHL U_ALU2(
 
 alu1 U_ALU1(
 		.A(MUX4Out), .B(MUX3Out),.ALU1Op(EX_ALU1Op),
-		.ALU1Sel(EX_ALU1Sel), .Shamt(EX_shamt),
+		.ALU1Sel(EX_ALU1Sel), .Shamt(EX_shamt), .PC(EX_PC),
 
-		.C(ALU1Out),.Overflow(Overflow)
+		.C(ALU1Out),.Overflow(Overflow), .PC_8(PC_8)
 	);
 	//-------------MEM1---------------//
 EX_MEM1 U_EX_MEM1(
@@ -536,13 +554,14 @@ EX_MEM1 U_EX_MEM1(
         .ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(EX_MUX1Out), .EX_Flush(EX_Flush), .eret_flush(EX_eret_flush),
         .CP0WrEn(EX_CP0WrEn), .Exception(EX_Exception), .ExcCode(EX_ExcCode), .isBD(EX_isBD),
         .CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EX_dcache_en(EX_dcache_en),.Overflow(Overflow),
+        .PC_8(PC_8),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode),
         .MEM1_isBD(MEM1_isBD),.MEM1_DMSel(MEM1_DMSel), .MEM1_MUX2Sel(MEM1_MUX2Sel), .MEM1_RD(MEM1_RD),
         .MEM1_PC(MEM1_PC), .MEM1_RHLOut(MEM1_RHLOut), .MEM1_ALU1Out(MEM1_ALU1Out), .MEM1_GPR_RT(MEM1_GPR_RT),
         .MEM1_Imm32(MEM1_Imm32), .MEM1_CP0Addr(MEM1_CP0Addr), .MEM1_CP0Rd(MEM1_CP0Rd),
-        .MEM1_dcache_en(MEM1_dcache_en),.MEM1_Overflow(MEM1_Overflow)
+        .MEM1_dcache_en(MEM1_dcache_en),.MEM1_Overflow(MEM1_Overflow), .MEM1_PC_8(MEM1_PC_8)
 	);
 
 
@@ -557,7 +576,7 @@ CP0 U_CP0(
 	);
 
 mux6 U_MUX6(
-		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .PC(MEM1_PC),
+		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .PC_8(MEM1_PC_8),
 		.Imm32(MEM1_Imm32), .MUX6Sel(MEM1_MUX2Sel[1:0]),
 
 		.out(MUX6Out)
@@ -667,13 +686,18 @@ mux10 U_MUX10(
 //physical address tranfer
 
 npc U_NPC(
-		.PC(PC), .PF_PC(PF_PC), .Imm(ID_Instr[25:0]), .ret_addr(MUX8Out), .NPCOp(NPCOp),.PCWr(PCWr),
-		.EPC(EPCOut), .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception),
+		.IF_PC(NPC_IF_PC), .PF_PC(NPC_PF_PC), .Imm(NPC_Imm), .ret_addr(NPC_ret_addr), .NPCOp(NPC_NPCOp),
+		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex),
 
-		.NPC(NPC), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
-		.EX_Flush(EX_Flush), .PC_Flush(PC_Flush), .MEM1_Flush(MEM1_Flush),
-        .MEM2_Flush(MEM2_Flush), .PF_Flush(PF_Flush)
+		.NPC(PF_PC)
 	);
+
+flush U_FLUSH(
+        .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception), .NPCOp(NPCOp), .PCWr(PCWr),
+	
+        .PC_Flush(PC_Flush), .PF_Flush(PF_Flush), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
+        .EX_Flush(EX_Flush), .MEM1_Flush(MEM1_Flush), .MEM2_Flush(MEM2_Flush)
+    );
 
 bypass U_BYPASS(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),

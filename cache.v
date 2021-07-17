@@ -133,6 +133,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
                 2'b10: begin
                         age[index_RB] <= 1'b0;
                     end
+                default:age[index_RB] <= age[index_RB];
             endcase
     always@(*)
             if(age[index_RB])
@@ -141,7 +142,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
                 counter = 1'd0;
     always@(*)
         case(counter)
-            2'b00:  //choose way0
+            1'b0:  //choose way0
                     replace_data = Data_Way0_out;
             default://choose way1
                     replace_data = Data_Way1_out;
@@ -550,6 +551,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
                 2'b10: begin
                         age[index_RB] <= 1'b0;
                     end
+                default:age[index_RB] <= age[index_RB];
             endcase
     always@(*)
             if(age[index_RB])
@@ -642,7 +644,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         end
         else if(hit_write) begin
             wdata_WB <= wdata_RB;
-            way_WB <= way0_hit ? 2'd0 : 2'd1;
+            way_WB <= way0_hit ? 1'd0 : 1'd1;
             wstrb_WB <= wstrb_RB;
             offset_WB <= offset_RB;
             index_WB <= index_RB;
@@ -794,8 +796,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
     assign VT_in = {1'b1,replace_tag_new_MB};
-    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd0)) || (ret_valid && (replace_way_MB == 0));
-    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 2'd1)) || (ret_valid && (replace_way_MB == 1));
+    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
+    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
     assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};

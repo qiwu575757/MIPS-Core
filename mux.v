@@ -87,21 +87,21 @@ module mux5(
 endmodule
 
 module mux6(
-	RHLOut, ALU1Out, PC, 
+	RHLOut, ALU1Out, PC_8, 
 	Imm32, MUX6Sel, 
 	
 	out
 	);
-	input[31:0] RHLOut, ALU1Out, PC, Imm32;
+	input[31:0] RHLOut, ALU1Out, PC_8, Imm32;
 	input[1:0] MUX6Sel;
 	output reg[31:0] out;
 	
-	always@(RHLOut, ALU1Out, PC, Imm32, MUX6Sel)
+	always@(RHLOut, ALU1Out, PC_8, Imm32, MUX6Sel)
 		case(MUX6Sel)
 			2'b00:	out = RHLOut;
 			2'b01:	out = Imm32;
 			2'b10:	out = ALU1Out;
-			default:out = PC + 8;
+			default:out = PC_8;
 		endcase
 
 endmodule
@@ -153,7 +153,7 @@ module mux9(
 	wire[2:0] sel = {bypass_WB_rt, MUX9Sel};
 	
 	
-	always@(GPR_RT, data_MEM1, data_MEM2, sel)
+	always@(GPR_RT, data_MEM1, data_MEM2, sel, WD)
 		case(sel)
 			3'b010, 3'b110:	out = data_MEM1;
 			3'b011, 3'b111:	out = data_MEM2;

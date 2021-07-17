@@ -1,21 +1,24 @@
 module alu1(
-	A, B, ALU1Op, ALU1Sel, Shamt, 
+	A, B, ALU1Op, ALU1Sel, Shamt, PC,
 	
-	C,Overflow
+	C,Overflow, PC_8
 	);
 	input[31:0] A, B;
 	input[3:0] ALU1Op;
 	input[4:0] Shamt;
 	input ALU1Sel;
+	input[31:0] PC;
 	
 	output reg Overflow;
 	output reg[31:0] C;
+	output[31:0] PC_8;
 
 	wire[4:0] temp;
 	wire Less;
 	
 	assign temp = ALU1Sel ? Shamt : A[4:0];
 	assign Less = ((ALU1Op == 4'b1001) && A[31]^B[31]) ? ~(A < B) : (A < B);
+	assign PC_8 = PC + 8;
 
 	always@(A, B, ALU1Op, Less, temp)
 		/*if(ALU1Op == 4'b1000)begin					//arithmetical right shift

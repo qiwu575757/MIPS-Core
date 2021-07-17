@@ -1,16 +1,40 @@
 `include "MacroDef.v"
 
-module PC(clk, rst, wr, flush, NPC, PC);
+module PC(clk, rst, wr, flush,
+		IF_PC, PF_PC, Imm, EPC, ret_addr, NPCOp, MEM_eret_flush, MEM_ex,
+		NPC_IF_PC, NPC_PF_PC, NPC_Imm, NPC_EPC, NPC_ret_addr, NPC_NPCOp, NPC_MEM_eret_flush, NPC_MEM_ex
+);
 	input clk,rst,wr,flush;
-	input[31:0] NPC;
-
-	output reg[31:0] PC;
+	input[31:0] IF_PC, PF_PC, EPC, ret_addr;
+	input[25:0] Imm;
+	input[1:0] NPCOp;
+	input MEM_eret_flush,MEM_ex;
+	output reg[31:0] NPC_IF_PC, NPC_PF_PC, NPC_EPC, NPC_ret_addr;
+	output reg[25:0] NPC_Imm;
+	output reg[1:0] NPC_NPCOp;
+	output reg NPC_MEM_eret_flush, NPC_MEM_ex;
 
 	always@(posedge clk)
-		if(!rst || flush)
-			PC <= 32'hbfc0_0000;
-		else if(wr)
-			PC <= NPC;
+		if(!rst || flush) begin
+			NPC_IF_PC <= 32'd0;
+			NPC_PF_PC <= 32'hbfbf_fffc;
+			NPC_EPC <= 32'd0;
+			NPC_ret_addr <= 32'd0;
+			NPC_Imm <= 26'd0;
+			NPC_NPCOp <= 2'd0;
+			NPC_MEM_eret_flush <= 1'd0;
+			NPC_MEM_ex <= 1'd0;
+		end
+		else if(wr) begin
+			NPC_IF_PC <= IF_PC;
+			NPC_PF_PC <= PF_PC;
+			NPC_EPC <= EPC;
+			NPC_ret_addr <= ret_addr;
+			NPC_Imm <= Imm;
+			NPC_NPCOp <= NPCOp;
+			NPC_MEM_eret_flush <= MEM_eret_flush;
+			NPC_MEM_ex <= MEM_ex;
+		end
 endmodule
 
 
@@ -221,11 +245,11 @@ endmodule
 module EX_MEM1(
 		clk, rst, EX_MEM1Wr, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel,RHLOut, 
         ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
-        CP0Addr, CP0Rd, EX_dcache_en, Overflow,
+        CP0Addr, CP0Rd, EX_dcache_en, Overflow, PC_8,
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
         MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT, 
-        MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow
+        MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow, MEM1_PC_8
 	);
 	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -240,6 +264,7 @@ module EX_MEM1(
 	input [7:0] CP0Addr;
 	input CP0Rd;
 	input EX_dcache_en;
+	input[31:0] PC_8;
 
 	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
 	output reg MEM1_eret_flush;
@@ -254,6 +279,7 @@ module EX_MEM1(
 	output reg MEM1_CP0Rd;
 	output reg MEM1_dcache_en;
 	output reg MEM1_Overflow;
+	output reg[31:0] MEM1_PC_8;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -277,6 +303,7 @@ module EX_MEM1(
 			MEM1_ExcCode <= 5'd0;
 			MEM1_Exception <= 1'b0;
 			MEM1_Overflow <= 1'b0;
+			MEM1_PC_8 <= 32'd0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -299,6 +326,7 @@ module EX_MEM1(
 			MEM1_ExcCode <= ExcCode;
 			MEM1_Exception <= Exception;
 			MEM1_Overflow <= Overflow;
+			MEM1_PC_8 <= PC_8;
 		end
 
 endmodule
