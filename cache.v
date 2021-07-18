@@ -475,14 +475,10 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     wire cache_hit;
     wire[1:0] hit_code;
     wire hit_write;
-    wire write_conflict1;
     wire write_conflict2;
     wire write_bypass1;
-    wire write_bypass2;
     reg[31:0] wdata_bypass1;
-    reg[31:0] wdata_bypass2;
     reg write_bypass1_delay;
-    reg write_bypass2_delay;
 
     reg[31:0] rdata_way0;
     reg[31:0] rdata_way1;
@@ -492,6 +488,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     integer i;
     wire addr_select;
     wire ok;
+
+    reg conflict2_reg;
+    reg[31:0] conflict2_data;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -531,25 +530,20 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
     assign hit_code = {way1_hit,way0_hit};
 
-    assign write_conflict1 = hit_write && DMRd
-                            && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});
+    /*assign write_conflict1 = hit_write && DMRd
+                            && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});*/
     assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
-                            && ({tag,index,offset}!={tag_WB,index_WB,offset_WB});
+                            && |({tag,index,offset}^{tag_WB,index_WB,offset_WB});
     assign write_bypass1 = hit_write && DMRd
-                            && ({tag,index,offset}=={tag_RB,index_RB,offset_RB});
-    assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
-                            && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});
+                            && ~|({tag,index,offset}^{tag_RB,index_RB,offset_RB});
+    /*assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
+                            && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});*/
 
     //assign addr_select = stall | ~addr_ok | ~data_ok;
     assign addr_select = stall | ~ok;
-    assign ok =  (C_STATE == IDLE) | (cache_hit & (C_STATE == LOOKUP) & ~(op_RB & DMRd &({tag,index,offset}!={tag_RB,index_RB,offset_RB})));
+    //assign ok =  addr_ok & data_ok;
+    assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
 
-    /*
-    assign write_conflict1 = hit_write && !op && valid;
-    assign write_conflict2 = (C_STATE_WB == WRITE) && !op && valid;
-    assign write_bypass1 = 1'b0;
-    assign write_bypass2 = 1'b0;
-    */
     always@(posedge clk)
         if(!resetn)
             for(i=0;i<64;i=i+1)
@@ -596,9 +590,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
             write_bypass1_delay <= 1'b0;
-            write_bypass2_delay <= 1'b0;
             wdata_bypass1 <= 32'd0;
-            wdata_bypass2 <= 32'd0;
         end
         else if(valid && ok) begin
             op_RB <= op;
@@ -608,9 +600,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
             write_bypass1_delay <= write_bypass1;
-            write_bypass2_delay <= write_bypass2;
             wdata_bypass1 <= wdata_RB;
-            wdata_bypass2 <= wdata_WB;
         end
         else if(~addr_ok && data_ok)
             op_RB <= 1'b0;
@@ -663,6 +653,15 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         end
 
     //reading from cache to cpu (load)
+    always@(posedge clk)
+        if(!resetn) begin
+            conflict2_reg <= 1'b0;
+            conflict2_data <= 32'd0;
+        end
+        else begin
+            conflict2_reg <= write_conflict2;
+            conflict2_data <= rdata;
+        end
     always@(offset_RB,Data_Way0_out)
         case(offset_RB[5:2])
             4'd0:   rdata_way0 = Data_Way0_out[ 31:  0];
@@ -702,12 +701,13 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
     always@(hit_code, rdata_way0, rdata_way1, ret_data,
-            write_bypass1_delay,wdata_bypass1,write_bypass2_delay,wdata_bypass2)
+            write_bypass1_delay,wdata_bypass1,
+            conflict2_reg, conflict2_data)
         if(write_bypass1_delay)
             rdata = wdata_bypass1;
-        else if(write_bypass2_delay)
-            rdata = wdata_bypass2;
-        else
+        else if(conflict2_reg)
+            rdata = conflict2_data;
+        else 
             case(hit_code)
                 2'b01: rdata = rdata_way0;
                 2'b10: rdata = rdata_way1;
@@ -814,25 +814,25 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(C_STATE_WB, index_RB, index, addr_select, index_WB, ok)
+    always@(C_STATE_WB, index_RB, index, addr_select, index_WB)
         if(C_STATE_WB == WRITE) begin
-            if(ok)
-                VT_addr = index;
-            else
-                VT_addr = index_RB;
             D_addr = index_WB;
             Data_addr = index_WB;
         end
         else if(addr_select) begin
-            VT_addr = index_RB;
             D_addr = index_RB;
             Data_addr = index_RB;
         end
         else begin
-            VT_addr = index;
             D_addr = index;
             Data_addr = index;
         end
+
+    always@(C_STATE_WB, stall, ok, index, index_RB)
+        if(stall & ~C_STATE_WB | ~ok)
+            VT_addr = index_RB;
+        else
+            VT_addr = index;
 
     //main FSM
     /*
@@ -847,7 +847,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         else
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, /*wr_rdy, rd_rdy,*/ ret_valid, ret_last,
-            replace_Valid_MB, replace_Dirty_MB, write_conflict1, write_conflict2,
+            replace_Valid_MB, replace_Dirty_MB, write_conflict2,
             wr_valid, C_STATE_WB)
         case(C_STATE)
             IDLE:   if(valid)
@@ -860,8 +860,6 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
                         else
                             N_STATE = SELECT;
                     end
-                    else if(write_conflict1)
-                        N_STATE = LOOKUP;
                     else if(write_conflict2)
                         N_STATE = IDLE;
                     else if(valid)
@@ -903,8 +901,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
                     | (C_STATE == HOLD) | (C_STATE == REFILL) |
                     | ((C_STATE == LOOKUP) && !write_conflict1 && !write_conflict2)
                     | ((C_STATE == IDLE) && !write_conflict2);*/
-    assign addr_ok = ~( ((C_STATE == LOOKUP) & (write_conflict1 | write_conflict2)) 
-                     | ((C_STATE == IDLE) & write_conflict2) );
+    //assign addr_ok = ~( ((C_STATE == LOOKUP) & write_conflict2) | ((C_STATE == IDLE) & write_conflict2) );
+    assign addr_ok = ~ write_conflict2;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     //assign rd_req = (N_STATE == REFILL) ;
     //assign wr_req = (N_STATE == REPLACE) ;
