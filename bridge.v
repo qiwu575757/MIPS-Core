@@ -5,20 +5,20 @@ module  bridge_dm(
 
 	dout
 );
-	input [31:0] addr2;
+	input [1:0] addr2;
 	input [31:0] Din;
 	input [2:0] DMSel2;
 	output reg[31:0] dout;
 
 	always@(DMSel2,addr2,Din)
 		case(DMSel2)
-			3'b011: case(addr2[1:0])
+			3'b011: case(addr2)
 						2'b00:	dout = {24'b0,Din[ 7: 0]};
 						2'b01:	dout = {24'b0,Din[15: 8]};
 						2'b10:	dout = {24'b0,Din[23:16]};
 						default:dout = {24'b0,Din[31:24]};
 					endcase
-			3'b100: case(addr2[1:0])
+			3'b100: case(addr2)
 						2'b00:	dout = {{24{Din[ 7]}},Din[ 7: 0]};
 						2'b01:	dout = {{24{Din[15]}},Din[15: 8]};
 						2'b10:	dout = {{24{Din[23]}},Din[23:16]};

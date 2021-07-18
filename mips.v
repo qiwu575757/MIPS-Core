@@ -279,7 +279,7 @@ module mips(
     wire[31:0] MUX2Out;
     wire[2:0] MEM2_MUX2Sel;
     wire[31:0] MEM2_PC;
-    wire[31:0] MEM2_ALU1Out;
+    wire[1:0] MEM2_offset;
     wire[31:0] MEM2_MUX6Out;
     wire[31:0] MEM2_CP0Out;
     wire[2:0] MEM2_DMSel;
@@ -295,7 +295,6 @@ module mips(
     wire MEM2_uncache_valid;
     wire[31:0] DMOut;
     wire MEM2_DMRd;
-    wire MEM2_CP0Rd;
     wire MEM2_can_go;
 
     //--------------WB----------------//
@@ -617,21 +616,21 @@ dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(icache_last_st
 	//-------------MEM2---------------//
 MEM1_MEM2 U_MEM1_MEM2(
 		.clk(clk), .rst(rst), .PC(MEM1_PC), .RFWr(MEM1_RFWr),.MUX2Sel(MEM1_MUX2Sel),
-		.MUX6Out(MUX6Out), .ALU1Out(MEM1_ALU1Out), .RD(MEM1_RD), .MEM1_Flush(MEM1_Flush),
+		.MUX6Out(MUX6Out), .offset(MEM1_ALU1Out[1:0]), .RD(MEM1_RD), .MEM1_Flush(MEM1_Flush),
         .CP0Out(CP0Out), .MEM1_MEM2Wr(MEM1_MEM2Wr), .DMSel(MEM1_DMSel),
         .cache_sel(MEM1_cache_sel), .DMWen(DMWen_dcache), .Exception(MEM1_Exception),
         .eret_flush(MEM1_eret_flush), .uncache_valid(MEM1_uncache_valid), .DMen(MEM1_DMen),
         .Paddr(MEM1_Paddr), .MEM1_dCache_wstrb(MEM1_dCache_wstrb), .GPR_RT(MEM1_GPR_RT),
-        .DMRd(MEM1_DMRd), .CP0Rd(MEM1_CP0Rd),
+        .DMRd(MEM1_DMRd),
 
 		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel),
-		.MEM2_RD(MEM2_RD), .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),
+		.MEM2_RD(MEM2_RD), .MEM2_PC(MEM2_PC), .MEM2_offset(MEM2_offset),
 		.MEM2_MUX6Out(MEM2_MUX6Out), .MEM2_CP0Out(MEM2_CP0Out),
         .MEM2_DMSel(MEM2_DMSel), .MEM2_cache_sel(MEM2_cache_sel), .MEM2_DMWen(DMWen_uncache),
         .MEM2_Exception(MEM2_Exception), .MEM2_eret_flush(MEM2_eret_flush),
         .MEM2_uncache_valid(MEM2_uncache_valid), .MEM2_DMen(MEM2_DMen),
         .MEM2_Paddr(MEM2_Paddr), .MEM2_unCache_wstrb(MEM2_unCache_wstrb), .MEM2_GPR_RT(MEM2_GPR_RT),
-        .MEM2_DMRd(MEM2_DMRd), .MEM2_CP0Rd(MEM2_CP0Rd)
+        .MEM2_DMRd(MEM2_DMRd)
 	);
 
 mux2 U_MUX2(
@@ -652,7 +651,7 @@ uncache_dm U_UNCACHE_DM(
 );
 
 bridge_dm U_BRIDGE_DM(
-		 .addr2(MEM2_ALU1Out),
+		 .addr2(MEM2_offset),
 		 .DMSel2(MEM2_DMSel),
 		 .Din(cache_Out),
 
@@ -713,7 +712,7 @@ bypass U_BYPASS(
 stall U_STALL(
 		.EX_RT(EX_MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
 		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd),
-		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
+		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd),
 		.MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
 		.MEM1_eret_flush(MEM1_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
 		.iCache_data_ok(IF_iCache_data_ok),.dCache_data_ok(MEM_data_ok),.MEM2_dCache_en(MEM2_DMen),

@@ -1092,10 +1092,11 @@ always@(posedge clk)
     always@(posedge clk)
         if(!rst)
             dout <= 21'd0;
-        else if(wen)    //write first
+        else if(wen)
             dout <= din;
         else
             dout <= validtag[addr];
+
             
 
 endmodule

@@ -38,7 +38,7 @@ endmodule
 module stall(
 	EX_RT, MEM1_RT, MEM2_RT, ID_RS, ID_RT,
 	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd, 
-	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,
+	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd,
 	MEM1_ex, MEM1_RFWr, MEM2_RFWr,
 	MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok, MEM2_dCache_en,MEM_dCache_addr_ok,
@@ -51,7 +51,7 @@ module stall(
 	input[4:0] EX_RT, MEM1_RT,MEM2_RT, ID_RS, ID_RT;
 	input [31:0] ID_PC, EX_PC, MEM1_PC;
 	input EX_DMRd, MEM1_DMRd, MEM2_DMRd, BJOp, EX_RFWr, MEM1_RFWr, MEM2_RFWr;
-	input EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd, MEM1_ex, MEM1_eret_flush;
+	input EX_CP0Rd, MEM1_CP0Rd, MEM1_ex, MEM1_eret_flush;
 	input isbusy, RHL_visit;
 	input iCache_data_ok;
 	input dCache_data_ok;
@@ -80,7 +80,7 @@ module stall(
 
 	assign stall_0 = (EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
 	assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
-	assign stall_2 = BJOp && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT));
+	assign stall_2 = BJOp && MEM2_RFWr && MEM2_DMRd && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT));
 	assign stall_3 = BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT));
 
 	assign data_stall = (stall_0|stall_1)|(stall_2|stall_3);
