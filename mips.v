@@ -296,6 +296,7 @@ module mips(
     wire[31:0] DMOut;
     wire MEM2_DMRd;
     wire MEM2_CP0Rd;
+    wire MEM2_can_go;
 
     //--------------WB----------------//
     wire[31:0] WB_PC;
@@ -694,7 +695,8 @@ npc U_NPC(
 	);
 
 flush U_FLUSH(
-        .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception), .NPCOp(NPCOp), .PCWr(PCWr),
+        .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception), .NPCOp(NPCOp), 
+        .PCWr(PCWr), .can_go(MEM2_can_go),
 	
         .PC_Flush(PC_Flush), .PF_Flush(PF_Flush), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
         .EX_Flush(EX_Flush), .MEM1_Flush(MEM1_Flush), .MEM2_Flush(MEM2_Flush)
@@ -719,7 +721,7 @@ stall U_STALL(
 		.MEM1_dCache_en(MEM1_dcache_valid), .MEM1_dcache_valid_except_icache(MEM1_dcache_valid_except_icache),
         .MEM_last_stall(MEM_last_stall), .dcache_last_conflict(dcache_last_conflict),
 
-		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.isStall(isStall),
+		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.isStall(isStall), .data_ok(MEM2_can_go),
 		.dcache_stall(dcache_stall), .icache_stall(icache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),
         .MEM2_WBWr(MEM2_WBWr), .PF_IFWr(PF_IFWr)
 	);

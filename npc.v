@@ -37,12 +37,13 @@ module npc(
 	
 endmodule
 
-module flush(MEM_eret_flush, MEM_ex, NPCOp, PCWr,
+module flush(MEM_eret_flush, MEM_ex, NPCOp, PCWr, can_go,
 		PC_Flush,PF_Flush,IF_Flush,ID_Flush,EX_Flush,MEM1_Flush,MEM2_Flush);
 	input[1:0] NPCOp;
 	input PCWr;
 	input MEM_eret_flush;
 	input MEM_ex;
+	input can_go;
 
 	output IF_Flush;
 	output ID_Flush;
@@ -55,7 +56,7 @@ module flush(MEM_eret_flush, MEM_ex, NPCOp, PCWr,
 	assign IF_Flush =  (MEM_eret_flush | MEM_ex) ;
 	assign ID_Flush = (MEM_eret_flush | MEM_ex) ;
 	assign EX_Flush = (MEM_eret_flush | MEM_ex) ;
-	assign MEM1_Flush = 1'b0;
+	assign MEM1_Flush = (MEM_eret_flush | MEM_ex) &can_go;
 	assign PC_Flush = 1'b0 ;
 	assign MEM2_Flush = 1'b0;
 	assign PF_Flush = 1'b0 ;
