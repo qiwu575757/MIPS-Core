@@ -87,10 +87,11 @@ module stall(
 	assign data_ok = dCache_data_ok | ~MEM2_dCache_en;
 
 	assign dcache_stall = ((~dCache_data_ok &MEM2_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
-	assign isStall=~PCWr;
+	//assign isStall=(~(MEM1_ex | MEM1_eret_flush))&(dcache_stall | (isbusy & RHL_visit) | data_stall);
+	assign isStall = ~PCWr;
 	assign icache_stall = 
 				(MEM_last_stall &MEM2_dCache_en) | (conflict &MEM1_dcache_valid_except_icache) | 
-				(isbusy && RHL_visit) | data_stall ;
+				(isbusy & RHL_visit) | data_stall ;
 
 	always@(data_stall,MEM1_ex, MEM1_eret_flush, isbusy, RHL_visit, dcache_stall,data_ok)
 	    if(MEM1_ex | MEM1_eret_flush) begin
@@ -113,7 +114,7 @@ module stall(
 			MEM2_WBWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
-		else if(isbusy && RHL_visit) begin
+		else if(isbusy & RHL_visit) begin
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
