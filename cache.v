@@ -846,9 +846,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, /*wr_rdy, rd_rdy,*/ ret_valid, ret_last,
+    always@(C_STATE, valid, cache_hit, wr_rdy,/* rd_rdy,*/ ret_valid, ret_last,
             replace_Valid_MB, replace_Dirty_MB, write_conflict2,
-            wr_valid, C_STATE_WB)
+            /*wr_valid,*/ C_STATE_WB)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
@@ -869,13 +869,13 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             SELECT: N_STATE = MISS;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
                         N_STATE = REFILL;
-                    /*else if(!wr_rdy)                                    //data is dirty
-                        N_STATE = MISS;*/
+                    else if(!wr_rdy)                                    //data is dirty
+                        N_STATE = MISS;
                     else
                         N_STATE = REPLACE;
-            REPLACE:if(!wr_valid)
+            REPLACE:/*if(!wr_valid)
                         N_STATE = REPLACE;
-                    else
+                    else*/
                         N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
@@ -909,8 +909,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     assign rd_req = ((C_STATE == MISS) & ~(replace_Valid_MB &replace_Dirty_MB)) |
                     ((C_STATE == REPLACE) & wr_valid) |
                     ((C_STATE == REFILL) & ~(ret_valid&ret_last));
-    assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB ) 
-                    | ((C_STATE == REPLACE) & ~wr_valid);
+    /*assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB ) 
+                    | ((C_STATE == REPLACE) & ~wr_valid);*/
+    assign wr_req =  (C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy;
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
     assign last_conflict = write_conflict2;
@@ -978,11 +979,11 @@ module uncache_dm(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, /*rd_rdy, wr_rdy,*/ ret_valid, ret_last, wr_valid)
+    always@(C_STATE, load, store, /*rd_rdy,*/ wr_rdy, ret_valid, ret_last/* wr_valid*/)
         case(C_STATE)
             DEFAULT:    if(load /*&& rd_rdy*/)
                             N_STATE = LOAD;
-                        else if(store /*&& wr_rdy*/)
+                        else if(store && wr_rdy)
                             N_STATE = STORE;
                         else
                             N_STATE = DEFAULT;
@@ -990,10 +991,10 @@ module uncache_dm(
                             N_STATE = FINISH;
                         else
                             N_STATE = LOAD;
-            STORE:      if(wr_valid)
+            STORE:     // if(wr_valid)
                             N_STATE = FINISH;
-                        else
-                            N_STATE = STORE;
+                        //else
+                        //    N_STATE = STORE;
             FINISH:     N_STATE = DEFAULT;
             default:    N_STATE = DEFAULT;
         endcase
@@ -1004,7 +1005,7 @@ module uncache_dm(
     assign data_ok = ~valid | (C_STATE == FINISH);
     assign rdata = data_reg;
 
-    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) | ((C_STATE == STORE) & wr_valid);
+    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) | (C_STATE == STORE);
 
     always@(posedge clk)
         if(!resetn)
@@ -1015,7 +1016,7 @@ module uncache_dm(
     //assign rd_req = (N_STATE == LOAD);
     //assign wr_req = (N_STATE == STORE);
     assign rd_req = ((C_STATE == DEFAULT) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
-    assign wr_req = ((C_STATE == DEFAULT) & store /*& wr_rdy*/) | ((C_STATE == STORE) & ~wr_valid);
+    assign wr_req = ((C_STATE == DEFAULT) & store & wr_rdy) ;
     assign rd_type =
         ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
         ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
