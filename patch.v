@@ -54,7 +54,8 @@ module mem1_cache_prep(
 
     //wire MEM1_dcache_valid_temp;  
     assign MEM1_Paddr =  {3'b000,MEM1_ALU1Out[28:0]};
-	assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
+	//assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
+    assign MEM1_cache_sel = (MEM1_ALU1Out[31:29] == 3'b101);
     //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
 
