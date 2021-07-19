@@ -61,11 +61,9 @@ module mem1_cache_prep(
 
     //assign MEM1_dcache_valid_temp = MEM1_dcache_en && ~MEM1_cache_sel;
     assign DMWen_dcache = MEM1_DMWr && !MEM1_Exception && !MEM1_eret_flush;
-    assign MEM1_dcache_valid = MEM1_dcache_en && ~MEM1_cache_sel
-                 &IF_iCache_data_ok&!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
-    assign MEM1_dcache_valid_except_icache = MEM1_dcache_en && ~MEM1_cache_sel
-                &!MEM1_Exception&!MEM1_eret_flush&MEM_unCache_data_ok;
-    assign MEM1_uncache_valid = MEM1_dcache_en && MEM1_cache_sel&!MEM1_Exception&!MEM1_eret_flush;
+    assign MEM1_dcache_valid = (MEM1_DMen && ~MEM1_cache_sel)&(MEM_unCache_data_ok&IF_iCache_data_ok);
+    assign MEM1_dcache_valid_except_icache = MEM1_DMen && ~MEM1_cache_sel&MEM_unCache_data_ok;
+    assign MEM1_uncache_valid = MEM1_DMen && MEM1_cache_sel;
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
