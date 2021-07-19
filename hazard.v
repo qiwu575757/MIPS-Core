@@ -78,10 +78,15 @@ module stall(
 	assign addr_ok = MEM1_cache_sel | MEM_dCache_addr_ok;
 	assign conflict = ~MEM1_cache_sel & dcache_last_conflict;
 
-	assign stall_0 = (EX_DMRd | EX_CP0Rd) & ~( |(EX_RT ^ ID_RS) & |(EX_RT ^ ID_RT) ) && |(ID_PC ^ EX_PC);
-	assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd) & ~( |(MEM1_RT ^ ID_RS) & |(MEM1_RT ^ ID_RT) ) & |(ID_PC ^ MEM1_PC);
-	assign stall_2 = BJOp & MEM2_RFWr & MEM2_DMRd & ~( |(MEM2_RT ^ ID_RS) & |(MEM2_RT ^ ID_RT));
-	assign stall_3 = BJOp & EX_RFWr & ~( |(EX_RT ^ ID_RS) & |(EX_RT ^ ID_RT));
+	//assign stall_0 = (EX_DMRd | EX_CP0Rd) & ~( |(EX_RT ^ ID_RS) & |(EX_RT ^ ID_RT) ) && |(ID_PC ^ EX_PC);
+	//assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd) & ~( |(MEM1_RT ^ ID_RS) & |(MEM1_RT ^ ID_RT) ) & |(ID_PC ^ MEM1_PC);
+	//assign stall_2 = BJOp & MEM2_RFWr & MEM2_DMRd & ~( |(MEM2_RT ^ ID_RS) & |(MEM2_RT ^ ID_RT));
+	//assign stall_3 = BJOp & EX_RFWr & ~( |(EX_RT ^ ID_RS) & |(EX_RT ^ ID_RT));
+
+	assign stall_0 = (EX_DMRd | EX_CP0Rd) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & (ID_PC != EX_PC);
+	assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & (ID_PC != MEM1_PC);
+	assign stall_2 = BJOp & MEM2_RFWr & MEM2_DMRd & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT));
+	assign stall_3 = BJOp & EX_RFWr & ((EX_RT == ID_RS) | (EX_RT == ID_RT));
 
 	assign data_stall = (stall_0|stall_1)|(stall_2|stall_3);
 	assign data_ok = dCache_data_ok | ~MEM2_dCache_en;
