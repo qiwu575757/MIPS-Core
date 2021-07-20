@@ -2,8 +2,7 @@
 
 module PC(clk, rst, wr, flush,
 		IF_PC, PF_PC, Imm, EPC, ret_addr, NPCOp, MEM_eret_flush, MEM_ex,
-		NPC_IF_PC, NPC_PF_PC, NPC_Imm, NPC_EPC, NPC_ret_addr, NPC_NPCOp, NPC_MEM_eret_flush, NPC_MEM_ex,
-		NPC_PCWr
+		NPC_IF_PC, NPC_PF_PC, NPC_Imm, NPC_EPC, NPC_ret_addr, NPC_NPCOp, NPC_MEM_eret_flush, NPC_MEM_ex
 );
 	input clk,rst,wr,flush;
 	input[31:0] IF_PC, PF_PC, EPC, ret_addr;
@@ -13,7 +12,7 @@ module PC(clk, rst, wr, flush,
 	output reg[31:0] NPC_IF_PC, NPC_PF_PC, NPC_EPC, NPC_ret_addr;
 	output reg[25:0] NPC_Imm;
 	output reg[1:0] NPC_NPCOp;
-	output reg NPC_MEM_eret_flush, NPC_MEM_ex, NPC_PCWr;
+	output reg NPC_MEM_eret_flush, NPC_MEM_ex;
 
 	always@(posedge clk)
 		if(!rst || flush) begin
@@ -25,7 +24,6 @@ module PC(clk, rst, wr, flush,
 			NPC_NPCOp <= 2'd0;
 			NPC_MEM_eret_flush <= 1'd0;
 			NPC_MEM_ex <= 1'd0;
-			NPC_PCWr <= 1'b0;
 		end
 		else if(wr) begin
 			NPC_IF_PC <= IF_PC;
@@ -36,7 +34,6 @@ module PC(clk, rst, wr, flush,
 			NPC_NPCOp <= NPCOp;
 			NPC_MEM_eret_flush <= MEM_eret_flush;
 			NPC_MEM_ex <= MEM_ex;
-			NPC_PCWr <= wr;
 		end
 endmodule
 
@@ -113,13 +110,13 @@ module ID_EX(
 	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Out, MUX3Sel, ALU1Sel, DMWr, DMSel, 
 	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
-	MUX8Sel, MUX9Sel,
+	MUX4Sel, MUX5Sel,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Out, EX_RHLSel_Wr,
 	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,
-	MUX4Sel, MUX5Sel
+	EX_MUX4Sel, EX_MUX5Sel
 );
 	input clk, rst, ID_EXWr,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
@@ -137,7 +134,7 @@ module ID_EX(
 	input CP0Rd;
 	input start;
 	input ID_dcache_en;
-	input[1:0] MUX8Sel, MUX9Sel;
+	input[1:0] MUX4Sel, MUX5Sel;
 
 	output reg EX_eret_flush;
 	output reg EX_CP0WrEn;
@@ -166,7 +163,7 @@ module ID_EX(
 	output reg EX_CP0Rd;
 	output reg EX_start;
 	output reg EX_dcache_en;
-	output reg[1:0] MUX4Sel,MUX5Sel;
+	output reg[1:0] EX_MUX4Sel, EX_MUX5Sel;
 
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
@@ -201,8 +198,8 @@ module ID_EX(
 			EX_CP0Rd <= 1'b0;
 			EX_start <= 1'b0;
 			EX_dcache_en<=1'b0;
-			MUX4Sel <= 2'b00;
-			MUX5Sel <= 2'b00;
+			EX_MUX4Sel <= 2'b00;
+			EX_MUX5Sel <= 2'b00;
 		end
 		else if(ID_EXWr) 
 		begin
@@ -237,8 +234,8 @@ module ID_EX(
 			EX_CP0Rd <= CP0Rd;
 			EX_start <= start;
 			EX_dcache_en <= ID_dcache_en;
-			MUX4Sel <= MUX8Sel;
-			MUX5Sel <= MUX9Sel;
+			EX_MUX4Sel <= MUX4Sel;
+			EX_MUX5Sel <= MUX5Sel;
 		end
 endmodule
 

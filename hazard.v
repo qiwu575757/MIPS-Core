@@ -1,34 +1,55 @@
 module bypass(
 	EX_RS, EX_RT, ID_RS, ID_RT, 
-	MEM1_RD, MEM2_RD, MUX1Out,
-	MEM1_RFWr, MEM2_RFWr, EX_RFWr,
+	MEM1_RD, MEM2_RD, EX_RD, WB_RD,
+	MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr,
 	
+	MUX4Sel, MUX5Sel,
 	MUX8Sel, MUX9Sel
 	);
-	input MEM1_RFWr, MEM2_RFWr, EX_RFWr;
-	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, MUX1Out;
+	input MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr;
+	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, EX_RD, WB_RD;
 
+	output reg[1:0] MUX4Sel, MUX5Sel;
 	output reg[1:0] MUX8Sel, MUX9Sel;
 
 
-	// MUX1Out == EX_RD
-	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, MUX1Out)
-		if(EX_RFWr && (MUX1Out != 5'd0) && (MUX1Out == ID_RS))
-			MUX8Sel = 2'b01;		//EX bypass for RS
+	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, EX_RD)
+		if(EX_RFWr && (EX_RD != 5'd0) && (EX_RD == ID_RS))
+			MUX4Sel = 2'b01;		//EX->ID/MEM1->EX for RS
 		else if (MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RS))
-			MUX8Sel = 2'b10;		//MEM1 bypass for RS
+			MUX4Sel = 2'b10;		//MEM1->ID/MEM2->EX for RS
 		else if(MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RS))
-			MUX8Sel = 2'b11;		//MEM2 bypass for RS
+			MUX4Sel = 2'b11;		//MEM2->ID/WB->EX for RS
+		else
+			MUX4Sel = 2'b00;		//NO bypass for RS
+
+ 	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT, MEM1_RD, MEM2_RD, EX_RD)
+	 	if(EX_RFWr && (EX_RD != 5'd0) && (EX_RD == ID_RT))
+			MUX5Sel = 2'b01;		//EX->ID/MEM1->EX for RT
+		else if (MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
+			MUX5Sel = 2'b10;		//MEM1->ID/MEM2->EX for RT
+		else if(MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RT))
+			MUX5Sel = 2'b11;		//MEM2->ID/WB->EX for RT
+		else
+			MUX5Sel = 2'b00;		//NO bypass for RT
+
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RS))
+			MUX8Sel = 2'b10;		//MEM1->ID for RS
+		else if(MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RS))
+			MUX8Sel = 2'b11;		//MEM2->ID for RS
+		else if(WB_RFWr && (WB_RD != 5'd0) && (WB_RD == ID_RS))
+			MUX8Sel = 2'b01;		//WB->ID for RS
 		else
 			MUX8Sel = 2'b00;		//NO bypass for RS
 
- 	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT, MEM1_RD, MEM2_RD, MUX1Out)
-	 	if(EX_RFWr && (MUX1Out != 5'd0) && (MUX1Out == ID_RT))
-			MUX9Sel = 2'b01;		//EX bypass for RT
-		else if (MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
-			MUX9Sel = 2'b10;		//MEM1 bypass for RT
+ 	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
+			MUX9Sel = 2'b10;		//MEM1->ID for RT
 		else if(MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RT))
-			MUX9Sel = 2'b11;		//MEM2 bypass for RT
+			MUX9Sel = 2'b11;		//MEM2->ID for RT
+		else if(WB_RFWr && (WB_RD != 5'd0) && (WB_RD == ID_RT))
+			MUX9Sel = 2'b01;		//WB->ID for RT
 		else
 			MUX9Sel = 2'b00;		//NO bypass for RT
 
@@ -37,7 +58,7 @@ endmodule
 
 module stall(
 	EX_RT, MEM1_RT, MEM2_RT, ID_RS, ID_RT,
-	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd, 
+	EX_DMRd, MEM1_DMRd, MEM2_DMRd, 
 	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd,
 	MEM1_ex, MEM1_RFWr, MEM2_RFWr,
 	MEM1_eret_flush,isbusy, RHL_visit,
@@ -49,7 +70,6 @@ module stall(
 	dcache_stall, icache_stall, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr, PF_IFWr
 	);
 	input[4:0] EX_RT, MEM1_RT,MEM2_RT, ID_RS, ID_RT;
-	input [31:0] ID_PC, EX_PC, MEM1_PC;
 	input EX_DMRd, MEM1_DMRd, MEM2_DMRd, BJOp, EX_RFWr, MEM1_RFWr, MEM2_RFWr;
 	input EX_CP0Rd, MEM1_CP0Rd, MEM1_ex, MEM1_eret_flush;
 	input isbusy, RHL_visit;

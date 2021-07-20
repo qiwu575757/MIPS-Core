@@ -119,7 +119,6 @@ module mips(
     wire[1:0] NPC_NPCOp;
     wire NPC_MEM_eret_flush;
     wire NPC_MEM_ex;
-    wire NPC_PCWr;
 	//--------------IF----------------//
     wire[31:0] PC;
     wire[31:0] PPC;
@@ -188,8 +187,6 @@ module mips(
 	wire[4:0] Temp_ID_ExcCode,ID_ExcCode;
     wire ID_Exception;
     wire[4:0] MUX1Out;
-    wire bypass_WB_rs;
-    wire bypass_WB_rt;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -321,6 +318,8 @@ module mips(
     wire[1:0] MUX9Sel;
     wire[1:0] MUX4Sel;
     wire[1:0] MUX5Sel;
+    wire[1:0] EX_MUX4Sel;
+    wire[1:0] EX_MUX5Sel;
 
     wire PCWr;
     wire PF_IFWr;
@@ -386,7 +385,7 @@ PC U_PC(
 
 		.NPC_IF_PC(NPC_IF_PC), .NPC_PF_PC(NPC_PF_PC), .NPC_Imm(NPC_Imm), .NPC_EPC(NPC_EPC), 
         .NPC_ret_addr(NPC_ret_addr), .NPC_NPCOp(NPC_NPCOp), .NPC_MEM_eret_flush(NPC_MEM_eret_flush), 
-        .NPC_MEM_ex(NPC_MEM_ex), .NPC_PCWr(NPC_PCWr)
+        .NPC_MEM_ex(NPC_MEM_ex)
 );
 
 
@@ -440,7 +439,7 @@ rf U_RF(
 		.Addr1(ID_Instr[25:21]), .Addr2(ID_Instr[20:16]), .Addr3(WB_RD),
 		.WD(MUX10Out), .RFWr(WB_RFWr), .clk(clk),
 
-		.rst(rst), .RD1(GPR_RS), .RD2(GPR_RT), .bypass_WB_rs(bypass_WB_rs), .bypass_WB_rt(bypass_WB_rt)
+		.rst(rst), .RD1(GPR_RS), .RD2(GPR_RT)
 	);
 
 ext U_EXT(
@@ -462,15 +461,13 @@ mux7 U_MUX7(
 	);
 
 mux8 U_MUX8(
-		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX8Sel(MUX8Sel),
-        .bypass_WB_rs(bypass_WB_rs), .WD(MUX10Out),
+		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX8Sel(MUX8Sel), .WD(MUX10Out),
 
 		.out(MUX8Out)
 	);
 
 mux9 U_MUX9(
-		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX9Sel(MUX9Sel),
-        .bypass_WB_rt(bypass_WB_rt), .WD(MUX10Out),
+		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX9Sel(MUX9Sel), .WD(MUX10Out),
 
 		.out(MUX9Out)
 	);
@@ -501,7 +498,7 @@ ID_EX U_ID_EX(
 		.Imm32(Imm32), .shamt(ID_Instr[10:6]), .eret_flush(eret_flush), .ID_Flush(ID_Flush), .CP0WrEn(CP0WrEn),
 		.Exception(ID_Exception), .ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch),
 		.CP0Addr({ID_Instr[15:11], ID_Instr[2:0]}), .CP0Rd(CP0Rd), .start(start & ~EX_isBusy),.ID_dcache_en(MUX7Out[3]),
-        .MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel),
+        .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception),
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -511,7 +508,7 @@ ID_EX U_ID_EX(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .EX_RD(EX_RD), .EX_shamt(EX_shamt), .EX_PC(EX_PC),
 		.EX_GPR_RS(EX_GPR_RS), .EX_GPR_RT(EX_GPR_RT), .EX_Imm32(EX_Imm32), .EX_CP0Addr(EX_CP0Addr),
 		.EX_CP0Rd(EX_CP0Rd), .EX_start(EX_start),.EX_dcache_en(EX_dcache_en),
-        .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel)
+        .EX_MUX4Sel(EX_MUX4Sel), .EX_MUX5Sel(EX_MUX5Sel)
 	);
 
 
@@ -522,13 +519,13 @@ mux3 U_MUX3(
 	);
 
 mux4 U_MUX4(
-		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX4Sel(MUX4Sel),
+		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX4Sel(EX_MUX4Sel),
 
 		.out(MUX4Out)
 	);
 
 mux5 U_MUX5(
-		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX5Sel(MUX5Sel),
+		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX5Sel(EX_MUX5Sel),
 
 		.out(MUX5Out)
 	);
@@ -688,7 +685,7 @@ mux10 U_MUX10(
 
 npc U_NPC(
 		.IF_PC(NPC_IF_PC), .PF_PC(NPC_PF_PC), .Imm(NPC_Imm), .ret_addr(NPC_ret_addr), .NPCOp(NPC_NPCOp),
-		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex), .PCWr(NPC_PCWr),
+		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex),
 
 		.NPC(PF_PC), .flush_signal(flush_signal)
 	);
@@ -703,15 +700,16 @@ flush U_FLUSH(
 
 bypass U_BYPASS(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
-        .MEM1_RD(MEM1_RD), .MEM2_RD(MEM2_RD), .MUX1Out(EX_MUX1Out),
-		.MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr), .EX_RFWr(EX_RFWr),
+        .MEM1_RD(MEM1_RD), .MEM2_RD(MEM2_RD), .EX_RD(EX_MUX1Out), .WB_RD(WB_RD),
+		.MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr), .EX_RFWr(EX_RFWr), .WB_RFWr(WB_RFWr),
 
+        .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
 		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel)
 	);
 
 stall U_STALL(
 		.EX_RT(EX_MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
-		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd),
+		.EX_DMRd(EX_DMRd), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd),
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd),
 		.MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
 		.MEM1_eret_flush(MEM1_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),

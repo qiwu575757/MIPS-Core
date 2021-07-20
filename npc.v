@@ -1,6 +1,6 @@
 module npc(
 	IF_PC, PF_PC, Imm, EPC, ret_addr, NPCOp, 
-	MEM_eret_flush, MEM_ex, PCWr,
+	MEM_eret_flush, MEM_ex,
 
 	NPC, flush_signal
 	);
@@ -10,7 +10,6 @@ module npc(
 	input[1:0] NPCOp;
 	input MEM_eret_flush;
 	input MEM_ex;
-	input PCWr;
 
 	output reg[31:0] NPC;
 	output flush_signal;
@@ -33,7 +32,7 @@ module npc(
 		end
 	end
 
-	assign flush_signal = (((|NPCOp) & PCWr) | (MEM_eret_flush | MEM_ex)) ;
+	assign flush_signal = ((|NPCOp) | (MEM_eret_flush | MEM_ex)) ;
 	
 endmodule
 
