@@ -406,8 +406,8 @@ PF_IF U_PF_IF(
 	);
 
 icache U_ICACHE(
-	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush), .stall(icache_stall),
-    .last_stall(icache_last_stall),
+	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush), 
+    .stall_0(icache_stall), .stall_1(isStall), .last_stall(icache_last_stall),
 	// cpu && cache
 	/*input*/
   	.valid(PF_icache_valid), .index(PPC[11:6]), .tag(PPC[31:12]), .offset(PPC[5:0]),
@@ -598,7 +598,9 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
     MEM1_dcache_valid_except_icache
 	);
 
-dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(icache_last_stall|uncache_last_stall),
+dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), 
+    .stall_0(icache_last_stall|uncache_last_stall),
+    .stall_1(~(IF_iCache_data_ok&MEM_unCache_data_ok)),
     .last_stall(dcache_last_stall), .last_conflict(dcache_last_conflict),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_Paddr[11:6]),

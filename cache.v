@@ -1,4 +1,4 @@
-module icache(       clk, resetn, exception, stall, last_stall,
+module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset,
         /*output*/  addr_ok, data_ok, rdata,
@@ -11,7 +11,8 @@ module icache(       clk, resetn, exception, stall, last_stall,
     input clk;
     input resetn;
     input exception;
-    input stall;
+    input stall_0;
+    input stall_1;
     output last_stall;
 
     // Cache && CPU-Pipeline
@@ -97,6 +98,7 @@ module icache(       clk, resetn, exception, stall, last_stall,
     reg[31:0] rdata_way1;
     reg[63:0] byte_write;
     wire RBWr;
+    wire VTen;
 
     integer i;
 
@@ -110,9 +112,9 @@ module icache(       clk, resetn, exception, stall, last_stall,
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );*/
     validtag_block VT_Way0(
-        clk, resetn, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+        clk, resetn, VTen, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
     validtag_block VT_Way1(
-        clk, resetn, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
+        clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
@@ -288,19 +290,20 @@ module icache(       clk, resetn, exception, stall, last_stall,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(index, C_STATE, stall, index_RB, replace_index_MB)
-        if(stall) begin
-            VT_addr = index_RB;
-            Data_addr = index_RB;
-        end
-        else if(C_STATE == REFILL) begin
+    always@(index, C_STATE, replace_index_MB)
+        if(C_STATE == REFILL)
             VT_addr = replace_index_MB;
-            Data_addr = replace_index_MB;
-        end
-        else begin
+        else
             VT_addr = index;
+
+    always@(index, C_STATE, stall_0, index_RB, replace_index_MB)
+        if(stall_0) 
+            Data_addr = index_RB;
+        else if(C_STATE == REFILL)
+            Data_addr = replace_index_MB;
+        else
             Data_addr = index;
-        end
+
     //main FSM
     /*
         LOOKUP: Cache checks hit (if hit,begin read/write)
@@ -347,10 +350,11 @@ module icache(       clk, resetn, exception, stall, last_stall,
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
     assign RBWr = (data_ok & valid) | ((C_STATE == LOOKUP) & exception) ;
+    assign VTen = ~stall_1 | (C_STATE == REFILL);
 
 endmodule
 
-module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
+module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_conflict,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -363,7 +367,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     input clk;
     input resetn;
     input DMRd;
-    input stall;
+    input stall_0;
+    input stall_1;
     output last_stall;
     output last_conflict;
 
@@ -492,6 +497,7 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     integer i;
     wire addr_select;
     wire ok;
+    wire VTen;
 
     reg conflict2_reg;
     reg[31:0] conflict2_data;
@@ -512,9 +518,9 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
         clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
     );*/
     validtag_block VT_Way0(
-        clk, resetn, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+        clk, resetn, VTen, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
     validtag_block VT_Way1(
-        clk, resetn, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
+        clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     dirty_block D_Way0(
         clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
     dirty_block D_Way1(
@@ -543,9 +549,10 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     /*assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});*/
 
-    assign addr_select = stall | ~ok;
+    assign addr_select = stall_0 | ~ok;
     //assign ok =  addr_ok & data_ok;
     assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
+    assign VTen = ~stall_1 | (C_STATE == REFILL);
 
     always@(posedge clk)
         if(!resetn)
@@ -831,8 +838,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             Data_addr = index;
         end
 
-    always@(addr_select, index, index_RB)
-        if(addr_select)
+    always@(ok, index, index_RB)
+        if(~ok)
             VT_addr = index_RB;
         else
             VT_addr = index;
@@ -1066,13 +1073,13 @@ module dirty_block(clk, rst, wen, addr, din, dout);
             dout <= din;
         else
             dout <= dirty[addr];
-            
 
 endmodule
 
-module validtag_block(clk, rst, wen, addr, din, dout);
+module validtag_block(clk, rst, en, wen, addr, din, dout);
     input clk;
     input rst;
+    input en;
     input wen;
     input[5:0] addr;
     input[20:0] din;
@@ -1094,11 +1101,12 @@ always@(posedge clk)
     always@(posedge clk)
         if(!rst)
             dout <= 21'd0;
-        else if(wen)
-            dout <= din;
-        else
-            dout <= validtag[addr];
-
+        else if(en) begin
+            if(wen)
+                dout <= din;
+            else
+                dout <= validtag[addr];
+        end
             
 
 endmodule
