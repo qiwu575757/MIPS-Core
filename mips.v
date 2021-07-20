@@ -54,7 +54,7 @@ module mips(
 );
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
-// 时钟与复位信�???
+// 时钟与复位信�????
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道 
@@ -111,7 +111,7 @@ module mips(
 	wire PF_Exception;
 	wire [4:0] PF_ExcCode;
 	wire PF_TLBRill_Exc;//imply the TLB Rill Exception,which has a special exception entry
-	wire PF_TLB_Exc;//include TLB Rill， TLB Invalid, TLB Modified exception
+	wire PF_TLB_Exc;//include TLB Rill�? TLB Invalid, TLB Modified exception
 	wire PF_valid;
     wire PF_icache_sel;
     wire PF_icache_valid;
@@ -198,9 +198,9 @@ module mips(
     wire MUX3Sel;
     wire DMRd; 
     wire[1:0] NPCOp;
-    wire[3:0] ALU1Op;
+    wire[4:0] ALU1Op;
     wire ALU1Sel;
-    wire[1:0] ALU2Op;
+    wire[3:0] ALU2Op;
     wire RHLSel_Rd; 
 	wire[1:0] RHLSel_Wr;
     wire[2:0] DMSel;
@@ -226,6 +226,7 @@ module mips(
 	wire TLB_readen;
     wire [1:0] LoadOp;
     wire [1:0] StoreOp;
+    wire CMPOut3;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -241,12 +242,12 @@ module mips(
     wire EX_ALU1Sel; 
 	wire EX_RFWr;
     wire EX_RHLWr;
-    wire[1:0] EX_ALU2Op; 
+    wire[3:0] EX_ALU2Op; 
     wire[1:0] EX_MUX1Sel; 
 	wire[1:0] EX_RHLSel_Wr;
     wire[2:0] EX_DMSel;
     wire[2:0] EX_MUX2Sel;
-    wire[3:0] EX_ALU1Op;
+    wire[4:0] EX_ALU1Op;
     wire[4:0] EX_RS;
     wire[4:0] EX_RT;
     wire[4:0] EX_RD; 
@@ -278,6 +279,8 @@ module mips(
     wire EX_TLB_flush;
     wire [1:0] EX_LoadOp;
     wire [1:0] EX_StoreOp;
+    wire [31:0] MULOut;
+    wire MUL_sign;
 	//-------------MEM1---------------//
     wire MEM1_eret_flush;
     wire MEM1_Exception;
@@ -336,6 +339,8 @@ module mips(
     wire [1:0] MEM1_StoreOp;
     wire [31:0] MEM1_wdata;
     wire [2:0] Config_K0_out;
+    wire [31:0] MEM1_MULOut;
+    wire MEM1_start;
 	//-------------MEM2---------------//
     wire MEM2_RFWr;
     wire[4:0] MEM2_RD;
@@ -365,6 +370,7 @@ module mips(
 	wire MEM2_TLB_flush;
     wire [1:0] MEM2_LoadOp;
     wire [31:0] MEM2_wdata;
+    wire MEM2_can_go;
     //--------------WB----------------//
     wire[31:0] WB_PC;
 	wire[31:0] WB_MUX2Out;
@@ -561,7 +567,7 @@ ext U_EXT(
 cmp U_CMP(
 		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out),
 
-		.CMPOut1(CMPOut1), .CMPOut2(CMPOut2)
+		.CMPOut1(CMPOut1), .CMPOut2(CMPOut2),.CMPOut3(CMPOut3)
 	);
 
 mux7 U_MUX7(
@@ -586,7 +592,7 @@ ctrl U_CTRL(
 		.clk(clk), .rst(rst), .OP(ID_Instr[31:26]), .Funct(ID_Instr[5:0]), .rt(ID_Instr[20:16]), .CMPOut1(CMPOut1), 
 		.CMPOut2(CMPOut2), .rs(ID_Instr[25:21]), .EXE_isBranch(EX_isBranch), .Interrupt(Interrupt), 
 		.Temp_ID_Excetion(Temp_ID_Excetion), .IF_Flush(IF_Flush),.Temp_ID_ExcCode(Temp_ID_ExcCode),
-		.ID_TLB_Exc(ID_TLB_Exc),.rd(ID_Instr[15:11]),
+		.ID_TLB_Exc(ID_TLB_Exc),.rd(ID_Instr[15:11]),.CMPOut3(CMPOut3),
 
 		.MUX1Sel(MUX1Sel), .MUX2Sel(MUX2_6Sel), .MUX3Sel(MUX3Sel), .RFWr(RFWr), .RHLWr(RHLWr), .DMWr(DMWr), .DMRd(DMRd), 
 		.NPCOp(NPCOp), .EXTOp(EXTOp), .ALU1Op(ALU1Op), .ALU1Sel(ALU1Sel), .ALU2Op(ALU2Op), .RHLSel_Rd(RHLSel_Rd), 
@@ -594,14 +600,14 @@ ctrl U_CTRL(
 		.ID_Exception(ID_Exception), .ID_ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), .CP0Rd(CP0Rd), .start(start),
 		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en),.ID_tlb_searchen(ID_tlb_searchen),
 		.ID_MUX11Sel(ID_MUX11Sel),.ID_MUX12Sel(ID_MUX12Sel),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),
-		.TLB_readen(TLB_readen),.LoadOp(LoadOp),.StoreOp(StoreOp)
+		.TLB_readen(TLB_readen),.LoadOp(LoadOp),.StoreOp(StoreOp),.movz_movn(movz_movn)
 	);
 
 	//--------------EX----------------//
 ID_EX U_ID_EX(
 		.clk(clk), .rst(rst), .ID_EXWr(ID_EXWr),.RHLSel_Rd(RHLSel_Rd), .PC(ID_PC), .ALU1Op(ALU1Op), .ALU2Op(ALU2Op), 
 		.MUX1Sel(MUX1Sel), .MUX3Sel(MUX3Sel),.ALU1Sel(ALU1Sel), .DMWr(MUX7Out[2]), .DMSel(DMSel), .DMRd(DMRd), 
-		.RFWr(MUX7Out[1]), .RHLWr(MUX7Out[0]),.RHLSel_Wr(RHLSel_Wr), .MUX2Sel(MUX2_6Sel),
+		.RFWr(MUX7Out[1]&movz_movn), .RHLWr(MUX7Out[0]),.RHLSel_Wr(RHLSel_Wr), .MUX2Sel(MUX2_6Sel),
 		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out), .RS(ID_Instr[25:21]),.RT(ID_Instr[20:16]), .RD(ID_Instr[15:11]), 
 		.Imm32(Imm32), .shamt(ID_Instr[10:6]), .eret_flush(eret_flush), .ID_Flush(ID_Flush), .CP0WrEn(CP0WrEn), 
 		.Exception(ID_Exception), .ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), 
@@ -650,10 +656,12 @@ mux5 U_MUX5(
 bridge_RHL U_ALU2(
 		.aclk(clk),.aresetn(rst),.A(MUX4Out), .B(MUX5Out), .ALU2Op(EX_ALU2Op) ,.start(EX_start),
 		.EX_RHLWr(EX_RHLWr), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
-		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),
+		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),.dcache_stall(dcache_stall),
 
 		.isBusy(EX_isBusy),
-		.RHLOut(RHLOut)
+		.RHLOut(RHLOut),
+        .MULOut(MULOut),
+        .MUL_sign(MUL_sign)
 	);
 
 alu1 U_ALU1(
@@ -662,17 +670,18 @@ alu1 U_ALU1(
 		
 		.C(ALU1Out),.Overflow(Overflow)
 	);
+
 	//-------------MEM1---------------//
 EX_MEM1 U_EX_MEM1(
 		.clk(clk), .rst(rst), .EX_MEM1Wr(EX_MEM1Wr),.Imm32(EX_Imm32), .EX_PC(EX_PC), .DMWr(EX_DMWr), 
         .DMSel(EX_DMSel), .DMRd(EX_DMRd), .RFWr(EX_RFWr), .MUX2Sel(EX_MUX2Sel),.RHLOut(RHLOut), 
         .ALU1Out(ALU1Out), .GPR_RT(MUX5Out), .RD(MUX1Out), .EX_Flush(EX_Flush), .eret_flush(EX_eret_flush), 
         .CP0WrEn(EX_CP0WrEn), .Exception(EX_Exception), .ExcCode(EX_ExcCode), .isBD(EX_isBD),
-        .CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EX_dcache_en(EX_dcache_en),
-		.Overflow(Overflow),.EX_TLBRill_Exc(EX_TLBRill_Exc),.EX_tlb_searchen(EX_tlb_searchen),
-        .EX_MUX11Sel(EX_MUX11Sel),.EX_MUX12Sel(EX_MUX12Sel),.EX_TLB_Exc(EX_TLB_Exc),
-        .EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),.EX_TLB_readen(EX_TLB_readen),
-        .EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp),
+        .CP0Addr(EX_CP0Addr), .CP0Rd(EX_CP0Rd), .EX_dcache_en(EX_dcache_en),.Overflow(Overflow),
+        .EX_TLBRill_Exc(EX_TLBRill_Exc),.EX_tlb_searchen(EX_tlb_searchen),.EX_MUX11Sel(EX_MUX11Sel),
+        .EX_MUX12Sel(EX_MUX12Sel),.EX_TLB_Exc(EX_TLB_Exc),.EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),
+        .EX_TLB_readen(EX_TLB_readen),.EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp),.MULOut(MULOut),
+        .EX_start(EX_start),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush), 
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode), 
@@ -682,7 +691,8 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_dcache_en(MEM1_dcache_en),.MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc),
         .MEM1_tlb_searchen(MEM1_tlb_searchen),.MEM1_MUX11Sel(MEM1_MUX11Sel),.MEM1_MUX12Sel(MEM1_MUX12Sel),
         .MEM1_TLB_Exc(Temp_MEM1_TLB_Exc),.MEM1_TLB_flush(MEM1_TLB_flush),.MEM1_TLB_writeen(MEM1_TLB_writeen),
-        .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp)
+        .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp),.MEM1_MULOut(MEM1_MULOut),
+        .MEM1_start(MEM1_start)
 	);
 
 CP0 U_CP0(
@@ -714,7 +724,7 @@ mux12 U_MUX12(
 
 mux6 U_MUX6(
 		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .PC(MEM1_PC),
-		.Imm32(MEM1_Imm32), .MUX6Sel(MEM1_MUX2Sel[1:0]),
+		.Imm32(MEM1_Imm32),.MEM1_MULOut(MEM1_MULOut),.MUX6Sel({MEM1_start,MEM1_MUX2Sel[1:0]}),
 		
 		.out(MUX6Out)
 	);        
@@ -888,6 +898,7 @@ npc U_NPC(
 		.PC(PC), .Imm(ID_Instr[25:0]), .ret_addr(MUX8Out), .NPCOp(NPCOp),.PCWr(PCWr), 
 		.EPC(EPCOut), .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception),
         .MEM1_TLBRill_Exc(MEM1_TLBRill_Exc),.WB_TLB_flush(WB_TLB_flush),.MEM2_PC(MEM2_PC),
+        .can_go(MEM2_can_go),
 
 		.NPC(NPC), .IF_Flush(IF_Flush), .ID_Flush(ID_Flush),
 		.EX_Flush(EX_Flush), .PC_Flush(PC_Flush), .MEM1_Flush(MEM1_Flush),
@@ -909,16 +920,15 @@ stall U_STALL(
 		.EX_RT(MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]), 
 		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd), 
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
-		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
-		.MEM1_eret_flush(MEM1_eret_flush),.isbusy(EX_isBusy), .RHL_visit(RHL_visit),
-		.iCache_data_ok(IF_data_ok),.dCache_data_ok(MEM_data_ok),.MEM_dCache_en(MEM2_DMen),
-		.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
-		.MEM1_dCache_en(MEM1_dcache_valid),.ID_tlb_searchen(ID_tlb_searchen),.EX_CP0WrEn(EX_CP0WrEn),
+		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
+        .isbusy(EX_isBusy), .RHL_visit(RHL_visit),.iCache_data_ok(IF_data_ok),.dCache_data_ok(MEM_data_ok),
+        .MEM_dCache_en(MEM2_DMen),.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
+        .MEM1_dCache_en(MEM1_dcache_valid),.ID_tlb_searchen(ID_tlb_searchen),.EX_CP0WrEn(EX_CP0WrEn),
+        .MUL_sign(MUL_sign),.ALU2Op(EX_ALU2Op),
 
-		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),
-		.inst_sram_en(IF_iCache_read_en),.isStall(isStall),
+		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.inst_sram_en(IF_iCache_read_en),.isStall(isStall),
 		.dcache_stall(dcache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),
-        .MEM2_WBWr(MEM2_WBWr)
+        .MEM2_WBWr(MEM2_WBWr),.data_ok(MEM2_can_go)
 	);
 
 axi_sram_bridge U_AXI_SRAM_BRIDGE(
@@ -969,7 +979,7 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bvalid    ,
     bready    ,
 // icache 
-	IF_rd_req,// icache �??? dcache 同时缺失怎么�???
+	IF_rd_req,// icache �???? dcache 同时缺失怎么�????
 	IF_rd_type,
 	IF_rd_addr,
 	IF_icache_rd_rdy,

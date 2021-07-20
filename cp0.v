@@ -210,7 +210,7 @@ module CP0(
             Random[3:0] <= Random[3:0] - 1'b1;
     end
 
-    //Config generation
+    //Config generation, 这些配置寄存器的信息可能需要修改
     always @(posedge clk) begin
         if ( !rst )
         begin

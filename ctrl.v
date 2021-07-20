@@ -2,12 +2,12 @@
 
  module ctrl(
 	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
- 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,
+ 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,CMPOut3,
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
 		CP0Rd, start, RHL_visit,dcache_en,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp
+		LoadOp,StoreOp,movz_movn
 	);
 	input clk;
 	input rst;
@@ -24,6 +24,7 @@
 	input IF_Flush;
 	input [4:0] Temp_ID_ExcCode;
 	input ID_TLB_Exc;
+	input CMPOut3;
 
 	output reg [1:0] MUX1Sel;
 	output reg [2:0] MUX2Sel;
@@ -36,9 +37,9 @@
 	output reg B_JOp;
 	output reg [1:0] NPCOp;
 	output reg [1:0] EXTOp;
-	output reg [3:0] ALU1Op;
+	output reg [4:0] ALU1Op;
 	output reg ALU1Sel;
-	output reg [1:0] ALU2Op;
+	output reg [3:0] ALU2Op;
 	output reg [1:0] RHLSel_Wr;
 	output reg [2:0] DMSel;
 	output reg eret_flush;
@@ -56,6 +57,7 @@
 	output reg ID_tlb_searchen;
 	output TLB_flush,TLB_readen,TLB_writeen;
 	output reg [1:0] LoadOp,StoreOp;
+	output  movz_movn;
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
@@ -65,7 +67,6 @@
 			rst_sign <= 1'b1;
 		else
 			rst_sign <= 1'b0;
-		
 	end
 
 	assign ri =
@@ -170,6 +171,8 @@
 				6'b001001: RFWr <= 1;	/* JALR */
 				6'b010000: RFWr <= 1;	/* MFHI */
 				6'b010010: RFWr <= 1;	/* MFLO */
+				6'b001010: RFWr <= 1;	/* MOVZ */
+				6'b001011: RFWr <= 1;	/* MOVN */
 				default: RFWr <= 0;
 			endcase
 			6'b001000: RFWr <= 1;		/* ADDI */
@@ -188,6 +191,13 @@
 				else
 					RFWr <= 0;
 			6'b000011: RFWr <= 1;		/* JAL */
+			6'b011100: 
+				case(Funct)
+					`clo :	RFWr <= 1;		/*CLO*/
+					`clz :	RFWr <= 1;		/*CLZ*/
+					`mul :	RFWr <= 1;		/*MUL*/
+					default: RFWr <= 0;
+				endcase
 			6'b100100: RFWr <= 1;		/* LBU */
 			6'b100000: RFWr <= 1;		/* LB */
 			6'b100101: RFWr <= 1;		/* LHU */
@@ -196,10 +206,10 @@
 			6'b100010: RFWr <= 1;		/* LWL */
 			6'b100110: RFWr <= 1;		/* LWR */
 			`cop0:
-			if (rs == `mfc0)
-				RFWr <= 1;
-			else
-				RFWr <= 0;
+				if (rs == `mfc0)
+					RFWr <= 1;
+				else
+					RFWr <= 0;
 			default: RFWr <= 0;
 		endcase
 	end
@@ -217,6 +227,15 @@
 				default: RHLWr <= 0;
 			endcase
 		end
+		else if ( OP == `special2 ) begin
+			case (Funct)
+				`madd:	RHLWr <= 1;
+				`maddu:	RHLWr <= 1;
+				`msub:	RHLWr <= 1;
+				`msubu:	RHLWr <= 1;
+				default: RHLWr <= 0;
+			endcase
+		end
 		else
 			RHLWr <= 0;
 	end
@@ -228,6 +247,16 @@
 				6'b011011: start <= 1;	/* DIVU */
 				6'b011000: start <= 1;	/* MULT */
 				6'b011001: start <= 1;	/* MULTU */
+				default: start <= 0;
+			endcase
+		end
+		else if ( OP == `special2 ) begin
+			case (Funct)
+				`madd:	start <= 1;
+				`maddu:	start <= 1;
+				`msub:	start <= 1;
+				`msubu:	start <= 1;
+				`mul:	start <= 1;
 				default: start <= 0;
 			endcase
 		end
@@ -270,59 +299,77 @@
 		case (OP)
 			6'b000000:
 			case (Funct)
-				6'b100000: ALU1Op <= 4'b0000;	/* ADD */
-				6'b100001: ALU1Op <= 4'b1011;	/* ADDU */
-				6'b100010: ALU1Op <= 4'b0001;	/* SUB */
-				6'b100011: ALU1Op <= 4'b1100;	/* SUBU */
-				6'b100101: ALU1Op <= 4'b0010;	/* OR */
-				6'b100100: ALU1Op <= 4'b0011;	/* AND */
-				6'b100111: ALU1Op <= 4'b0100;	/* NOR */
-				6'b100110: ALU1Op <= 4'b0101;	/* XOR */
-				6'b000100: ALU1Op <= 4'b0110;	/* SLLV */
-				6'b000000: ALU1Op <= 4'b0110;	/* SLL */
-				6'b000110: ALU1Op <= 4'b0111;	/* SRLV */
-				6'b000010: ALU1Op <= 4'b0111;	/* SRL */
-				6'b000111: ALU1Op <= 4'b1000;	/* SRAV */
-				6'b000011: ALU1Op <= 4'b1000;	/* SRA */
-				6'b101010: ALU1Op <= 4'b1001;	/* SLT */
-				6'b101011: ALU1Op <= 4'b1010;	/* SLTU */
-				default: ALU1Op <= 4'b1111;
-			endcase
-			6'b001000: ALU1Op <= 4'b0000;		/* ADDI */
-			6'b001001: ALU1Op <= 4'b1011;		/* ADDUI */
-			6'b001101: ALU1Op <= 4'b0010;		/* ORI */
-			6'b001100: ALU1Op <= 4'b0011;		/* ANDI */
-			6'b001110: ALU1Op <= 4'b0101;		/* XORI */
-			6'b001010: ALU1Op <= 4'b1001;		/* SLTI */
-			6'b001011: ALU1Op <= 4'b1010;		/* SLTIU */
-			6'b101000: ALU1Op <= 4'b0000;		/* SB */
-			6'b101001: ALU1Op <= 4'b0000;		/* SH */
-			6'b101011: ALU1Op <= 4'b0000;		/* SW */
-			6'b101010: ALU1Op <= 4'b0000;		/* SWL */
-			6'b101110: ALU1Op <= 4'b0000;		/* SWR */
-			6'b100100: ALU1Op <= 4'b0000;		/* LBU */
-			6'b100000: ALU1Op <= 4'b0000;		/* LB */
-			6'b100101: ALU1Op <= 4'b0000;		/* LHU */
-			6'b100001: ALU1Op <= 4'b0000;		/* LH */
-			6'b100011: ALU1Op <= 4'b0000;		/* LW */
-			6'b100010: ALU1Op <= 4'b0000;		/* LWL */
-			6'b100110: ALU1Op <= 4'b0000;		/* LWR */
+				6'b100000: ALU1Op <= 5'b00000;	/* ADD */
+				6'b100010: ALU1Op <= 5'b00001;	/* SUB */
+				6'b100101: ALU1Op <= 5'b00010;	/* OR */
+				6'b100100: ALU1Op <= 5'b00011;	/* AND */
+				6'b100111: ALU1Op <= 5'b00100;	/* NOR */
+				6'b100110: ALU1Op <= 5'b00101;	/* XOR */
+				6'b000100: ALU1Op <= 5'b00110;	/* SLLV */
+				6'b000000: ALU1Op <= 5'b00110;	/* SLL */
+				6'b000110: ALU1Op <= 5'b00111;	/* SRLV */
+				6'b000010: ALU1Op <= 5'b00111;	/* SRL */
+				6'b000111: ALU1Op <= 5'b01000;	/* SRAV */
+				6'b000011: ALU1Op <= 5'b01000;	/* SRA */
+				6'b101010: ALU1Op <= 5'b01001;	/* SLT */
+				6'b101011: ALU1Op <= 5'b01010;	/* SLTU */
+				6'b001010: ALU1Op <= 5'b01011;	/* MOVZ */
+				6'b001011: ALU1Op <= 5'b01011;	/* MOVN */
+				6'b100001: ALU1Op <= 5'b01100;	/* ADDU */
+				6'b100011: ALU1Op <= 5'b10000;	/* SUBU */
 
-			default: ALU1Op <= 4'b1111;
+				default: ALU1Op <= 5'b11111;
+			endcase
+			6'b001000: ALU1Op <= 5'b00000;		/* ADDI */
+			6'b001001: ALU1Op <= 5'b01100;		/* ADDUI */
+			6'b001101: ALU1Op <= 5'b00010;		/* ORI */
+			6'b001100: ALU1Op <= 5'b00011;		/* ANDI */
+			6'b001110: ALU1Op <= 5'b00101;		/* XORI */
+			6'b001010: ALU1Op <= 5'b01001;		/* SLTI */
+			6'b001011: ALU1Op <= 5'b01010;		/* SLTIU */
+			6'b101000: ALU1Op <= 5'b00000;		/* SB */
+			6'b101001: ALU1Op <= 5'b00000;		/* SH */
+			6'b101011: ALU1Op <= 5'b00000;		/* SW */
+			6'b101010: ALU1Op <= 5'b00000;		/* SWL */
+			6'b101110: ALU1Op <= 5'b00000;		/* SWR */
+			6'b100100: ALU1Op <= 5'b00000;		/* LBU */
+			6'b100000: ALU1Op <= 5'b00000;		/* LB */
+			6'b100101: ALU1Op <= 5'b00000;		/* LHU */
+			6'b100001: ALU1Op <= 5'b00000;		/* LH */
+			6'b100011: ALU1Op <= 5'b00000;		/* LW */
+			6'b100010: ALU1Op <= 5'b00000;		/* LWL */
+			6'b100110: ALU1Op <= 5'b00000;		/* LWR */
+			6'b011100: 
+			case(Funct)
+				`clo :	ALU1Op  <= 0'b01101;		/*CLO*/
+				`clz :	ALU1Op  <= 0'b01110;		/*CLZ*/
+				default: ALU1Op <= 0'b11111;
+			endcase
+
+			default: ALU1Op <= 5'b11111;
 		endcase
 	end
 
 	always @(OP or Funct) begin		/* the generation of ALU2Op */
 		case (OP)
 			6'b000000: 
-			case (Funct)
-				6'b011001: ALU2Op <= 2'b00;		/* MULTU */
-				6'b011000: ALU2Op <= 2'b01;		/* MULT */
-				6'b011011: ALU2Op <= 2'b10;		/* DIVU */
-				6'b011010: ALU2Op <= 2'b11;		/* DIV */
-				default: ALU2Op <= 2'b00;
-			endcase
-			default: ALU2Op <= 2'b00;
+				case (Funct)
+					6'b011001: ALU2Op <= 4'b0000;		/* MULTU */
+					6'b011000: ALU2Op <= 4'b0001;		/* MULT */
+					6'b011011: ALU2Op <= 4'b0010;		/* DIVU */
+					6'b011010: ALU2Op <= 4'b0011;		/* DIV */
+					default:   ALU2Op <= 4'b0000;
+				endcase
+			`special2:
+				case (Funct)
+					`maddu:	ALU2Op <= 4'b0100;
+					`madd:	ALU2Op <= 4'b0101;
+					`msub:	ALU2Op <= 4'b0110;
+					`msubu:	ALU2Op <= 4'b0111;
+					`mul:	ALU2Op <= 4'b1000;
+					default:ALU2Op <= 4'b0000;
+				endcase
+			default: ALU2Op <= 4'b0000;
 		endcase
 	end
 
@@ -342,15 +389,23 @@
 	always @(OP or Funct) begin		/* the generation of RHLSel_Wr */
 		case (OP)
 			6'b000000:
-			case (Funct)
-				6'b011001: RHLSel_Wr <= 2'b10;		/* MULTU */
-				6'b011000: RHLSel_Wr <= 2'b10;		/* MULT */
-				6'b011011: RHLSel_Wr <= 2'b10;		/* DIVU */
-				6'b011010: RHLSel_Wr <= 2'b10;		/* DIV */
-				6'b010001: RHLSel_Wr <= 2'b01;		/* MTHI */
-				6'b010011: RHLSel_Wr <= 2'b00;		/* MTLO */
-				default: RHLSel_Wr <= 2'b00;
-			endcase
+				case (Funct)
+					6'b011001: RHLSel_Wr <= 2'b10;		/* MULTU */
+					6'b011000: RHLSel_Wr <= 2'b10;		/* MULT */
+					6'b011011: RHLSel_Wr <= 2'b10;		/* DIVU */
+					6'b011010: RHLSel_Wr <= 2'b10;		/* DIV */
+					6'b010001: RHLSel_Wr <= 2'b01;		/* MTHI */
+					6'b010011: RHLSel_Wr <= 2'b00;		/* MTLO */
+					default: RHLSel_Wr <= 2'b00;
+				endcase
+			`special2:
+				case (Funct)
+					`maddu:	RHLSel_Wr <= 2'b10;
+					`madd:	RHLSel_Wr <= 2'b10;
+					`msub:	RHLSel_Wr <= 2'b10;
+					`msubu:	RHLSel_Wr <= 2'b10;
+					default:RHLSel_Wr <= 2'b00;
+				endcase
 			default: RHLSel_Wr <= 2'b00;
 		endcase
 	end
@@ -359,17 +414,25 @@
 	always @(OP or Funct) begin		/* the generation of RHL_visit */
 		case (OP)
 			6'b000000:
-			case (Funct)
-				6'b011001: RHL_visit <= 1'b1;		/* MULTU */
-				6'b011000: RHL_visit <= 1'b1;		/* MULT */
-				6'b011011: RHL_visit <= 1'b1;		/* DIVU */
-				6'b011010: RHL_visit <= 1'b1;		/* DIV */
-				6'b010001: RHL_visit <= 1'b1;		/* MTHI */
-				6'b010011: RHL_visit <= 1'b1;		/* MTLO */
-				6'b010000: RHL_visit <= 1'b1;		/* MFHI */
-				6'b010010: RHL_visit <= 1'b1;		/* MFLO */
-				default:   RHL_visit <= 1'b0;
-			endcase
+				case (Funct)
+					6'b011001: RHL_visit <= 1'b1;		/* MULTU */
+					6'b011000: RHL_visit <= 1'b1;		/* MULT */
+					6'b011011: RHL_visit <= 1'b1;		/* DIVU */
+					6'b011010: RHL_visit <= 1'b1;		/* DIV */
+					6'b010001: RHL_visit <= 1'b1;		/* MTHI */
+					6'b010011: RHL_visit <= 1'b1;		/* MTLO */
+					6'b010000: RHL_visit <= 1'b1;		/* MFHI */
+					6'b010010: RHL_visit <= 1'b1;		/* MFLO */
+					default:   RHL_visit <= 1'b0;
+				endcase
+			`special2:
+				case (Funct)
+					`maddu:	RHL_visit <= 1'b1;
+					`madd:	RHL_visit <= 1'b1;
+					`msub:	RHL_visit <= 1'b1;
+					`msubu:	RHL_visit <= 1'b1;
+					default:RHL_visit <= 1'b0;
+				endcase
 			default: RHL_visit <= 1'b0;
 		endcase
 	end
@@ -415,57 +478,57 @@
 	always @(OP or rt or Funct or CMPOut1 or CMPOut2) begin		/* the genenration of NPCOp */
 		 case (OP)
 			6'b000100:				/* BEQ */
-			if (CMPOut1 == 0)
-				NPCOp <= 2'b01;
-			else
-				NPCOp <= 2'b00;
+				if (CMPOut1 == 0)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
 			6'b000101:				/* BNE */
-			if (CMPOut1 == 1)
-				NPCOp <= 2'b01;
-			else
-				NPCOp <= 2'b00;
+				if (CMPOut1 == 1)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
 			6'b000001:
-			case (rt)
-				5'b00001:			/* BGEZ */
-				if (CMPOut2 != 2'b10)
-					NPCOp <= 2'b01;
-				else
-					NPCOp <= 2'b00;
-				5'b00000:			/* BLTZ */
-				if (CMPOut2 == 2'b10)
-					NPCOp <= 2'b01;
-				else
-					NPCOp <= 2'b00;
-				5'b10001:			/* BGEZAL */
-				if (CMPOut2 != 2'b10)
-					NPCOp <= 2'b01;
-				else
-					NPCOp <= 2'b00;
-				5'b10000:			/* BLTZAL */
-				if (CMPOut2 == 2'b10)
-					NPCOp <= 2'b01;
-				else
-					NPCOp <= 2'b00;
-				default: NPCOp <= 2'b00;
-			endcase
+				case (rt)
+					5'b00001:			/* BGEZ */
+					if (CMPOut2 != 2'b10)
+						NPCOp <= 2'b01;
+					else
+						NPCOp <= 2'b00;
+					5'b00000:			/* BLTZ */
+					if (CMPOut2 == 2'b10)
+						NPCOp <= 2'b01;
+					else
+						NPCOp <= 2'b00;
+					5'b10001:			/* BGEZAL */
+					if (CMPOut2 != 2'b10)
+						NPCOp <= 2'b01;
+					else
+						NPCOp <= 2'b00;
+					5'b10000:			/* BLTZAL */
+					if (CMPOut2 == 2'b10)
+						NPCOp <= 2'b01;
+					else
+						NPCOp <= 2'b00;
+					default: NPCOp <= 2'b00;
+				endcase
 			6'b000010: NPCOp <= 2'b10;	/* J */
 			6'b000011: NPCOp <= 2'b10;	/* JAL */
 			6'b000110:				/* BLEZ */
-			if(CMPOut2 != 2'b01)
-				NPCOp <= 2'b01;
-			else
-				NPCOp <= 2'b00;
+				if(CMPOut2 != 2'b01)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
 			6'b000111:				/* BGTZ */
-			if(CMPOut2 == 2'b01)
-				NPCOp <= 2'b01;
-			else
-				NPCOp <= 2'b00;
+				if(CMPOut2 == 2'b01)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
 			6'b000000: 
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR or JALR */
-				NPCOp <= 2'b11;
-			else
-				NPCOp <= 2'b00;
-			default: NPCOp <= 2'b00;
+				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR or JALR */
+					NPCOp <= 2'b11;
+				else
+					NPCOp <= 2'b00;
+				default: NPCOp <= 2'b00;
 		endcase
 	end
 
@@ -474,6 +537,12 @@
 			6'b000000: MUX1Sel <= 2'b01;
 			6'b000001: MUX1Sel <= 2'b10;		/* BGEZAL or BLTZAL*/
 			6'b000011: MUX1Sel <= 2'b10;		/* JAL */
+			`special2:
+				case(Funct)
+					`mul:	MUX1Sel <= 2'b01;
+					default:MUX1Sel <= 2'b00;
+				endcase
+
 			default: MUX1Sel <= 2'b00;		
 		endcase
 	end
@@ -481,16 +550,25 @@
 	always @(OP or Funct or rs) begin		/* the genenration of MUX2Sel */
 		 case (OP)
 			6'b000000: 
-			case (Funct)
-				6'b010000: MUX2Sel <= 3'b000;	/* MFHI */
-				6'b010010: MUX2Sel <= 3'b000;	/* MFLO */
-				6'b001001: MUX2Sel <= 3'b011;	/* JALR */
-				6'b011001: MUX2Sel <= 3'b000;	/* MULTU */
-				6'b011000: MUX2Sel <= 3'b000;	/* MULT */
-				6'b011011: MUX2Sel <= 3'b000;	/* DIVU */
-				6'b011010: MUX2Sel <= 3'b000;	/* DIV */
-				default: MUX2Sel <= 3'b010;
-			endcase
+				case (Funct)
+					6'b010000: MUX2Sel <= 3'b000;	/* MFHI */
+					6'b010010: MUX2Sel <= 3'b000;	/* MFLO */
+					6'b001001: MUX2Sel <= 3'b011;	/* JALR */
+					6'b011001: MUX2Sel <= 3'b000;	/* MULTU */
+					6'b011000: MUX2Sel <= 3'b000;	/* MULT */
+					6'b011011: MUX2Sel <= 3'b000;	/* DIVU */
+					6'b011010: MUX2Sel <= 3'b000;	/* DIV */
+					default: MUX2Sel <= 3'b010;
+				endcase
+			`special2:
+				case (Funct)
+					`maddu:	MUX2Sel <= 3'b000;
+					`madd:	MUX2Sel <= 3'b000;
+					`msub:	MUX2Sel <= 3'b000;
+					`msubu:	MUX2Sel <= 3'b000;
+					`mul:	MUX2Sel <= 3'b000;
+					default:MUX2Sel <= 3'b010;
+				endcase
 			6'b100000: MUX2Sel <= 3'b100;		/* LB */
 			6'b100100: MUX2Sel <= 3'b100;		/* LBU */
 			6'b100001: MUX2Sel <= 3'b100;		/* LH */
@@ -502,10 +580,11 @@
 			6'b001111: MUX2Sel <= 3'b001;		/* LUI */
 			6'b000011: MUX2Sel <= 3'b011;		/* JAL */
 			`cop0:
-			if (rs == `mfc0)
-				MUX2Sel <= 3'b101;
-			else
-				MUX2Sel <= 3'b010;
+				if (rs == `mfc0)
+					MUX2Sel <= 3'b101;
+				else
+					MUX2Sel <= 3'b010;
+
 			default: MUX2Sel <= 3'b010;
 		endcase
 	end
@@ -589,5 +668,11 @@
 			default :  StoreOp <= 2'b00;
 		endcase
 	end
+
+	/*
+		movz_movn = 1 imply that the instr is movz or movn and the condition is OK or 
+		the instr is not the movn or movz
+	*/
+	assign movz_movn = ~( (OP == 6'b0) && ((Funct==`movn&&CMPOut3) || (Funct==`movz&&!CMPOut3)) );
 
 endmodule

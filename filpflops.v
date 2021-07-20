@@ -111,9 +111,10 @@ module ID_EX(
 	input [4:0] ExcCode;
 	input isBD;
 	input isBranch;
-	input[1:0] ALU2Op, MUX1Sel, RHLSel_Wr;
+	input[1:0] MUX1Sel, RHLSel_Wr;
+	input[3:0] ALU2Op;
 	input[2:0] DMSel, MUX2Sel;
-	input[3:0] ALU1Op;
+	input[4:0] ALU1Op;
 	input[4:0] RS, RT, RD, shamt;
 	input[31:0] PC, GPR_RS, GPR_RT, Imm32;
 	input [7:0] CP0Addr;
@@ -139,12 +140,12 @@ module ID_EX(
 	output reg EX_ALU1Sel;
 	output reg EX_RFWr;
 	output reg EX_RHLWr;
-	output reg [1:0] EX_ALU2Op;
+	output reg [3:0] EX_ALU2Op;
 	output reg [1:0] EX_MUX1Sel;
 	output reg [1:0] EX_RHLSel_Wr;
 	output reg [2:0] EX_DMSel;
 	output reg [2:0] EX_MUX2Sel;
-	output reg [3:0] EX_ALU1Op;
+	output reg [4:0] EX_ALU1Op;
 	output reg [4:0] EX_RS;
 	output reg [4:0] EX_RT;
 	output reg [4:0] EX_RD;
@@ -175,12 +176,12 @@ module ID_EX(
 			EX_ALU1Sel <= 1'b0;
 			EX_RFWr <= 1'b0;
 			EX_RHLWr <= 1'b0;
-			EX_ALU2Op <= 2'b00;
+			EX_ALU2Op <= 4'b0;
 			EX_MUX1Sel <= 2'b00;
 			EX_RHLSel_Wr <= 2'b00;
 			EX_DMSel <= 3'b000;
 			EX_MUX2Sel <= 3'b000;
-			EX_ALU1Op <= 4'h0;
+			EX_ALU1Op <= 5'h0;
 			EX_RS <= 5'd0;
 			EX_RT <= 5'd0;
 			EX_RD <= 5'd0;
@@ -255,11 +256,13 @@ module EX_MEM1(
         ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
         CP0Addr, CP0Rd, EX_dcache_en, Overflow,EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel,
 		EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,EX_StoreOp,
+		MULOut,EX_start,
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
         MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT, 
         MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow,MEM1_TLBRill_Exc,MEM1_tlb_searchen,
-		MEM1_MUX11Sel,MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,MEM1_StoreOp
+		MEM1_MUX11Sel,MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,
+		MEM1_StoreOp,MEM1_MULOut,MEM1_start
 	);
 	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -277,6 +280,8 @@ module EX_MEM1(
 	input EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel;
 	input EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen;
 	input [1:0] EX_LoadOp,EX_StoreOp;
+	input [31:0] MULOut;
+	input EX_start;
 
 	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
 	output reg MEM1_eret_flush;
@@ -294,6 +299,8 @@ module EX_MEM1(
 	output reg MEM1_TLBRill_Exc,MEM1_tlb_searchen,MEM1_MUX11Sel;
 	output reg MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen;
 	output reg [1:0] MEM1_LoadOp, MEM1_StoreOp;
+	output reg [31:0] MEM1_MULOut;
+	output reg MEM1_start;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -328,6 +335,8 @@ module EX_MEM1(
 			MEM1_TLB_readen <= 1'b0;
 			MEM1_LoadOp <= 2'b0;
 			MEM1_StoreOp <= 2'b0;
+			MEM1_MULOut <= 32'b0;
+			MEM1_start <= 1'b0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -360,6 +369,8 @@ module EX_MEM1(
 			MEM1_TLB_readen <= EX_TLB_readen;
 			MEM1_LoadOp	<= EX_LoadOp;
 			MEM1_StoreOp <= EX_StoreOp;
+			MEM1_MULOut <= MULOut;
+			MEM1_start <= EX_start;
 		end
 
 endmodule

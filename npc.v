@@ -2,6 +2,7 @@ module npc(
 	PC, Imm, EPC, ret_addr, NPCOp, 
 	MEM_eret_flush, MEM_ex, PCWr,
 	MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC,
+	can_go,
 
 	NPC, IF_Flush,ID_Flush, EX_Flush, 
 	PC_Flush, MEM1_Flush, MEM2_Flush
@@ -14,6 +15,7 @@ module npc(
 	input MEM_eret_flush;
 	input MEM_ex,MEM1_TLBRill_Exc,WB_TLB_flush;
 	input [31:0] MEM2_PC;
+	input can_go;
 
 	output reg[31:0] NPC;
 	output IF_Flush;
@@ -46,7 +48,7 @@ module npc(
 	assign IF_Flush =  (MEM_eret_flush || MEM_ex) ;
 	assign ID_Flush = (MEM_eret_flush || MEM_ex) ;
 	assign EX_Flush = (MEM_eret_flush || MEM_ex) ;
-	assign MEM1_Flush = 1'b0;
+	assign MEM1_Flush = (MEM_eret_flush | MEM_ex) & can_go;
 	assign PC_Flush = (((NPCOp != 2'b00) && PCWr) || MEM_eret_flush || MEM_ex) ;
 	assign MEM2_Flush = 1'b0;
 	

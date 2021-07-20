@@ -88,19 +88,20 @@ endmodule
 
 module mux6(
 	RHLOut, ALU1Out, PC, 
-	Imm32, MUX6Sel, 
+	MEM1_MULOut, Imm32, MUX6Sel, 
 	
 	out
 	);
-	input[31:0] RHLOut, ALU1Out, PC, Imm32;
-	input[1:0] MUX6Sel;
+	input[31:0] RHLOut, ALU1Out, PC, Imm32, MEM1_MULOut;
+	input[2:0] MUX6Sel;
 	output reg[31:0] out;
 	
-	always@(RHLOut, ALU1Out, PC, Imm32, MUX6Sel)
+	always@(RHLOut, ALU1Out, MEM1_MULOut, PC, Imm32, MUX6Sel)
 		case(MUX6Sel)
-			2'b00:	out = RHLOut;
-			2'b01:	out = Imm32;
-			2'b10:	out = ALU1Out;
+			3'b000:	out = RHLOut;
+			3'b001:	out = Imm32;
+			3'b010:	out = ALU1Out;
+			3'b100: out = MEM1_MULOut;
 			default:out = PC + 8;
 		endcase
 

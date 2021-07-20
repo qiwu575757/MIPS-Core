@@ -22,7 +22,8 @@
 `define slt     6'b101010 //小于置 1(有符号)
 `define sltu    6'b101011 //小于置 1(有符号)                  
 
-
+`define movn    6'b001011
+`define movz    6'b001010
 //-----------calc_i--------------------//
 `define mult  6'b011000
 `define multu 6'b011001
@@ -107,7 +108,16 @@
 `define tlbwi   6'b000010
 `define tlbwr   6'b000110
 `define walt    6'b100000
+//-------------special2----------------//
+`define special2    6'b011100
 
+`define clo         6'b100001
+`define clz         6'b100000
+`define madd        6'b000000
+`define maddu       6'b000001
+`define msub        6'b000100
+`define msubu       6'b000101
+`define mul         6'b000010
 //---- data memory 's opration----//
 `define Byte_Zero       3'd0//用于加载无符号字节
 `define Byte_Sign       3'd1 //用于加载有符号字节
