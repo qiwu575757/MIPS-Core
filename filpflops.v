@@ -240,13 +240,13 @@ module ID_EX(
 endmodule
 
 module EX_MEM1(
-		clk, rst, EX_MEM1Wr, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel,RHLOut, 
+		clk, rst, EX_MEM1Wr, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, MUX11Out, 
         ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
-        CP0Addr, CP0Rd, EX_dcache_en, Overflow, PC_8,
+        CP0Addr, CP0Rd, EX_dcache_en, Overflow,
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
-        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT, 
-        MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow, MEM1_PC_8
+        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_MUX11Out, MEM1_ALU1Out, MEM1_GPR_RT, 
+        MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow
 	);
 	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -257,11 +257,10 @@ module EX_MEM1(
 	input isBD;
 	input[2:0] DMSel, MUX2Sel;
 	input[4:0] RD;
-	input[31:0] EX_PC, RHLOut,ALU1Out, GPR_RT, Imm32;
+	input[31:0] EX_PC, MUX11Out,ALU1Out, GPR_RT;
 	input [7:0] CP0Addr;
 	input CP0Rd;
 	input EX_dcache_en;
-	input[31:0] PC_8;
 
 	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
 	output reg MEM1_eret_flush;
@@ -271,12 +270,11 @@ module EX_MEM1(
 	output reg MEM1_isBD;
 	output reg[2:0] MEM1_DMSel, MEM1_MUX2Sel;
 	output reg[4:0] MEM1_RD;
-	output reg[31:0] MEM1_PC, MEM1_RHLOut,MEM1_ALU1Out, MEM1_GPR_RT, MEM1_Imm32;
+	output reg[31:0] MEM1_PC, MEM1_MUX11Out,MEM1_ALU1Out, MEM1_GPR_RT;
 	output reg [7:0] MEM1_CP0Addr;
 	output reg MEM1_CP0Rd;
 	output reg MEM1_dcache_en;
 	output reg MEM1_Overflow;
-	output reg[31:0] MEM1_PC_8;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -290,17 +288,15 @@ module EX_MEM1(
 			MEM1_MUX2Sel <= 3'd0;
 			MEM1_RD <= 5'd0;
 			MEM1_PC <= 32'd0;
-			MEM1_RHLOut <= 32'd0;
+			MEM1_MUX11Out <= 32'd0;
 			MEM1_ALU1Out <= 32'd0;
 			MEM1_GPR_RT <= 32'd0;
-			MEM1_Imm32 <= 32'd0;
 			MEM1_CP0Addr <= 8'd0;
 			MEM1_CP0Rd <= 1'b0;
 			MEM1_dcache_en<=1'b0;
 			MEM1_ExcCode <= 5'd0;
 			MEM1_Exception <= 1'b0;
 			MEM1_Overflow <= 1'b0;
-			MEM1_PC_8 <= 32'd0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -313,17 +309,15 @@ module EX_MEM1(
 			MEM1_MUX2Sel <= MUX2Sel;
 			MEM1_RD <= RD;
 			MEM1_PC <= EX_PC;
-			MEM1_RHLOut <= RHLOut;
+			MEM1_MUX11Out <= MUX11Out;
 			MEM1_ALU1Out <= ALU1Out;
 			MEM1_GPR_RT <= GPR_RT;
-			MEM1_Imm32 <= Imm32;
 			MEM1_CP0Addr <= CP0Addr;
 			MEM1_CP0Rd <= CP0Rd;
 			MEM1_dcache_en <= EX_dcache_en;
 			MEM1_ExcCode <= ExcCode;
 			MEM1_Exception <= Exception;
 			MEM1_Overflow <= Overflow;
-			MEM1_PC_8 <= PC_8;
 		end
 
 endmodule

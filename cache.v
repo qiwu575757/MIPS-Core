@@ -288,10 +288,14 @@ module icache(       clk, resetn, exception, stall, last_stall,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(index, C_STATE, stall, index_RB)
-        if(stall | C_STATE == REFILL) begin
+    always@(index, C_STATE, stall, index_RB, replace_index_MB)
+        if(stall) begin
             VT_addr = index_RB;
             Data_addr = index_RB;
+        end
+        else if(C_STATE == REFILL) begin
+            VT_addr = replace_index_MB;
+            Data_addr = replace_index_MB;
         end
         else begin
             VT_addr = index;
@@ -539,7 +543,6 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
     /*assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});*/
 
-    //assign addr_select = stall | ~addr_ok | ~data_ok;
     assign addr_select = stall | ~ok;
     //assign ok =  addr_ok & data_ok;
     assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
@@ -828,8 +831,8 @@ module dcache(       clk, resetn, DMRd, stall, last_stall, last_conflict,
             Data_addr = index;
         end
 
-    always@(C_STATE_WB, stall, ok, index, index_RB)
-        if(stall & ~C_STATE_WB | ~ok)
+    always@(addr_select, index, index_RB)
+        if(addr_select)
             VT_addr = index_RB;
         else
             VT_addr = index;

@@ -1,68 +1,81 @@
 module alu1(
-	A, B, ALU1Op, ALU1Sel, Shamt, PC,
+	A, B, ALU1Op, ALU1Sel, Shamt,
 	
-	C,Overflow, PC_8
+	C,Overflow
 	);
 	input[31:0] A, B;
 	input[3:0] ALU1Op;
 	input[4:0] Shamt;
 	input ALU1Sel;
-	input[31:0] PC;
 	
 	output reg Overflow;
 	output reg[31:0] C;
-	output[31:0] PC_8;
 
 	wire[4:0] temp;
 	wire Less;
 	
-	assign temp = ALU1Sel ? Shamt : A[4:0];
-	assign Less = ((ALU1Op == 4'b1001) && A[31]^B[31]) ? ~(A < B) : (A < B);
-	assign PC_8 = PC + 8;
+	wire[2:0] add_overflow;
+	wire[2:0] sub_overflow;
 
-	always@(A, B, ALU1Op, Less, temp)
-		/*if(ALU1Op == 4'b1000)begin					//arithmetical right shift
-						C = B;
-						if(temp[4]) C = {{16{B[31]}},C[31:16]};
-						if(temp[3]) C = {{8{B[31]}},C[31:8]};
-						if(temp[2]) C = {{4{B[31]}},C[31:4]};
-						if(temp[1]) C = {{2{B[31]}},C[31:2]};
-						if(temp[0]) C = {B[31],C[31:1]};*
-					 end
-		else begin*/
+	wire[31:0] add_result;
+	wire[31:0] sub_result;
+	wire[31:0] _or_result;
+	wire[31:0] and_result;
+	wire[31:0] nor_result;
+	wire[31:0] xor_result;
+	wire[31:0] sll_result;
+	wire[31:0] srl_result;
+	wire[31:0] sra_result;
+	wire[31:0] cmp_result;
+
+	assign add_result = A + B;
+	assign sub_result = A - B;
+	assign _or_result = A | B;
+	assign and_result = A & B;
+	assign nor_result = ~(A | B);
+	assign xor_result = A ^ B;
+	assign sll_result = B << temp;
+	assign srl_result = B >> temp;
+	assign sra_result = $signed(B) >>> temp;
+	assign cmp_result = {31'd0,Less};
+
+
+	assign temp = ALU1Sel ? Shamt : A[4:0];
+	assign Less = (ALU1Op[0] && A[31]^B[31]) ? ~(A < B) : (A < B);
+	//		ALU1Op == 4'b1001 : signed compare
+	//		ALU1Op == 4'b1010 : unsigned compare
+
+	always@(ALU1Op, add_result, sub_result, _or_result, and_result, nor_result, xor_result,
+			sll_result, srl_result, sra_result, cmp_result)
 		case(ALU1Op)
-			4'b0000:	C = A + B;			//add
-			4'b1011:	C = A + B;			//addu
-			4'b0001:	C = A - B;			//sub
-			4'b1100:	C = A - B;			//subu
-			4'b0010:	C = A | B;			//or
-			4'b0011:	C = A & B;			//and
-			4'b0100:	C = ~( A | B );		//nor
-			4'b0101:	C = A ^ B;			//xor
-			4'b0110:	C = B << temp;		//logical left shift
-			4'b0111:	C = B >> temp;		//logical right shift
-			4'b1000:	C = $signed(B) >>> temp;//arithmetical right shift
-			default:	C = {31'h00000000,Less};//	signed/unsigned compare
+			4'b0000, 4'b1011:	C = add_result;		//add/addu
+			4'b0001, 4'b1100:	C = sub_result;		//sub/subu
+			4'b0010:			C = _or_result;		//or
+			4'b0011:			C = and_result;		//and
+			4'b0100:			C = nor_result;		//nor
+			4'b0101:			C = xor_result;		//xor
+			4'b0110:			C = sll_result;		//logical left shift
+			4'b0111:			C = srl_result;		//logical right shift
+			4'b1000:			C = sra_result;		//arithmetical right shift
+			default:			C = cmp_result;		//signed/unsigned compare
 		endcase
 	
-	always@(A,B,C,ALU1Op)
-		if(ALU1Op == 4'b0000) begin
-			if(A[31] == 1'b1 && B[31] == 1'b1 && C[31] == 1'b0)
-				Overflow = 1'b1;
-			else if(A[31] == 1'b0 && B[31] == 1'b0 && C[31] == 1'b1)
-				Overflow = 1'b1;
-			else
-				Overflow = 1'b0;
-		end
-		else if(ALU1Op == 4'b0001) begin 
-			if(A[31] == 1'b1 && B[31] == 1'b0 && C[31] == 1'b0)
-				Overflow = 1'b1;
-			else if(A[31] == 1'b0 && B[31] == 1'b1 && C[31] == 1'b1)
-				Overflow = 1'b1;
-			else
-				Overflow = 1'b0;
-		end
-		else
-			Overflow = 1'b0;
+	assign add_overflow = {A[31],B[31],add_result[31]};
+	assign sub_overflow = {A[31],B[31],sub_result[31]};
+
+	always@(ALU1Op,add_overflow, sub_overflow)
+		case(ALU1Op)
+		4'b0000:
+			case(add_overflow)
+				3'b110, 3'b001:		Overflow = 1'b1;
+				default:			Overflow = 1'b0;
+			endcase
+		4'b0001:
+			case(sub_overflow)
+				3'b100, 3'b011:		Overflow = 1'b1;
+				default:			Overflow = 1'b0;
+			endcase
+		default:	Overflow = 1'b0;
+		endcase
 
 endmodule

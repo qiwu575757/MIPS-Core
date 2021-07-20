@@ -87,22 +87,15 @@ module mux5(
 endmodule
 
 module mux6(
-	RHLOut, ALU1Out, PC_8, 
-	Imm32, MUX6Sel, 
+	MUX11Out, ALU1Out,  MUX6Sel, 
 	
 	out
 	);
-	input[31:0] RHLOut, ALU1Out, PC_8, Imm32;
-	input[1:0] MUX6Sel;
-	output reg[31:0] out;
+	input[31:0] MUX11Out, ALU1Out;
+	input[2:0] MUX6Sel;
+	output[31:0] out;
 	
-	always@(RHLOut, ALU1Out, PC_8, Imm32, MUX6Sel)
-		case(MUX6Sel)
-			2'b00:	out = RHLOut;
-			2'b01:	out = Imm32;
-			2'b10:	out = ALU1Out;
-			default:out = PC_8;
-		endcase
+	assign out = (MUX6Sel == 3'b010) ? ALU1Out : MUX11Out; 
 
 endmodule
 
@@ -164,4 +157,28 @@ module mux10(WB_MUX2Out, WB_DMOut, WB_MUX2Sel, MUX10Out);
 	output[31:0] MUX10Out;
 
 	assign MUX10Out = (WB_MUX2Sel == 3'b100) ? WB_DMOut : WB_MUX2Out;
+endmodule
+
+module mux11(Imm32, PC, RHLOut, EX_MUX2Sel, MUX11Out);
+	input[31:0] Imm32;
+	input[31:0] PC;
+	input[31:0] RHLOut;
+	input[2:0] EX_MUX2Sel;
+
+	output reg[31:0] MUX11Out;
+
+	always@(EX_MUX2Sel, RHLOut, Imm32, PC)
+		case(EX_MUX2Sel)
+			3'b000:	MUX11Out = RHLOut;
+			3'b001:	MUX11Out = Imm32;
+			default:MUX11Out = PC + 8;
+		endcase
+	/*	MUX2Sel:
+		3'b000:	RHLOut
+		3'b001:	Imm32
+		3'b010:	ALU1Out
+		3'b011:	PC+8
+		3'b100:	DMOut
+		3'b101:	CP0Out
+	*/
 endmodule
