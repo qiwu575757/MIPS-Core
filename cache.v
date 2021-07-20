@@ -543,7 +543,7 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     /*assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});*/
     assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
-                            && |({tag,index,offset}^{tag_WB,index_WB,offset_WB});
+                            && |(index^index_WB);
     assign write_bypass1 = hit_write && DMRd
                             && ~|({tag,index,offset}^{tag_RB,index_RB,offset_RB});
     /*assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
