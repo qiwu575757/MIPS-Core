@@ -489,7 +489,7 @@ instr_fetch_pre U_INSTR_FETCH(
     );
 
 icache U_ICACHE(
-	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush),
+	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush), .stall(isStall),
 	// cpu && cache
 	/*input*/
   	.valid(PF_icache_valid), .index(NPC[11:6]), .tag(IF_PPC[31:12]), .offset(NPC[5:0]),
@@ -744,7 +744,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
         MEM1_wdata
 	);
 
-dcache U_DCACHE(.clk(clk), .resetn(rst),
+dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(~(IF_data_ok&MEM_unCache_data_ok)),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_ALU1Out[11:6]),
     .tag(MEM2_Paddr[31:12]), .offset(MEM1_ALU1Out[5:0]),.wstrb(MEM1_dCache_wstrb), .wdata(MEM1_wdata),
