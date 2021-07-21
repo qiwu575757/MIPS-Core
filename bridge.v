@@ -7,13 +7,13 @@ module  bridge_dm(
 
 	dout
 );
-	input [31:0] addr2;
-	input [31:0] Din;
-	input [2:0] DMSel2;
-	input [1:0] MEM2_LoadOp;
-	input [31:0] MEM2_GPR_RT;
-
-	output reg [31:0] dout;
+	input [31:0] 		addr2;
+	input [31:0] 		Din;
+	input [2:0] 		DMSel2;
+	input [1:0] 		MEM2_LoadOp;
+	input [31:0] 		MEM2_GPR_RT;
+	
+	output reg [31:0] 	dout;
 
 always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
 	case (MEM2_LoadOp)
@@ -52,7 +52,6 @@ always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
 
 end
 
-
 endmodule
 
 
@@ -82,53 +81,52 @@ module bridge_RHL(
 		MULOut,
 		MUL_sign
 	);
-input aclk;
-input aresetn;
-input [31:0 ]A;
-input [31:0] B;
-input [3:0] ALU2Op;
-input start;
-input EX_RHLWr;
-input[1:0] EX_RHLSel_Wr;
-input EX_RHLSel_Rd;
-input MEM_Exception;
-input MEM_eret_flush;
-input dcache_stall;
+input 			aclk;
+input 			aresetn;
+input [31:0] 	A;
+input [31:0] 	B;
+input [3:0] 	ALU2Op;
+input 			start;
+input 			EX_RHLWr;
+input [1:0] 	EX_RHLSel_Wr;
+input 			EX_RHLSel_Rd;
+input 			MEM_Exception;
+input 			MEM_eret_flush;
+input 			dcache_stall;
 
-output isBusy;
-output[31:0] RHLOut;
-output[31:0] MULOut;
-output reg MUL_sign;
+output 			isBusy;
+output [31:0] 	RHLOut;
+output [31:0] 	MULOut;
+output reg 		MUL_sign;
 
-wire [63:0] divider_sign_out;
-wire [63:0] divider_unsign_out;
-wire [63:0] multi_sign_out;
-wire [63:0] multi_unsign_out;
-wire [63:0] multi_sign_out_temp;
-wire [63:0] multi_unsign_out_temp;
-reg [63:0] RHL;
-reg [63:0] TEMP_RHL;
+wire [63:0] 	divider_sign_out;
+wire [63:0] 	divider_unsign_out;
+wire [63:0] 	multi_sign_out;
+wire [63:0] 	multi_unsign_out;
+wire [63:0] 	multi_sign_out_temp;
+wire [63:0] 	multi_unsign_out_temp;
+wire 			m_axis_dout_tvalid_sign;
+wire 			m_axis_dout_tvalid_unsign;
+wire 			multiplier_signed_valid;
+wire 			multiplier_unsigned_valid;
 
-reg present_state_div;
-reg next_state_div;
-reg present_state_mult;
-reg next_state_mult;
-reg present_state_multu;
-reg next_state_multu;
-reg [3:0] Temp_ALU2Op;
-
-wire m_axis_dout_tvalid_sign;
-wire m_axis_dout_tvalid_unsign;
-wire multiplier_signed_valid;
-wire multiplier_unsigned_valid;
-assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
-assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写好几次
+reg  [63:0] 	RHL;
+reg  [63:0] 	TEMP_RHL;
+reg [3:0] 		Temp_ALU2Op;
+reg 			present_state_div;
+reg 			next_state_div;
+reg 			present_state_mult;
+reg 			next_state_mult;
+reg 			present_state_multu;
+reg 			next_state_multu;
+reg [2:0] 		counter;
 
 /*
-				MULT: 	ALU2Op <= 4'b0000;		
-				MULTU: 	ALU2Op <= 4'b0001;		
-				DIVU: 	ALU2Op <= 4'b0010;		
-				DIV: 	ALU2Op <= 4'b0011;	
+	Control signals:
+				MULT: 	ALU2Op <= 4'b0000;
+				MULTU: 	ALU2Op <= 4'b0001;
+				DIVU: 	ALU2Op <= 4'b0010;
+				DIV: 	ALU2Op <= 4'b0011;
 
 				maddu:	ALU2Op <= 4'b0100;
 				madd:	ALU2Op <= 4'b0101;
@@ -137,13 +135,12 @@ assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写�
 
 				mul:	ALU2Op <= 4'b1000;
 */
+assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
+assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写好几次
 assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
-
-
-reg[2:0] counter;
 
 always@(posedge aclk)
 	if(!aresetn || counter == 3'd4 )
@@ -170,7 +167,7 @@ always @(posedge aclk) begin
 		Temp_ALU2Op <= ALU2Op;
 end
 
-//the signal is signing the mul is working 
+//the signal is signing the mul is working
 always @(posedge aclk) begin
 	if (!aresetn)
 		MUL_sign <= 1'b0;
@@ -185,7 +182,7 @@ assign multi_sign_out = //此处dache_stall是为了在进行madd指令计算结
 		(Temp_ALU2Op == 4'b0110&~dcache_stall) ? TEMP_RHL-multi_sign_out_temp	:
 										multi_sign_out_temp;
 
-assign multi_unsign_out = 
+assign multi_unsign_out =
 		(Temp_ALU2Op == 4'b0100&~dcache_stall) ? TEMP_RHL+multi_unsign_out_temp	:
 		(Temp_ALU2Op == 4'b0111&~dcache_stall) ? TEMP_RHL-multi_unsign_out_temp	:
 										multi_unsign_out_temp;
@@ -315,7 +312,7 @@ Divider_Unsighed divider_unsign (
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
-assign multiplier_signed_valid = start && (ALU2Op==4'b0001 || ALU2Op==4'b0101 || ALU2Op==4'b0110 || ALU2Op==4'b1000) 
+assign multiplier_signed_valid = start && (ALU2Op==4'b0001 || ALU2Op==4'b0101 || ALU2Op==4'b0110 || ALU2Op==4'b1000)
 						&& !MEM_Exception && !MEM_eret_flush &~dcache_stall;
 multiplier_signed multiplier_signed(
 	.CLK(aclk),
@@ -325,7 +322,7 @@ multiplier_signed multiplier_signed(
 	.P(multi_sign_out_temp)
 );
 
-assign multiplier_unsigned_valid = start &&  (ALU2Op==4'b0000 || ALU2Op==4'b0100 || ALU2Op==4'b0111) 
+assign multiplier_unsigned_valid = start &&  (ALU2Op==4'b0000 || ALU2Op==4'b0100 || ALU2Op==4'b0111)
 					&& !MEM_Exception && !MEM_eret_flush &~dcache_stall;
 multiplier_unsigned multiplier_unsigned(
 	.CLK(aclk),

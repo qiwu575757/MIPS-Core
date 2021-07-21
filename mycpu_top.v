@@ -14,14 +14,14 @@ module mycpu_top(
     arprot    ,
     arvalid   ,
     arready   ,
-                
+
     rid       ,
     rdata     ,
     rresp     ,
     rlast     ,
     rvalid    ,
     rready    ,
-               
+
     awid      ,
     awaddr    ,
     awlen     ,
@@ -32,14 +32,14 @@ module mycpu_top(
     awprot    ,
     awvalid   ,
     awready   ,
-    
+
     wid       ,
     wdata     ,
     wstrb     ,
     wlast     ,
     wvalid    ,
     wready    ,
-    
+
     bid       ,
     bresp     ,
     bvalid    ,
@@ -60,7 +60,7 @@ module mycpu_top(
 // 时钟与复位信号
     input aclk      ;
     input aresetn   ;  //low active
-// 读请求通道 
+// 读请求通道
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -71,8 +71,8 @@ module mycpu_top(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应通道         
-    input [ 3:0]    rid       ;  
+//读相应通道
+    input [ 3:0]    rid       ;
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
@@ -125,14 +125,14 @@ mips U_MIPS(
     arprot    ,
     arvalid   ,
     arready   ,
-                
+
     rid       ,
     rdata     ,
     rresp     ,
     rlast     ,
     rvalid    ,
     rready    ,
-               
+
     awid      ,
     awaddr    ,
     awlen     ,
@@ -143,14 +143,14 @@ mips U_MIPS(
     awprot    ,
     awvalid   ,
     awready   ,
-    
+
     wid       ,
     wdata     ,
     wstrb     ,
     wlast     ,
     wvalid    ,
     wready    ,
-    
+
     bid       ,
     bresp     ,
     bvalid    ,
@@ -163,4 +163,4 @@ mips U_MIPS(
     debug_wb_rf_wdata
 );
 
-endmodule 
+endmodule

@@ -8,22 +8,26 @@ module npc(
 	PC_Flush, MEM1_Flush, MEM2_Flush
 	);
 
-	input[31:0] PC, ret_addr, EPC;
-	input[25:0] Imm;
-	input[1:0] NPCOp;
-	input PCWr;
-	input MEM_eret_flush;
-	input MEM_ex,MEM1_TLBRill_Exc,WB_TLB_flush;
-	input [31:0] MEM2_PC;
-	input can_go;
+	input [31:0] 	PC;
+	input [31:0] 	ret_addr;
+	input [31:0] 	EPC;
+	input [25:0] 	Imm;
+	input [1:0] 	NPCOp;
+	input 			PCWr;
+	input 			MEM_eret_flush;
+	input 			MEM_ex;
+	input 			MEM1_TLBRill_Exc;
+	input 			WB_TLB_flush;
+	input [31:0] 	MEM2_PC;
+	input 			can_go;
 
-	output reg[31:0] NPC;
-	output IF_Flush;
-	output ID_Flush;
-	output EX_Flush;
-	output PC_Flush;
-	output MEM1_Flush;
-	output MEM2_Flush;
+	output reg [31:0] NPC;
+	output 			IF_Flush;
+	output 			ID_Flush;
+	output 			EX_Flush;
+	output 			PC_Flush;
+	output 			MEM1_Flush;
+	output 			MEM2_Flush;
 
 	always@(PC,Imm,ret_addr,NPCOp, MEM_eret_flush, MEM_ex, EPC) begin
 		if (MEM_eret_flush)

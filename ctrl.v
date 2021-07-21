@@ -10,62 +10,64 @@
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
 		LoadOp,StoreOp,movz_movn,Branch_flush
 	);
-	input clk;
-	input rst;
-	input [5:0] OP;
-	input [5:0] Funct;
-	input [4:0] rs;
-	input [4:0] rt;
-	input [4:0] rd;
-	input CMPOut1;
-	input [1:0] CMPOut2;
-	input EXE_isBranch;
-	input Interrupt;
-	input Temp_ID_Excetion;
-	input IF_Flush;
-	input [4:0] Temp_ID_ExcCode;
-	input ID_TLB_Exc;
-	input CMPOut3;
-
-	output reg [1:0] MUX1Sel;
-	output reg [2:0] MUX2Sel;
-	output reg MUX3Sel;
-	output reg RFWr;
-	output reg RHLWr;
-	output reg DMWr;
-	output reg DMRd;
-	output reg RHLSel_Rd;
-	output reg B_JOp;
-	output reg [1:0] NPCOp;
-	output reg [1:0] EXTOp;
-	output reg [4:0] ALU1Op;
-	output reg ALU1Sel;
-	output reg [3:0] ALU2Op;
-	output reg [1:0] RHLSel_Wr;
-	output reg [2:0] DMSel;
-	output reg eret_flush;
-	output reg CP0WrEn;
-	output reg CP0Rd;
-	output reg ID_Exception;
-	output reg [4:0] ID_ExcCode;
-	output isBD;
-	output reg isBranch;
-	output reg start;
-	output reg RHL_visit;
-	output reg dcache_en;
-	output reg ID_MUX11Sel;
-	output ID_MUX12Sel;
-	output reg ID_tlb_searchen;
-	output TLB_flush,TLB_readen,TLB_writeen;
-	output reg [1:0] LoadOp,StoreOp;
-	output  movz_movn;
-	output reg Branch_flush;
-
-
-	wire ri;			//reserved instr
-	reg rst_sign;
-	reg Trap_Op;
-
+	input 			clk;
+	input 			rst;
+	input [5:0] 	OP;
+	input [5:0] 	Funct;
+	input [4:0] 	rs;
+	input [4:0] 	rt;
+	input [4:0] 	rd;
+	input 			CMPOut1;
+	input [1:0] 	CMPOut2;
+	input 			EXE_isBranch;
+	input 			Interrupt;
+	input 			Temp_ID_Excetion;
+	input 			IF_Flush;
+	input [4:0] 	Temp_ID_ExcCode;
+	input 			ID_TLB_Exc;
+	input 			CMPOut3;
+	
+	output reg [1:0]MUX1Sel;
+	output reg [2:0]MUX2Sel;
+	output reg 		MUX3Sel;
+	output reg 		RFWr;
+	output reg 		RHLWr;
+	output reg 		DMWr;
+	output reg 		DMRd;
+	output reg 		RHLSel_Rd;
+	output reg 		B_JOp;
+	output reg [1:0]NPCOp;
+	output reg [1:0]EXTOp;
+	output reg [4:0]ALU1Op;
+	output reg 		ALU1Sel;
+	output reg [3:0]ALU2Op;
+	output reg [1:0]RHLSel_Wr;
+	output reg [2:0]DMSel;
+	output reg 		eret_flush;
+	output reg 		CP0WrEn;
+	output reg 		CP0Rd;
+	output reg 		ID_Exception;
+	output reg [4:0]ID_ExcCode;
+	output 			isBD;
+	output reg 		isBranch;
+	output reg 		start;
+	output reg 		RHL_visit;
+	output reg 		dcache_en;
+	output reg 		ID_MUX11Sel;
+	output 			ID_MUX12Sel;
+	output reg 		ID_tlb_searchen;
+	output 			TLB_flush;
+	output			TLB_readen;
+	output			TLB_writeen;
+	output reg [1:0]StoreOp;
+	output reg [1:0]LoadOp;
+	output  		movz_movn;
+	output reg 		Branch_flush;
+	
+	wire 			ri;			//reserved instr
+	reg 			rst_sign;
+	reg 			Trap_Op;
+	
 	always @(posedge clk) begin
 		if (!rst)
 			rst_sign <= 1'b1;

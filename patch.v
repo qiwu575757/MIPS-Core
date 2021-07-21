@@ -1,54 +1,65 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    NPC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,
-    isStall,TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,
-    WB_TLB_flush,Config_K0_out,Branch_flush,
+    NPC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
+    TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
+    Config_K0_out,Branch_flush,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
     PF_uncache_valid
     );
-    input[31:0] NPC;
-    input PCWr;
-    input s0_found,s0_v;
-    input [19:0] s0_pfn;
-    input isStall,TLB_flush, EX_TLB_flush, MEM1_TLB_flush,MEM2_TLB_flush, WB_TLB_flush;
-    input IF_uncache_data_ok;
-    input [2:0] Config_K0_out, s0_c;
-    input Branch_flush;
+    input [31:0]    NPC;
+    input           PCWr;
+    input           s0_v;
+    input           s0_found;
+    input [19:0]    s0_pfn;
+    input           isStall;
+    input           TLB_flush;
+    input           EX_TLB_flush;
+    input           MEM1_TLB_flush;
+    input           MEM2_TLB_flush;
+    input           WB_TLB_flush;
+    input           IF_uncache_data_ok;
+    input [2:0]     s0_c;
+    input [2:0]     Config_K0_out;
+    input           Branch_flush;
 
-    output PF_AdEL,PF_TLB_Exc,PF_TLBRill_Exc,PF_Exception;
-    output [4:0] PF_ExcCode;
-    output [31:0] PPC;
-    output PF_valid;
-    output Invalidate_signal;
-    output PF_icache_sel;
-    output PF_icache_valid;
-    output PF_uncache_valid;
+    output          PF_AdEL;
+    output          PF_TLB_Exc;
+    output          PF_TLBRill_Exc;
+    output          PF_Exception;
+    output [4:0]    PF_ExcCode;
+    output [31:0]   PPC;
+    output          PF_valid;
+    output          Invalidate_signal;
+    output          PF_icache_sel;
+    output          PF_icache_valid;
+    output          PF_uncache_valid;
 
     wire mapped;
     wire kseg0, kseg1;
 
+    /*Exception generation*/
     //the tlb exception should influence the cache and uncache valid or not
-    assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
     assign mapped = ( ~NPC[31] || (NPC[31]&NPC[30]) ) ? 1 : 0;
-    assign 	PF_TLBRill_Exc	= ~PF_AdEL & mapped&(!s0_found) & PCWr;
-    assign  PF_TLB_Exc   = mapped & (!s0_found || (s0_found&!s0_v) ) & !PF_AdEL;//tlbl
+    assign PPC =
+		!mapped ? {3'b000,NPC[28:0]} : {s0_pfn,NPC[11:0]};
 
+    assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
+    assign PF_TLBRill_Exc	= ~PF_AdEL & mapped & (!s0_found) & PCWr;
+    assign PF_TLB_Exc   = mapped & (!s0_found || (s0_found&!s0_v) ) & !PF_AdEL;//tlbl
     assign PF_Exception = PF_AdEL | PF_TLB_Exc;
     assign PF_ExcCode = 	 PF_AdEL ? `AdEL :
                             PF_TLB_Exc ? `TLBL : 5'b0;
 
-    assign PPC =
-		!mapped ? {3'b000,NPC[28:0]} : {s0_pfn,NPC[11:0]};
-
-    //icache sel
+    /*icache sel*/
     assign kseg0 = (NPC[31:29] == 3'b100);
     assign kseg1 = (NPC[31:29] == 3'b101);
     //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
     assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
 
+    /* dcache control signal*/
     assign PF_valid = !isStall&!PF_Exception
             &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush;
     assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
@@ -59,53 +70,58 @@ module instr_fetch_pre(
 endmodule
 
 
-
 module mem1_cache_prep(
-    MEM1_dcache_en,MEM1_eret_flush,
-    MEM1_ALU1Out, MEM1_DMWr, MEM1_DMSel, MEM1_RFWr,
-    MEM1_Overflow, Temp_M1_Exception,
-    MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,
-    s1_d,s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,
+    MEM1_dcache_en,MEM1_eret_flush,MEM1_ALU1Out, MEM1_DMWr,
+    MEM1_DMSel, MEM1_RFWr,MEM1_Overflow, Temp_M1_Exception,
+    MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,s1_d,
+    s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,
     Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,MEM1_LoadOp,
     MEM1_StoreOp,MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
 
-    MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,
-    DMWen_dcache, MEM1_dCache_wstrb,MEM1_ExcCode,
-    MEM1_Exception,MEM1_badvaddr,MEM1_TLBRill_Exc,MEM1_TLB_Exc,
-    MEM1_uncache_valid, MEM1_DMen,MEM1_wdata
+    MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
+    MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
+    MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
+    MEM1_wdata
     );
-    input MEM1_dcache_en;//MEM1_dcache_en = 1 => load or store
-    input MEM1_eret_flush;
-    input[31:0] MEM1_ALU1Out;
-    input MEM1_DMWr;
-    input[2:0] MEM1_DMSel;
-    input MEM1_Overflow;
-    input Temp_M1_Exception;
-    input MEM1_DMRd;
-    input[4:0] Temp_M1_ExcCode;
-    input[31:0] MEM1_PC;
-    input s1_found,s1_v;
-    input s1_d,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,Temp_MEM1_TLBRill_Exc;
-    input [19:0] s1_pfn;
-    input MEM_unCache_data_ok;
-    input MEM1_RFWr;
-    input [1:0] MEM1_LoadOp,MEM1_StoreOp;
-    input [31:0] MEM1_GPR_RT;
-    input Interrupt;
-    input [2:0] s1_c, Config_K0_out;
-    input MEM1_Trap;
+    input           MEM1_dcache_en;//MEM1_dcache_en = 1 => load or store
+    input           MEM1_eret_flush;
+    input [31:0]    MEM1_ALU1Out;
+    input           MEM1_DMWr;
+    input [2:0]     MEM1_DMSel;
+    input           MEM1_Overflow;
+    input           Temp_M1_Exception;
+    input           MEM1_DMRd;
+    input[4:0]      Temp_M1_ExcCode;
+    input[31:0]     MEM1_PC;
+    input           s1_found;
+    input           s1_v;
+    input           s1_d;
+    input           Temp_MEM1_TLB_Exc;
+    input           IF_iCache_data_ok;
+    input           Temp_MEM1_TLBRill_Exc;
+    input [19:0]    s1_pfn;
+    input           MEM_unCache_data_ok;
+    input           MEM1_RFWr;
+    input [1:0]     MEM1_LoadOp;
+    input [1:0]     MEM1_StoreOp;
+    input [31:0]    MEM1_GPR_RT;
+    input           Interrupt;
+    input [2:0]     Config_K0_out;
+    input [2:0]     s1_c;
+    input           MEM1_Trap;
 
-    output[31:0] MEM1_Paddr;
-    output MEM1_cache_sel;
-    output MEM1_dcache_valid;
-    output DMWen_dcache;
-    output[3:0] MEM1_dCache_wstrb;
+    output [31:0]   MEM1_Paddr;
+    output          MEM1_cache_sel;
+    output          MEM1_dcache_valid;
+    output          DMWen_dcache;
+    output [3:0]    MEM1_dCache_wstrb;
     output reg[4:0] MEM1_ExcCode;
     output reg MEM1_Exception;
     output reg[31:0] MEM1_badvaddr;
-    output  MEM1_TLBRill_Exc,MEM1_TLB_Exc;
-    output MEM1_uncache_valid;
-    output MEM1_DMen;
+    output          MEM1_TLBRill_Exc;
+    output          MEM1_TLB_Exc;
+    output          MEM1_uncache_valid;
+    output          MEM1_DMen;
     output reg [31:0] MEM1_wdata;
 
     wire data_mapped;
@@ -116,8 +132,11 @@ module mem1_cache_prep(
     wire AdES_sel, AdEL_sel;
 
     assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30])) & MEM1_dcache_en;//load or store
-    assign valid = MEM1_dcache_en &IF_iCache_data_ok;
-	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
+    assign MEM1_Paddr =
+		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} :
+                {s1_pfn,MEM1_ALU1Out[11:0]} ;
+
+    /*Exception generation*/
     /*
     Explain:
         valid --> need to use dcache
@@ -126,21 +145,19 @@ module mem1_cache_prep(
         s1_found&!s1_v --> TLB Invalid
         s1_found&s1_v&!s1_d --> TLB Mod
     */
-    assign MEM1_TLB_Exc = tlbl | tlbs | tlbmod | Temp_MEM1_TLB_Exc;//include tlb rill,tlb invaild
+    assign valid = MEM1_dcache_en &IF_iCache_data_ok;
+	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
 
-    assign tlbl = data_mapped & ( !DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//load
-    assign tlbs = data_mapped & (DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//store
+    assign tlbl   = data_mapped & ( !DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//load
+    assign tlbs   = data_mapped & ( DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//store
     assign tlbmod = data_mapped & ( DMWen_dcache & (s1_found&s1_v&!s1_d) ) & !Temp_M1_Exception ;//store
-
-     assign MEM1_TLB_ExCode =
+    assign MEM1_TLB_Exc = tlbl | tlbs | tlbmod | Temp_MEM1_TLB_Exc;//include tlb rill,tlb invaild
+    assign MEM1_TLB_ExCode =
                               tlbl      ? `TLBL      :
                               tlbs      ? `TLBS      :
                               tlbmod    ? `TLBMod    :
                               Temp_MEM1_TLB_Exc ? Temp_M1_ExcCode :
                                         5'b0;
-    assign MEM1_Paddr =
-		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} :
-                {s1_pfn,MEM1_ALU1Out[11:0]} ;
 
     //dcache sel
     assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
@@ -148,14 +165,6 @@ module mem1_cache_prep(
     assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)));
     //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
-
-    //assign MEM1_dcache_valid_temp = MEM1_dcache_en && ~MEM1_cache_sel;
-    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;//0->load,1->store
-    assign MEM1_dcache_valid = MEM1_dcache_en & IF_iCache_data_ok & !MEM1_Exception &
-                        !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel;
-
-    assign MEM1_uncache_valid = MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception & !MEM1_eret_flush;
-    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
     //Exception Sel
     assign AdES_sel =
@@ -204,9 +213,15 @@ module mem1_cache_prep(
 		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地址有关的例外其出错地址一定为其PC
 		end
 
-// 以下这些东西可以封装成翻译模块，或直接用控制器生成对应信号
-// set writeen signal and store data
-    assign MEM1_dCache_wstrb=
+    /* dcache control signal*/
+    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;//0->load,1->store
+    assign MEM1_dcache_valid = MEM1_dcache_en & IF_iCache_data_ok & !MEM1_Exception &
+                        !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel;
+    assign MEM1_uncache_valid = MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception & !MEM1_eret_flush;
+    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
+
+/* set writeen signal and store data */
+    assign MEM1_dCache_wstrb =
                     (~DMWen_dcache)         ?   4'b0  :
                         (MEM1_StoreOp == 2'b00)  ?
                                 (
@@ -236,6 +251,7 @@ module mem1_cache_prep(
                                     MEM1_Paddr[1:0]==2'b10 ? 4'b1100 :
                                                     4'b1000
                                 ) ;
+
     always @(MEM1_StoreOp,MEM1_dCache_wstrb,MEM1_GPR_RT) begin
         if ( MEM1_StoreOp == 2'b10)
         begin
@@ -279,35 +295,35 @@ module cache_select_dm(
     cache_Out, MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
     MEM_wr_addr, MEM_wr_wstrb
                 );
-    input MEM_cache_sel;
-    input[31:0] uncache_Out;
-    input[31:0] dcache_Out;
-    input MEM_unCache_data_ok;
-    input MEM_dCache_data_ok;
-    input MEM_uncache_rd_req;
-    input MEM_dcache_rd_req;
-    input MEM_uncache_wr_req;
-    input MEM_dcache_wr_req;
-    input[2:0] MEM_uncache_rd_type;
-    input[2:0] MEM_dcache_rd_type;
-    input[2:0] MEM_uncache_wr_type;
-    input[2:0] MEM_dcache_wr_type;
-    input[31:0] MEM_uncache_rd_addr;
-    input[31:0] MEM_dcache_rd_addr;
-    input[31:0] MEM_uncache_wr_addr;
-    input[31:0] MEM_dcache_wr_addr;
-    input[3:0] MEM_uncache_wr_wstrb;
-    input[3:0] MEM_dcache_wr_wstrb;
+    input           MEM_cache_sel;
+    input[31:0]     uncache_Out;
+    input[31:0]     dcache_Out;
+    input           MEM_unCache_data_ok;
+    input           MEM_dCache_data_ok;
+    input           MEM_uncache_rd_req;
+    input           MEM_dcache_rd_req;
+    input           MEM_uncache_wr_req;
+    input           MEM_dcache_wr_req;
+    input [2:0]     MEM_uncache_rd_type;
+    input [2:0]     MEM_dcache_rd_type;
+    input [2:0]     MEM_uncache_wr_type;
+    input [2:0]     MEM_dcache_wr_type;
+    input [31:0]    MEM_uncache_rd_addr;
+    input [31:0]    MEM_dcache_rd_addr;
+    input [31:0]    MEM_uncache_wr_addr;
+    input [31:0]    MEM_dcache_wr_addr;
+    input [3:0]     MEM_uncache_wr_wstrb;
+    input [3:0]     MEM_dcache_wr_wstrb;
 
-    output[31:0] cache_Out;
-    output MEM_data_ok;
-    output MEM_rd_req;
-    output MEM_wr_req;
-    output[2:0] MEM_rd_type;
-    output[2:0] MEM_wr_type;
-    output[31:0] MEM_rd_addr;
-    output[31:0] MEM_wr_addr;
-    output[3:0] MEM_wr_wstrb;
+    output [31:0]   cache_Out;
+    output          MEM_data_ok;
+    output          MEM_rd_req;
+    output          MEM_wr_req;
+    output [2:0]    MEM_rd_type;
+    output [2:0]    MEM_wr_type;
+    output [31:0]   MEM_rd_addr;
+    output [31:0]   MEM_wr_addr;
+    output [3:0]    MEM_wr_wstrb;
 
 	assign cache_Out = MEM_cache_sel ? uncache_Out : dcache_Out;
 	assign MEM_data_ok = MEM_cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
@@ -331,35 +347,35 @@ module cache_select_im(
     cache_Out, IF_data_ok, IF_rd_req, IF_wr_req, IF_rd_type, IF_wr_type, IF_rd_addr,
     IF_wr_addr, IF_wr_wstrb
                 );
-    input IF_cache_sel;
-    input[31:0] uncache_Out;
-    input[31:0] icache_Out;
-    input IF_uncache_data_ok;
-    input IF_icache_data_ok;
-    input IF_uncache_rd_req;
-    input IF_icache_rd_req;
-    input IF_uncache_wr_req;
-    input IF_icache_wr_req;
-    input[2:0] IF_uncache_rd_type;
-    input[2:0] IF_icache_rd_type;
-    input[2:0] IF_uncache_wr_type;
-    input[2:0] IF_icache_wr_type;
-    input[31:0] IF_uncache_rd_addr;
-    input[31:0] IF_icache_rd_addr;
-    input[31:0] IF_uncache_wr_addr;
-    input[31:0] IF_icache_wr_addr;
-    input[3:0] IF_uncache_wr_wstrb;
-    input[3:0] IF_icache_wr_wstrb;
+    input           IF_cache_sel;
+    input [31:0]    uncache_Out;
+    input [31:0]    icache_Out;
+    input           IF_uncache_data_ok;
+    input           IF_icache_data_ok;
+    input           IF_uncache_rd_req;
+    input           IF_icache_rd_req;
+    input           IF_uncache_wr_req;
+    input           IF_icache_wr_req;
+    input [2:0]     IF_uncache_rd_type;
+    input [2:0]     IF_icache_rd_type;
+    input [2:0]     IF_uncache_wr_type;
+    input [2:0]     IF_icache_wr_type;
+    input [31:0]    IF_uncache_rd_addr;
+    input [31:0]    IF_icache_rd_addr;
+    input [31:0]    IF_uncache_wr_addr;
+    input [31:0]    IF_icache_wr_addr;
+    input [3:0]     IF_uncache_wr_wstrb;
+    input [3:0]     IF_icache_wr_wstrb;
 
-    output[31:0] cache_Out;
-    output IF_data_ok;
-    output IF_rd_req;
-    output IF_wr_req;
-    output[2:0] IF_rd_type;
-    output[2:0] IF_wr_type;
-    output[31:0] IF_rd_addr;
-    output[31:0] IF_wr_addr;
-    output[3:0] IF_wr_wstrb;
+    output [31:0]   cache_Out;
+    output          IF_data_ok;
+    output          IF_rd_req;
+    output          IF_wr_req;
+    output [2:0]    IF_rd_type;
+    output [2:0]    IF_wr_type;
+    output [31:0]   IF_rd_addr;
+    output [31:0]   IF_wr_addr;
+    output [3:0]    IF_wr_wstrb;
 
 	assign cache_Out = IF_cache_sel ? uncache_Out : icache_Out;
 	assign IF_data_ok = IF_cache_sel ? IF_uncache_data_ok : IF_icache_data_ok;
@@ -374,8 +390,12 @@ module cache_select_im(
 endmodule
 
 
-module debug(MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
-        debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
+module debug(
+    MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
+
+    debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen,
+    debug_wb_rf_wnum
+    );
     input[31:0] MUX10Out;
     input[31:0] WB_PC;
     input WB_RFWr;

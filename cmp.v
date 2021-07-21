@@ -1,7 +1,8 @@
 module cmp(
-	GPR_RS, 
-	GPR_RT, 
-	CMPOut1, 
+	GPR_RS,
+	GPR_RT,
+	
+	CMPOut1,
 	CMPOut2,
 	CMPOut3
 );
@@ -26,5 +27,5 @@ module cmp(
 			CMPOut2 = 2'b10;	//negative
 
 	assign CMPOut3 = GPR_RT==32'b0;
-			
+
 endmodule

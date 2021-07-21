@@ -53,10 +53,10 @@ module mips(
     debug_wb_rf_wdata
 );
 // 中断信号
-    input [5:0] ext_int_in      ;  //interrupt,high active;
+    input [5:0]     ext_int_in      ;  //interrupt,high active;
 // 时钟与复位信�????
-    input clk      ;
-    input rst      ;   //low active
+    input           clk      ;
+    input           rst      ;   //low active
 // 读请求信号�?�道
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
@@ -94,386 +94,387 @@ module mips(
     output          wvalid    ;
     input           wready    ;
 // 写相应信号�?�道
-    input [3:0]     bid       ;
-    input [1:0]     bresp     ;
+    input  [3:0]    bid       ;
+    input  [1:0]    bresp     ;
     input           bvalid    ;
     output          bready    ;
 //debug
-    output  [31:0] debug_wb_pc      ;
-    output  [3:0] debug_wb_rf_wen  ;
-    output  [4:0] debug_wb_rf_wnum ;
-    output  [31:0] debug_wb_rf_wdata;
+    output [31:0]   debug_wb_pc      ;
+    output [3:0]    debug_wb_rf_wen  ;
+    output [4:0]    debug_wb_rf_wnum ;
+    output [31:0]   debug_wb_rf_wdata;
 
 
 	/*signals defination*/
     //--------------Pre_F---------------//
-    wire PF_AdEL;
-	wire PF_Exception;
-	wire [4:0] PF_ExcCode;
-	wire PF_TLBRill_Exc;//imply the TLB Rill Exception,which has a special exception entry
-	wire PF_TLB_Exc;//include TLB Rill�? TLB Invalid, TLB Modified exception
-	wire PF_valid;
-    wire PF_icache_sel;
-    wire PF_icache_valid;
-    wire PF_uncache_valid;
-    wire [18:0]  s0_vpn2;
-    wire         s0_odd_page;
-    wire [ 7:0]  s0_asid;
-    wire          s0_found;
-    wire  [ 3:0]  s0_index;
-    wire  [19:0]  s0_pfn;
-    wire  [ 2:0]  s0_c;
-    wire          s0_d;
-    wire          s0_v;
+    wire            PF_AdEL;
+	wire            PF_Exception;
+	wire [4:0]      PF_ExcCode;
+	wire            PF_TLBRill_Exc;//imply the TLB Rill Exception,which has a special exception entry
+	wire            PF_TLB_Exc;//include TLB Rill�? TLB Invalid, TLB Modified exception
+	wire            PF_valid;
+    wire            PF_icache_sel;
+    wire            PF_icache_valid;
+    wire            PF_uncache_valid;
+    wire [18:0]     s0_vpn2;
+    wire            s0_odd_page;
+    wire [ 7:0]     s0_asid;
+    wire            s0_found;
+    wire [ 3:0]     s0_index;
+    wire [19:0]     s0_pfn;
+    wire [ 2:0]     s0_c;
+    wire            s0_d;
+    wire            s0_v;
 	//--------------IF----------------//
-    wire IF_AdEL;
-    wire[31:0] NPC;
-    wire[31:0] PC;
-    wire[31:0] PPC;
+    wire            IF_AdEL;
+    wire[31:0]      NPC;
+    wire[31:0]      PC;
+    wire[31:0]      PPC;
 
-    wire IF_iCache_addr_ok;
-	wire IF_iCache_data_ok;
-	wire [31:0] IF_iCache_rdata;
-    wire IF_icache_rd_req;
-	wire [2:0]IF_icache_rd_type;
-	wire [31:0] IF_icache_rd_addr;
-	wire  IF_icache_rd_rdy;
-	wire  IF_icache_ret_valid;
-	wire IF_icache_ret_last;
-	wire [31:0] IF_icache_ret_data;
-	wire IF_icache_wr_req;
-	wire [2:0] IF_icache_wr_type;
-	wire [31:0] IF_icache_wr_addr;
-	wire [3:0] IF_icache_wr_wstrb;
-	wire [511:0] IF_icache_wr_data;
-	wire IF_icache_wr_rdy;
-    wire IF_iCache_read_en;
+    wire            IF_iCache_addr_ok;
+	wire            IF_iCache_data_ok;
+	wire [31:0]     IF_iCache_rdata;
+    wire            IF_icache_rd_req;
+	wire [2:0]      IF_icache_rd_type;
+	wire [31:0]     IF_icache_rd_addr;
+	wire            IF_icache_rd_rdy;
+	wire            IF_icache_ret_valid;
+	wire            IF_icache_ret_last;
+	wire [31:0]     IF_icache_ret_data;
+	wire            IF_icache_wr_req;
+	wire [2:0]      IF_icache_wr_type;
+	wire [31:0]     IF_icache_wr_addr;
+	wire [3:0]      IF_icache_wr_wstrb;
+	wire [511:0]    IF_icache_wr_data;
+	wire            IF_icache_wr_rdy;
+    wire            IF_iCache_read_en;
 
-	wire IF_Exception, Temp_IF_Exception;
-	wire [4:0] IF_ExcCode, Temp_IF_ExcCode;
-	wire IF_TLBRill_Exc;
-	wire IF_TLB_Exc;
-	wire IF_valid;
-    wire IF_icache_sel;
-    wire IF_uncache_valid;
-    wire[31:0] IF_PPC;
-    wire[31:0] Instr;
-    wire IF_uncache_data_ok;
-    wire [31:0] IF_uncache_rdata;
-    wire IF_uncache_rd_req;
-    wire IF_uncache_wr_req;
-    wire [2:0] IF_uncache_rd_type;
-    wire [2:0] IF_uncache_wr_type;
-    wire [31:0] IF_uncache_rd_addr;
-    wire [31:0] IF_uncache_wr_addr;
-    wire [31:0] IF_uncache_wr_data;
-    wire [3:0] IF_uncache_wr_wstrb;
-    wire IF_data_ok;
-    wire IF_rd_req;
-    wire IF_wr_req;
-    wire [2:0] IF_rd_type;
-    wire [2:0] IF_wr_type;
-    wire [31:0] IF_rd_addr;
-    wire [31:0] IF_wr_addr;
-    wire [3:0] IF_wr_wstrb;
+	wire            IF_Exception;
+    wire            Temp_IF_Exception;
+	wire [4:0]      Temp_IF_ExcCode;
+    wire [4:0]      IF_ExcCode;
+	wire            IF_TLBRill_Exc;
+	wire            IF_TLB_Exc;
+	wire            IF_valid;
+    wire            IF_icache_sel;
+    wire            IF_uncache_valid;
+    wire [31:0]     IF_PPC;
+    wire [31:0]     Instr;
+    wire            IF_uncache_data_ok;
+    wire [31:0]     IF_uncache_rdata;
+    wire            IF_uncache_rd_req;
+    wire            IF_uncache_wr_req;
+    wire [2:0]      IF_uncache_rd_type;
+    wire [2:0]      IF_uncache_wr_type;
+    wire [31:0]     IF_uncache_rd_addr;
+    wire [31:0]     IF_uncache_wr_addr;
+    wire [31:0]     IF_uncache_wr_data;
+    wire [3:0]      IF_uncache_wr_wstrb;
+    wire            IF_data_ok;
+    wire            IF_rd_req;
+    wire            IF_wr_req;
+    wire [2:0]      IF_rd_type;
+    wire [2:0]      IF_wr_type;
+    wire [31:0]     IF_rd_addr;
+    wire [31:0]     IF_wr_addr;
+    wire [3:0]      IF_wr_wstrb;
     //--------------ID----------------//
-    wire[31:0] ID_PC;
-    wire[31:0] ID_Instr;
-    wire ID_AdEL;
-    wire[31:0] GPR_RS;
-    wire[31:0] GPR_RT;
-    wire[1:0] EXTOp;
-    wire[31:0] Imm32;
-    wire CMPOut1;
-    wire[1:0] CMPOut2;
-    wire[31:0] MUX8Out;
-    wire[31:0] MUX9Out;
-    wire[3:0] MUX7Out;
-    wire ID_dcache_en;
-    wire DMWr;
-    wire RFWr;
-    wire RHLWr;
-    wire[1:0] MUX1Sel;
-    wire[2:0] MUX2_6Sel;
-    wire MUX3Sel;
-    wire DMRd;
-    wire[1:0] NPCOp;
-    wire[4:0] ALU1Op;
-    wire ALU1Sel;
-    wire[3:0] ALU2Op;
-    wire RHLSel_Rd;
-	wire[1:0] RHLSel_Wr;
-    wire[2:0] DMSel;
-    wire B_JOp;
-    wire eret_flush;
-    wire CP0WrEn;
-	wire Exception;
-    wire[4:0] ExcCode;
-    wire isBD;
-    wire isBranch;
-    wire CP0Rd;
-    wire start;
-	wire RHL_visit;
+    wire [31:0]     ID_PC;
+    wire [31:0]     ID_Instr;
+    wire            ID_AdEL;
+    wire [31:0]     GPR_RS;
+    wire [31:0]     GPR_RT;
+    wire [1:0]      EXTOp;
+    wire [31:0]     Imm32;
+    wire            CMPOut1;
+    wire [1:0]      CMPOut2;
+    wire [31:0]     MUX8Out;
+    wire [31:0]     MUX9Out;
+    wire [3:0]      MUX7Out;
+    wire            ID_dcache_en;
+    wire            DMWr;
+    wire            RFWr;
+    wire            RHLWr;
+    wire [1:0]      MUX1Sel;
+    wire [2:0]      MUX2_6Sel;
+    wire            MUX3Sel;
+    wire            DMRd;
+    wire [1:0]      NPCOp;
+    wire [4:0]      ALU1Op;
+    wire            ALU1Sel;
+    wire [3:0]      ALU2Op;
+    wire            RHLSel_Rd;
+	wire [1:0]      RHLSel_Wr;
+    wire [2:0]      DMSel;
+    wire            B_JOp;
+    wire            eret_flush;
+    wire            CP0WrEn;
+	wire            Exception;
+    wire [4:0]      ExcCode;
+    wire            isBD;
+    wire            isBranch;
+    wire            CP0Rd;
+    wire            start;
+	wire            RHL_visit;
 
-    wire Temp_ID_Excetion;
-	wire[4:0] Temp_ID_ExcCode,ID_ExcCode;
-	wire ID_TLBRill_Exc;
-	wire ID_tlb_searchen;
-	wire ID_MUX11Sel, ID_MUX12Sel;
-	wire ID_TLB_Exc;
-	wire TLB_flush;
-	wire TLB_writeen;
-	wire TLB_readen;
-    wire [1:0] LoadOp;
-    wire [1:0] StoreOp;
-    wire CMPOut3;
-    wire Branch_flush;
+    wire            Temp_ID_Excetion;
+	wire [4:0]      ID_ExcCode;
+    wire [4:0]      Temp_ID_ExcCode;
+	wire            ID_TLBRill_Exc;
+	wire            ID_tlb_searchen;
+	wire            ID_MUX12Sel;
+    wire            ID_MUX11Sel;
+	wire            ID_TLB_Exc;
+	wire            TLB_flush;
+	wire            TLB_writeen;
+	wire            TLB_readen;
+    wire [1:0]      LoadOp;
+    wire [1:0]      StoreOp;
+    wire            CMPOut3;
+    wire            Branch_flush;
 	//--------------EX----------------//
-    wire EX_isBranch;
-    wire EX_isBusy;
-    wire EX_eret_flush;
-    wire EX_CP0WrEn;
-    wire EX_Exception;
-    wire[4:0] EX_ExcCode;
-    wire EX_isBD;
-    wire EX_RHLSel_Rd;
-	wire EX_DMWr;
-    wire EX_DMRd;
-    wire EX_MUX3Sel;
-    wire EX_ALU1Sel;
-	wire EX_RFWr;
-    wire EX_RHLWr;
-    wire[3:0] EX_ALU2Op;
-    wire[1:0] EX_MUX1Sel;
-	wire[1:0] EX_RHLSel_Wr;
-    wire[2:0] EX_DMSel;
-    wire[2:0] EX_MUX2Sel;
-    wire[4:0] EX_ALU1Op;
-    wire[4:0] EX_RS;
-    wire[4:0] EX_RT;
-    wire[4:0] EX_RD;
-    wire[4:0] EX_shamt;
-    wire[31:0] EX_PC;
-	wire[31:0] EX_GPR_RS;
-    wire[31:0] EX_GPR_RT;
-    wire[31:0] EX_Imm32;
-    wire[7:0] EX_CP0Addr;
-	wire EX_CP0Rd;
-    wire EX_start;
-    wire EX_dcache_en;
+    wire            EX_isBranch;
+    wire            EX_isBusy;
+    wire            EX_eret_flush;
+    wire            EX_CP0WrEn;
+    wire            EX_Exception;
+    wire [4:0]      EX_ExcCode;
+    wire            EX_isBD;
+    wire            EX_RHLSel_Rd;
+	wire            EX_DMWr;
+    wire            EX_DMRd;
+    wire            EX_MUX3Sel;
+    wire            EX_ALU1Sel;
+	wire            EX_RFWr;
+    wire            EX_RHLWr;
+    wire [3:0]      EX_ALU2Op;
+    wire [1:0]      EX_MUX1Sel;
+	wire [1:0]      EX_RHLSel_Wr;
+    wire [2:0]      EX_DMSel;
+    wire [2:0]      EX_MUX2Sel;
+    wire [4:0]      EX_ALU1Op;
+    wire [4:0]      EX_RS;
+    wire [4:0]      EX_RT;
+    wire [4:0]      EX_RD;
+    wire [4:0]      EX_shamt;
+    wire [31:0]     EX_PC;
+	wire [31:0]     EX_GPR_RS;
+    wire [31:0]     EX_GPR_RT;
+    wire [31:0]     EX_Imm32;
+    wire [7:0]      EX_CP0Addr;
+	wire            EX_CP0Rd;
+    wire            EX_start;
+    wire            EX_dcache_en;
 
-    wire[4:0] MUX1Out;
-    wire[31:0] MUX3Out;
-    wire[31:0] MUX4Out;
-    wire[31:0] MUX5Out;
-    wire[31:0] RHLOut;
-    wire[31:0] ALU1Out;
-    wire Overflow;
-
-	wire[4:0] Temp_EX_ExcCode;
-	wire EX_TLBRill_Exc;
-	wire EX_tlb_searchen;
-	wire EX_MUX11Sel, EX_MUX12Sel;
-	wire EX_TLB_Exc;
-	wire EX_TLB_writeen;
-	wire EX_TLB_readen;
-    wire EX_TLB_flush;
-    wire [1:0] EX_LoadOp;
-    wire [1:0] EX_StoreOp;
-    wire [31:0] MULOut;
-    wire MUL_sign;
-    wire Trap;
+    wire [4:0]      MUX1Out;
+    wire [31:0]     MUX3Out;
+    wire [31:0]     MUX4Out;
+    wire [31:0]     MUX5Out;
+    wire [31:0]     RHLOut;
+    wire [31:0]     ALU1Out;
+    wire            Overflow;
+	wire [4:0]      Temp_EX_ExcCode;
+	wire            EX_TLBRill_Exc;
+	wire            EX_tlb_searchen;
+	wire            EX_MUX12Sel;
+    wire            EX_MUX11Sel;
+	wire            EX_TLB_Exc;
+	wire            EX_TLB_writeen;
+	wire            EX_TLB_readen;
+    wire            EX_TLB_flush;
+    wire [1:0]      EX_LoadOp;
+    wire [1:0]      EX_StoreOp;
+    wire [31:0]     MULOut;
+    wire            MUL_sign;
+    wire            Trap;
 	//-------------MEM1---------------//
-    wire MEM1_eret_flush;
-    wire MEM1_Exception;
-    wire[31:0] MUX6Out;
-    wire Interrupt;
-    wire[31:0] EPCOut;
-    wire[31:0] CP0Out;
-    wire MEM1_DMWr;
-    wire MEM1_DMRd;
-    wire MEM1_RFWr;
-    wire MEM1_CP0WrEn;
-    wire Temp_M1_Exception;
-    wire[4:0] Temp_M1_ExcCode;
-    wire MEM1_isBD;
-    wire[2:0] MEM1_DMSel;
-    wire[2:0] MEM1_MUX2Sel;
-    wire[4:0] MEM1_RD;
-    wire[31:0] MEM1_PC;
-    wire[31:0] MEM1_RHLOut;
-    wire[31:0] MEM1_ALU1Out;
-    wire[31:0] MEM1_GPR_RT;
-    wire[31:0] MEM1_Imm32;
-    wire[7:0] MEM1_CP0Addr;
-    wire MEM1_CP0Rd;
-    wire MEM1_dcache_en;
-    wire MEM1_Overflow;
-    wire[4:0] MEM1_ExcCode;
-    wire[31:0] MEM1_badvaddr;
-    wire[31:0] MEM1_Paddr;
-    wire MEM1_cache_sel;
-    wire MEM1_dcache_valid;
-    wire DMWen_dcache;
-    wire[3:0] MEM1_dCache_wstrb;
-
-    wire [18:0]  s1_vpn2;
-    wire         s1_odd_page;
-    wire [ 7:0]  s1_asid;
-
-    wire          s1_found;
-    wire  [ 3:0]  s1_index;
-    wire  [19:0]  s1_pfn;
-    wire  [ 2:0]  s1_c;
-    wire          s1_d;
-    wire          s1_v;
-
-	wire MEM1_TLBRill_Exc, MEM1_TLB_Exc;
-	wire MEM1_MUX12Sel, MEM1_tlb_searchen,MEM1_MUX11Sel;
-	wire MEM1_TLB_flush;
-	wire MEM1_TLB_writeen;
-	wire MEM1_TLB_readen;
-	wire [31:0] Index_out,EntryLo0_out,EntryLo1_out,EntryHi_out,Random_out;
-    wire Temp_MEM1_TLB_Exc,Temp_MEM1_TLBRill_Exc;
-    wire MEM1_uncache_valid;
-    wire MEM1_DMen;
-    wire [1:0] MEM1_LoadOp;
-    wire [1:0] MEM1_StoreOp;
-    wire [31:0] MEM1_wdata;
-    wire [2:0] Config_K0_out;
-    wire [31:0] MEM1_MULOut;
-    wire MEM1_start;
-    wire MEM1_Trap;
+    wire            MEM1_eret_flush;
+    wire            MEM1_Exception;
+    wire [31:0]     MUX6Out;
+    wire            Interrupt;
+    wire [31:0]     EPCOut;
+    wire [31:0]     CP0Out;
+    wire            MEM1_DMWr;
+    wire            MEM1_DMRd;
+    wire            MEM1_RFWr;
+    wire            MEM1_CP0WrEn;
+    wire            Temp_M1_Exception;
+    wire [4:0]      Temp_M1_ExcCode;
+    wire            MEM1_isBD;
+    wire [2:0]      MEM1_DMSel;
+    wire [2:0]      MEM1_MUX2Sel;
+    wire [4:0]      MEM1_RD;
+    wire [31:0]     MEM1_PC;
+    wire [31:0]     MEM1_RHLOut;
+    wire [31:0]     MEM1_ALU1Out;
+    wire [31:0]     MEM1_GPR_RT;
+    wire [31:0]     MEM1_Imm32;
+    wire [7:0]      MEM1_CP0Addr;
+    wire            MEM1_CP0Rd;
+    wire            MEM1_dcache_en;
+    wire            MEM1_Overflow;
+    wire [4:0]      MEM1_ExcCode;
+    wire [31:0]     MEM1_badvaddr;
+    wire [31:0]     MEM1_Paddr;
+    wire            MEM1_cache_sel;
+    wire            MEM1_dcache_valid;
+    wire            DMWen_dcache;
+    wire [3:0]      MEM1_dCache_wstrb;
+    wire [18:0]     s1_vpn2;
+    wire            s1_odd_page;
+    wire [ 7:0]     s1_asid;
+    wire            s1_found;
+    wire [ 3:0]     s1_index;
+    wire [19:0]     s1_pfn;
+    wire [ 2:0]     s1_c;
+    wire            s1_d;
+    wire            s1_v;
+	wire            MEM1_TLB_Exc;
+    wire            MEM1_TLBRill_Exc;
+	wire            MEM1_MUX12Sel;
+    wire            MEM1_tlb_searchen;
+    wire            MEM1_MUX11Sel;
+	wire            MEM1_TLB_flush;
+	wire            MEM1_TLB_writeen;
+	wire            MEM1_TLB_readen;
+	wire [31:0]     Index_out;
+    wire [31:0]     EntryLo0_out;
+    wire [31:0]     EntryLo1_out;
+    wire [31:0]     EntryHi_out;
+    wire [31:0]     Random_out;
+    wire            Temp_MEM1_TLB_Exc;
+    wire            Temp_MEM1_TLBRill_Exc;
+    wire            MEM1_uncache_valid;
+    wire            MEM1_DMen;
+    wire [1:0]      MEM1_LoadOp;
+    wire [1:0]      MEM1_StoreOp;
+    wire [31:0]     MEM1_wdata;
+    wire [2:0]      Config_K0_out;
+    wire [31:0]     MEM1_MULOut;
+    wire            MEM1_start;
+    wire            MEM1_Trap;
 	//-------------MEM2---------------//
-    wire MEM2_RFWr;
-    wire[4:0] MEM2_RD;
-    wire[31:0] MUX2Out;
-    wire[2:0] MEM2_MUX2Sel;
-    wire[31:0] MEM2_PC;
-    wire[31:0] MEM2_ALU1Out;
-    wire[31:0] MEM2_MUX6Out;
-    wire[31:0] MEM2_CP0Out;
-    wire[2:0] MEM2_DMSel;
-    wire MEM2_cache_sel;
-    wire MEM2_Exception;
-    wire MEM2_eret_flush;
-    wire MEM2_dcache_en;
-    wire[31:0] MEM2_Paddr;
-    wire[3:0] MEM2_unCache_wstrb;
-    wire[31:0] MEM2_GPR_RT;
-    wire MEM2_DMen;
-    wire DMWen_uncache;
-    wire MEM2_uncache_valid;
-    wire[31:0] DMOut;
-    wire MEM2_DMRd;
-    wire MEM2_CP0Rd;
-
-    wire MEM2_TLB_writeen;
-	wire MEM2_TLB_readen;
-	wire MEM2_TLB_flush;
-    wire [1:0] MEM2_LoadOp;
-    wire [31:0] MEM2_wdata;
-    wire MEM2_can_go;
+    wire            MEM2_RFWr;
+    wire [4:0]      MEM2_RD;
+    wire [31:0]     MUX2Out;
+    wire [2:0]      MEM2_MUX2Sel;
+    wire [31:0]     MEM2_PC;
+    wire [31:0]     MEM2_ALU1Out;
+    wire [31:0]     MEM2_MUX6Out;
+    wire [31:0]     MEM2_CP0Out;
+    wire [2:0]      MEM2_DMSel;
+    wire            MEM2_cache_sel;
+    wire            MEM2_Exception;
+    wire            MEM2_eret_flush;
+    wire            MEM2_dcache_en;
+    wire [31:0]     MEM2_Paddr;
+    wire [3:0]      MEM2_unCache_wstrb;
+    wire [31:0]     MEM2_GPR_RT;
+    wire            MEM2_DMen;
+    wire            DMWen_uncache;
+    wire            MEM2_uncache_valid;
+    wire [31:0]     DMOut;
+    wire            MEM2_DMRd;
+    wire            MEM2_CP0Rd;
+    wire            MEM2_TLB_writeen;
+	wire            MEM2_TLB_readen;
+	wire            MEM2_TLB_flush;
+    wire [1:0]      MEM2_LoadOp;
+    wire [31:0]     MEM2_wdata;
+    wire            MEM2_can_go;
     //--------------WB----------------//
-    wire[31:0] WB_PC;
-	wire[31:0] WB_MUX2Out;
-	wire[2:0] WB_MUX2Sel;
-	wire[4:0] WB_RD;
-	wire WB_RFWr;
-    wire[31:0] WB_DMOut;
-    wire[31:0] MUX10Out;
+    wire [31:0]     WB_PC;
+	wire [31:0]     WB_MUX2Out;
+	wire [2:0]      WB_MUX2Sel;
+	wire [4:0]      WB_RD;
+	wire            WB_RFWr;
+    wire [31:0]     WB_DMOut;
+    wire [31:0]     MUX10Out;
+	wire            we;//write enable
+    wire [ 3:0]     w_index;
+    wire [18:0]     w_vpn2;
+    wire [ 7:0]     w_asid;
+    wire            w_g;
+    wire [19:0]     w_pfn0;
+    wire [ 2:0]     w_c0;
+    wire            w_d0;
+    wire            w_v0;
+    wire [19:0]     w_pfn1;
+    wire [ 2:0]     w_c1;
+    wire            w_d1;
+    wire            w_v1;
 
-	wire         we;//write enable
-    wire [ 3:0]  w_index;
-    wire [18:0]  w_vpn2;
-    wire [ 7:0]  w_asid;
-    wire         w_g;
-    wire [19:0]  w_pfn0;
-    wire [ 2:0]  w_c0;
-    wire         w_d0;
-    wire         w_v0;
-    wire [19:0]  w_pfn1;
-    wire [ 2:0]  w_c1;
-    wire         w_d1;
-    wire         w_v1;
-
-	wire [ 3:0]  r_index;
-    wire [18:0]  r_vpn2;
-    wire [ 7:0]  r_asid;
-    wire         r_g;
-    wire [19:0]  r_pfn0;
-    wire [ 2:0]  r_c0;
-    wire         r_d0;
-    wire         r_v0;
-    wire [19:0]  r_pfn1;
-    wire [ 2:0]  r_c1;
-    wire         r_d1;
-    wire         r_v1;
-	wire WB_TLB_flush;
-	wire WB_TLB_writeen;
-	wire WB_TLB_readen;
+	wire [ 3:0]     r_index;
+    wire [18:0]     r_vpn2;
+    wire [ 7:0]     r_asid;
+    wire            r_g;
+    wire [19:0]     r_pfn0;
+    wire [ 2:0]     r_c0;
+    wire            r_d0;
+    wire            r_v0;
+    wire [19:0]     r_pfn1;
+    wire [ 2:0]     r_c1;
+    wire            r_d1;
+    wire            r_v1;
+	wire            WB_TLB_flush;
+	wire            WB_TLB_writeen;
+	wire            WB_TLB_readen;
     //-------------ELSE---------------//
-    wire isStall;
-    wire dcache_stall;
-
-    wire MUX7Sel;
-    wire[1:0] MUX8Sel;
-    wire[1:0] MUX9Sel;
-    wire[1:0] MUX4Sel;
-    wire[1:0] MUX5Sel;
-
-    wire PCWr;
-    wire IF_IDWr;
-    wire ID_EXWr;
-    wire EX_MEM1Wr;
-    wire MEM1_MEM2Wr;
-    wire MEM2_WBWr;
-    wire PC_Flush;
-    wire IF_Flush;
-    wire ID_Flush;
-    wire EX_Flush;
-    wire MEM1_Flush;
-    wire MEM2_Flush;
-
-    wire Invalidate_signal;
-
-    wire MEM_dCache_addr_ok;
-    wire MEM_dCache_data_ok;
-    wire[31:0] dcache_Out;
-  	wire MEM_dcache_rd_req;
-    wire[2:0] MEM_dcache_rd_type;
-    wire[31:0] MEM_dcache_rd_addr;
-    wire MEM_dcache_rd_rdy;
-	wire MEM_dcache_ret_valid;
-    wire MEM_dcache_ret_last;
-    wire[31:0] MEM_dcache_ret_data;
-    wire MEM_dcache_wr_req;
-    wire[2:0] MEM_dcache_wr_type;
-    wire[31:0] MEM_dcache_wr_addr;
-	wire[3:0] MEM_dcache_wr_wstrb;
-    wire[511:0] MEM_dcache_wr_data;
-    wire MEM_dcache_wr_rdy;
-
-    wire MEM_unCache_data_ok;
-    wire[31:0] uncache_Out;
-    wire MEM_uncache_rd_req;
-    wire MEM_uncache_wr_req;
-    wire[2:0] MEM_uncache_rd_type;
-    wire[2:0] MEM_uncache_wr_type;
-    wire[31:0] MEM_uncache_rd_addr;
-    wire[31:0] MEM_uncache_wr_addr;
-    wire[3:0] MEM_uncache_wr_wstrb;
-    wire[31:0] MEM_uncache_wr_data;
-
-    wire[31:0] cache_Out;
-    wire MEM_data_ok;
-    wire MEM_rd_req;
-    wire MEM_wr_req;
-    wire[2:0] MEM_rd_type;
-    wire[2:0] MEM_wr_type;
-    wire[31:0] MEM_rd_addr;
-    wire[31:0] MEM_wr_addr;
-    wire[3:0] MEM_wr_wstrb;
+    wire            isStall;
+    wire            dcache_stall;
+    wire            MUX7Sel;
+    wire [1:0]      MUX8Sel;
+    wire [1:0]      MUX9Sel;
+    wire [1:0]      MUX4Sel;
+    wire [1:0]      MUX5Sel;
+    wire            PCWr;
+    wire            IF_IDWr;
+    wire            ID_EXWr;
+    wire            EX_MEM1Wr;
+    wire            MEM1_MEM2Wr;
+    wire            MEM2_WBWr;
+    wire            PC_Flush;
+    wire            IF_Flush;
+    wire            ID_Flush;
+    wire            EX_Flush;
+    wire            MEM1_Flush;
+    wire            MEM2_Flush;
+    wire            Invalidate_signal;
+    wire            MEM_dCache_addr_ok;
+    wire            MEM_dCache_data_ok;
+    wire [31:0]     dcache_Out;
+  	wire            MEM_dcache_rd_req;
+    wire [2:0]      MEM_dcache_rd_type;
+    wire [31:0]     MEM_dcache_rd_addr;
+    wire            MEM_dcache_rd_rdy;
+	wire            MEM_dcache_ret_valid;
+    wire            MEM_dcache_ret_last;
+    wire [31:0]     MEM_dcache_ret_data;
+    wire            MEM_dcache_wr_req;
+    wire [2:0]      MEM_dcache_wr_type;
+    wire [31:0]     MEM_dcache_wr_addr;
+	wire [3:0]      MEM_dcache_wr_wstrb;
+    wire [511:0]    MEM_dcache_wr_data;
+    wire            MEM_dcache_wr_rdy;
+    wire            MEM_unCache_data_ok;
+    wire [31:0]     uncache_Out;
+    wire            MEM_uncache_rd_req;
+    wire            MEM_uncache_wr_req;
+    wire [2:0]      MEM_uncache_rd_type;
+    wire [2:0]      MEM_uncache_wr_type;
+    wire [31:0]     MEM_uncache_rd_addr;
+    wire [31:0]     MEM_uncache_wr_addr;
+    wire [3:0]      MEM_uncache_wr_wstrb;
+    wire [31:0]     MEM_uncache_wr_data;
+    wire [31:0]     cache_Out;
+    wire            MEM_data_ok;
+    wire            MEM_rd_req;
+    wire            MEM_wr_req;
+    wire [2:0]      MEM_rd_type;
+    wire [2:0]      MEM_wr_type;
+    wire [31:0]     MEM_rd_addr;
+    wire [31:0]     MEM_wr_addr;
+    wire [3:0]      MEM_wr_wstrb;
 
 /**************DATA PATH***************/
     //--------------PF----------------//
@@ -507,14 +508,13 @@ icache U_ICACHE(
 	//--------------IF----------------//
 PF_IF U_PF_IF(
 		//input
-		.clk(clk), .rst(rst), .wr(PCWr), .NPC(NPC),
-		.PF_Exception(PF_Exception),.PF_ExcCode(PF_ExcCode),
-		.PF_TLBRill_Exc(PF_TLBRill_Exc),.PF_TLB_Exc(PF_TLB_Exc), .valid(PF_valid),
-        .icache_sel(PF_icache_sel), .uncache_valid(PF_uncache_valid), .PPC(PPC),
-		//input signals and output signals are separate
+		.clk(clk),.rst(rst),.wr(PCWr),.NPC(NPC),.PF_Exception(PF_Exception),
+        .PF_ExcCode(PF_ExcCode),.PF_TLBRill_Exc(PF_TLBRill_Exc),.PF_TLB_Exc(PF_TLB_Exc),
+        .valid(PF_valid),.icache_sel(PF_icache_sel),.uncache_valid(PF_uncache_valid),
+        .PPC(PPC),
+
 		//output
-		.PC(PC),.IF_Exception(IF_Exception),
-		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc),
+		.PC(PC),.IF_Exception(IF_Exception),.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc),
 		.IF_TLB_Exc(IF_TLB_Exc), .IF_valid(IF_valid), .IF_icache_sel(IF_icache_sel),
         .IF_uncache_valid(IF_uncache_valid), .IF_PPC(IF_PPC)
 	);
@@ -532,22 +532,20 @@ uncache_im U_UNCACHE_IM(
 );
 
 cache_select_im U_CACHE_SELECT_IM(
-    IF_icache_sel, IF_uncache_rdata, IF_iCache_rdata, IF_uncache_data_ok, IF_iCache_data_ok,
-    IF_uncache_rd_req, IF_icache_rd_req, IF_uncache_wr_req, IF_icache_wr_req,
-    IF_uncache_rd_type, IF_icache_rd_type, IF_uncache_wr_type, IF_icache_wr_type,
-    IF_uncache_rd_addr, IF_icache_rd_addr, IF_uncache_wr_addr, IF_icache_wr_addr,
-    IF_uncache_wr_wstrb, IF_icache_wr_wstrb,
+    IF_icache_sel, IF_uncache_rdata, IF_iCache_rdata, IF_uncache_data_ok,
+    IF_iCache_data_ok,IF_uncache_rd_req, IF_icache_rd_req, IF_uncache_wr_req,
+    IF_icache_wr_req,IF_uncache_rd_type, IF_icache_rd_type, IF_uncache_wr_type,
+    IF_icache_wr_type,IF_uncache_rd_addr, IF_icache_rd_addr, IF_uncache_wr_addr,
+    IF_icache_wr_addr,IF_uncache_wr_wstrb, IF_icache_wr_wstrb,
 
     Instr, IF_data_ok, IF_rd_req, IF_wr_req, IF_rd_type, IF_wr_type, IF_rd_addr,
     IF_wr_addr, IF_wr_wstrb
-                );
+    );
 
-    // assign IF_ExcCode = Interrupt ? `Int : Temp_IF_ExcCode;
-    // assign IF_Exception = Interrupt&Temp_IF_Exception;
     //--------------ID----------------//
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),
-		.PC(PC), .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception),
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.PC(PC),
+        .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception),
 		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc),.IF_TLB_Exc(IF_TLB_Exc),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
@@ -645,26 +643,26 @@ mux3 U_MUX3(
 	);
 
 mux4 U_MUX4(
-		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX4Sel(MUX4Sel),
+		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out),
+        .data_MEM2(MUX10Out), .MUX4Sel(MUX4Sel),
 
 		.out(MUX4Out)
 	);
 
 mux5 U_MUX5(
-		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX5Sel(MUX5Sel),
+		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out),
+        .data_MEM2(MUX10Out), .MUX5Sel(MUX5Sel),
 
 		.out(MUX5Out)
 	);
 
 bridge_RHL U_ALU2(
-		.aclk(clk),.aresetn(rst),.A(MUX4Out), .B(MUX5Out), .ALU2Op(EX_ALU2Op) ,.start(EX_start),
+		.aclk(clk),.aresetn(rst),.A(MUX4Out),.B(MUX5Out),.ALU2Op(EX_ALU2Op),.start(EX_start),
 		.EX_RHLWr(EX_RHLWr), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
-		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),.dcache_stall(dcache_stall),
+		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),
+        .dcache_stall(dcache_stall),
 
-		.isBusy(EX_isBusy),
-		.RHLOut(RHLOut),
-        .MULOut(MULOut),
-        .MUL_sign(MUL_sign)
+		.isBusy(EX_isBusy),.RHLOut(RHLOut),.MULOut(MULOut),.MUL_sign(MUL_sign)
 	);
 
 alu1 U_ALU1(
@@ -699,9 +697,9 @@ EX_MEM1 U_EX_MEM1(
 	);
 
 CP0 U_CP0(
-		.clk(clk), .rst(rst), .CP0WrEn(MEM1_CP0WrEn), .addr(MEM1_CP0Addr), .data_in(MEM1_GPR_RT),
-		.MEM_Exc(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush), .MEM_bd(MEM1_isBD),
-        .ext_int_in(ext_int_in), .MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
+		.clk(clk),.rst(rst),.CP0WrEn(MEM1_CP0WrEn),.addr(MEM1_CP0Addr),.data_in(MEM1_GPR_RT),
+		.MEM_Exc(MEM1_Exception),.MEM_eret_flush(MEM1_eret_flush),.MEM_bd(MEM1_isBD),
+        .ext_int_in(ext_int_in),.MEM_ExcCode(MEM1_ExcCode),.MEM_badvaddr(MEM1_badvaddr),
 		.MEM_PC(MEM1_PC),.EntryHi_Wren(MEM1_TLB_readen),.EntryLo0_Wren(MEM1_TLB_readen),
 		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
     	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),
@@ -709,8 +707,8 @@ CP0 U_CP0(
         .Index_in({!s1_found,27'b0,s1_index}),
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
-		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),.Random_out(Random_out),
-        .Config_K0_out(Config_K0_out)
+		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),
+        .Random_out(Random_out),.Config_K0_out(Config_K0_out)
 	);
 
 mux11 U_MUX11(
@@ -727,7 +725,8 @@ mux12 U_MUX12(
 
 mux6 U_MUX6(
 		.RHLOut(MEM1_RHLOut), .ALU1Out(MEM1_ALU1Out), .PC(MEM1_PC),
-		.Imm32(MEM1_Imm32),.MEM1_MULOut(MEM1_MULOut),.MUX6Sel({MEM1_start,MEM1_MUX2Sel[1:0]}),
+		.Imm32(MEM1_Imm32),.MEM1_MULOut(MEM1_MULOut),
+        .MUX6Sel({MEM1_start,MEM1_MUX2Sel[1:0]}),
 
 		.out(MUX6Out)
 	);
@@ -759,26 +758,24 @@ dcache U_DCACHE(.clk(clk), .resetn(rst),
 	);
 	//-------------MEM2---------------//
 MEM1_MEM2 U_MEM1_MEM2(
-		.clk(clk), .rst(rst), .PC(MEM1_PC), .RFWr(MEM1_RFWr),.MUX2Sel(MEM1_MUX2Sel),
-		.MUX6Out(MUX6Out), .ALU1Out(MEM1_ALU1Out), .RD(MEM1_RD), .MEM1_Flush(MEM1_Flush),
-        .CP0Out(CP0Out), .MEM1_MEM2Wr(MEM1_MEM2Wr), .DMSel(MEM1_DMSel),
-        .cache_sel(MEM1_cache_sel), .DMWen(DMWen_dcache), .Exception(MEM1_Exception),
-        .eret_flush(MEM1_eret_flush), .uncache_valid(MEM1_uncache_valid), .DMen(MEM1_DMen),
-        .Paddr(MEM1_Paddr), .MEM1_dCache_wstrb(MEM1_dCache_wstrb), .GPR_RT(MEM1_GPR_RT),
-        .DMRd(MEM1_DMRd), .CP0Rd(MEM1_CP0Rd),.MEM1_TLB_flush(MEM1_TLB_flush),
+		.clk(clk),.rst(rst),.PC(MEM1_PC),.RFWr(MEM1_RFWr),.MUX2Sel(MEM1_MUX2Sel),
+		.MUX6Out(MUX6Out),.ALU1Out(MEM1_ALU1Out),.RD(MEM1_RD),.MEM1_Flush(MEM1_Flush),
+        .CP0Out(CP0Out),.MEM1_MEM2Wr(MEM1_MEM2Wr),.DMSel(MEM1_DMSel),
+        .cache_sel(MEM1_cache_sel),.DMWen(DMWen_dcache),.Exception(MEM1_Exception),
+        .eret_flush(MEM1_eret_flush),.uncache_valid(MEM1_uncache_valid),.DMen(MEM1_DMen),
+        .Paddr(MEM1_Paddr),.MEM1_dCache_wstrb(MEM1_dCache_wstrb),.GPR_RT(MEM1_GPR_RT),
+        .DMRd(MEM1_DMRd),.CP0Rd(MEM1_CP0Rd),.MEM1_TLB_flush(MEM1_TLB_flush),
         .MEM1_TLB_writeen(MEM1_TLB_writeen),.MEM1_TLB_readen(MEM1_TLB_readen),
         .MEM1_LoadOp(MEM1_LoadOp),.MEM1_wdata(MEM1_wdata),
 
-		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel),
-		.MEM2_RD(MEM2_RD), .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),
-		.MEM2_MUX6Out(MEM2_MUX6Out), .MEM2_CP0Out(MEM2_CP0Out),
-        .MEM2_DMSel(MEM2_DMSel), .MEM2_cache_sel(MEM2_cache_sel), .MEM2_DMWen(DMWen_uncache),
-        .MEM2_Exception(MEM2_Exception), .MEM2_eret_flush(MEM2_eret_flush),
-        .MEM2_uncache_valid(MEM2_uncache_valid), .MEM2_DMen(MEM2_DMen),
-        .MEM2_Paddr(MEM2_Paddr), .MEM2_unCache_wstrb(MEM2_unCache_wstrb), .MEM2_GPR_RT(MEM2_GPR_RT),
-        .MEM2_DMRd(MEM2_DMRd), .MEM2_CP0Rd(MEM2_CP0Rd),.MEM2_TLB_flush(MEM2_TLB_flush),
-        .MEM2_TLB_writeen(MEM2_TLB_writeen),.MEM2_TLB_readen(MEM2_TLB_readen),.MEM2_LoadOp(MEM2_LoadOp),
-        .MEM2_wdata(MEM2_wdata)
+		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel),.MEM2_RD(MEM2_RD),
+        .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),.MEM2_MUX6Out(MEM2_MUX6Out),
+        .MEM2_CP0Out(MEM2_CP0Out),.MEM2_DMSel(MEM2_DMSel),.MEM2_cache_sel(MEM2_cache_sel),
+        .MEM2_DMWen(DMWen_uncache),.MEM2_Exception(MEM2_Exception),.MEM2_eret_flush(MEM2_eret_flush),
+        .MEM2_uncache_valid(MEM2_uncache_valid),.MEM2_DMen(MEM2_DMen),.MEM2_Paddr(MEM2_Paddr),
+        .MEM2_unCache_wstrb(MEM2_unCache_wstrb),.MEM2_GPR_RT(MEM2_GPR_RT),.MEM2_DMRd(MEM2_DMRd),
+        .MEM2_CP0Rd(MEM2_CP0Rd),.MEM2_TLB_flush(MEM2_TLB_flush),.MEM2_TLB_writeen(MEM2_TLB_writeen),
+        .MEM2_TLB_readen(MEM2_TLB_readen),.MEM2_LoadOp(MEM2_LoadOp),.MEM2_wdata(MEM2_wdata)
 	);
 
 mux2 U_MUX2(
@@ -788,52 +785,52 @@ mux2 U_MUX2(
 	);
 
 uncache_dm U_UNCACHE_DM(
-        .clk(clk), .resetn(rst),
-        .valid(MEM2_uncache_valid), .op(DMWen_uncache), .addr(MEM2_Paddr), .wstrb(MEM2_unCache_wstrb),
-        .wdata(MEM2_wdata), .data_ok(MEM_unCache_data_ok), .rdata(uncache_Out),.MEM2_DMSel(MEM2_DMSel),
-        .rd_rdy(MEM_dcache_rd_rdy), .wr_rdy(MEM_dcache_wr_rdy), .ret_valid(MEM_dcache_ret_valid),
-        .ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),.wr_valid(bvalid),
-        .rd_req(MEM_uncache_rd_req), .wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
+        .clk(clk),.resetn(rst),.valid(MEM2_uncache_valid),.op(DMWen_uncache),.addr(MEM2_Paddr),
+        .wstrb(MEM2_unCache_wstrb),.wdata(MEM2_wdata),.data_ok(MEM_unCache_data_ok),.rdata(uncache_Out),
+        .MEM2_DMSel(MEM2_DMSel),.rd_rdy(MEM_dcache_rd_rdy),.wr_rdy(MEM_dcache_wr_rdy),
+        .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),.wr_valid(bvalid),
+        .rd_req(MEM_uncache_rd_req),.wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
 		.wr_type(MEM_uncache_wr_type), .rd_addr(MEM_uncache_rd_addr), .wr_addr(MEM_uncache_wr_addr),
 		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
 );
 
 bridge_dm U_BRIDGE_DM(
-		 .addr2(MEM2_ALU1Out),
-		 .DMSel2(MEM2_DMSel),
-		 .Din(cache_Out),
-         .MEM2_LoadOp(MEM2_LoadOp),
-         .MEM2_GPR_RT(MEM2_GPR_RT),
+		.addr2(MEM2_ALU1Out),
+		.DMSel2(MEM2_DMSel),
+		.Din(cache_Out),
+        .MEM2_LoadOp(MEM2_LoadOp),
+        .MEM2_GPR_RT(MEM2_GPR_RT),
 
-		 .dout(DMOut)
+		.dout(DMOut)
 	);
 
 cache_select_dm U_CACHE_SELECT_DM(
-				MEM2_cache_sel, uncache_Out, dcache_Out, MEM_unCache_data_ok, MEM_dCache_data_ok,
-                MEM_uncache_rd_req, MEM_dcache_rd_req, MEM_uncache_wr_req, MEM_dcache_wr_req,
-                MEM_uncache_rd_type, MEM_dcache_rd_type, MEM_uncache_wr_type, MEM_dcache_wr_type,
-                MEM_uncache_rd_addr, MEM_dcache_rd_addr, MEM_uncache_wr_addr, MEM_dcache_wr_addr,
-                MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb,
+	    MEM2_cache_sel, uncache_Out, dcache_Out, MEM_unCache_data_ok, MEM_dCache_data_ok,
+        MEM_uncache_rd_req, MEM_dcache_rd_req, MEM_uncache_wr_req, MEM_dcache_wr_req,
+        MEM_uncache_rd_type, MEM_dcache_rd_type, MEM_uncache_wr_type, MEM_dcache_wr_type,
+        MEM_uncache_rd_addr, MEM_dcache_rd_addr, MEM_uncache_wr_addr, MEM_dcache_wr_addr,
+        MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb,
 
-                cache_Out, MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
-                MEM_wr_addr, MEM_wr_wstrb
-                );
+        cache_Out,MEM_data_ok,MEM_rd_req,MEM_wr_req,MEM_rd_type,MEM_wr_type,MEM_rd_addr,
+        MEM_wr_addr,MEM_wr_wstrb
+    );
 
     //--------------WB----------------//
 MEM2_WB U_MEM2_WB(
-            .clk(clk), .rst(rst), .MEM2_WBWr(MEM2_WBWr), .MEM2_Flush(MEM2_Flush),
-			.PC(MEM2_PC), .MUX2Out(MUX2Out), .MUX2Sel(MEM2_MUX2Sel), .RD(MEM2_RD), .RFWr(MEM2_RFWr),
-            .DMOut(DMOut),.MEM2_TLB_flush(MEM2_TLB_flush),.MEM2_TLB_writeen(MEM2_TLB_writeen),
-            .MEM2_TLB_readen(MEM2_TLB_readen),
+        .clk(clk),.rst(rst),.MEM2_WBWr(MEM2_WBWr),.MEM2_Flush(MEM2_Flush),.PC(MEM2_PC),
+        .MUX2Out(MUX2Out),.MUX2Sel(MEM2_MUX2Sel),.RD(MEM2_RD),.RFWr(MEM2_RFWr),.DMOut(DMOut),
+        .MEM2_TLB_flush(MEM2_TLB_flush),.MEM2_TLB_writeen(MEM2_TLB_writeen),
+        .MEM2_TLB_readen(MEM2_TLB_readen),
 
-			.WB_PC(WB_PC), .WB_MUX2Out(WB_MUX2Out), .WB_MUX2Sel(WB_MUX2Sel),
-            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut),.WB_TLB_flush(WB_TLB_flush),
-            .WB_TLB_writeen(WB_TLB_writeen),.WB_TLB_readen(WB_TLB_readen)
-            );
+		.WB_PC(WB_PC),.WB_MUX2Out(WB_MUX2Out),.WB_MUX2Sel(WB_MUX2Sel),
+        .WB_RD(WB_RD),.WB_RFWr(WB_RFWr),.WB_DMOut(WB_DMOut),.WB_TLB_flush(WB_TLB_flush),
+        .WB_TLB_writeen(WB_TLB_writeen),.WB_TLB_readen(WB_TLB_readen)
+        );
 
 mux10 U_MUX10(
-            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
-            .MUX10Out(MUX10Out)
+        .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
+
+        .MUX10Out(MUX10Out)
         );
     //-------------ELSE---------------//
 //physical address tranfer
@@ -1012,7 +1009,11 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
 
 );
 
-debug U_DEBUG(MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
-        debug_wb_rf_wdata, debug_wb_pc, debug_wb_rf_wen, debug_wb_rf_wnum );
+debug U_DEBUG(
+    MUX10Out, WB_PC, WB_RFWr, MEM2_WBWr,WB_RD,
+
+    debug_wb_rf_wdata, debug_wb_pc,
+    debug_wb_rf_wen, debug_wb_rf_wnum
+    );
 
 endmodule

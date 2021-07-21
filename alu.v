@@ -3,24 +3,27 @@ module alu1(
 
 	C,Overflow,Trap
 	);
-	input[31:0] A, B;
-	input[4:0] ALU1Op;
-	input[4:0] Shamt;
-	input ALU1Sel;
+	input [31:0]    A;
+    input [31:0]    B;
+	input [4:0]     ALU1Op;
+	input [4:0]     Shamt;
+	input           ALU1Sel;
 
-	output reg Overflow;
-	output reg[31:0] C;
-    output reg Trap;
+	output reg       Overflow;
+	output reg [31:0]C;
+    output reg       Trap;
 
-	wire[4:0] temp;
-	wire Less;
-    wire Trap_Equal;
-    wire Trap_Less;
-	reg [5:0] CLO_RESULT;
-	reg [5:0] CLZ_RESULT;
+	wire [4:0]      temp;
+	wire            Less;
+    wire            Trap_Equal;
+    wire            Trap_Less;
+	reg [5:0]       CLO_RESULT;
+	reg [5:0]       CLZ_RESULT;
 
 	assign temp = ALU1Sel ? Shamt : A[4:0];
 	assign Less = ((ALU1Op == 5'b01001) && A[31]^B[31]) ? ~(A < B) : (A < B);
+    
+    /*for trap instruction*/
     assign Trap_Equal = A == B;
     assign Trap_Less =
     ( (ALU1Op == 5'b10010 || ALU1Op == 5'b10100) && A[31]^B[31]) ? ~(A < B) : (A < B);//signed/unsigned compare

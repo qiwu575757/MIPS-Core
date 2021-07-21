@@ -1,27 +1,33 @@
 `include "MacroDef.v"
 
 module PF_IF(
-	clk, rst, wr, NPC,
-	PF_Exception,PF_ExcCode,PF_TLBRill_Exc,PF_TLB_Exc, valid, icache_sel, uncache_valid,PPC,
+	clk,rst,wr,NPC,PF_Exception,PF_ExcCode,PF_TLBRill_Exc,
+	PF_TLB_Exc, valid, icache_sel, uncache_valid,PPC,
 
-	PC,IF_Exception,IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc, IF_valid, IF_icache_sel, IF_uncache_valid, IF_PPC
+	PC,IF_Exception,IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
+	IF_valid, IF_icache_sel, IF_uncache_valid, IF_PPC
 );
-	input clk, rst, wr;
-	input PF_Exception;
-	input [4:0] PF_ExcCode;
-	input[31:0] NPC,PPC;
-	input PF_TLBRill_Exc,PF_TLB_Exc;
-	input valid;
-	input icache_sel;
-	input uncache_valid;
-
+	input 			clk;
+	input 			rst;
+	input 			wr;
+	input 			PF_Exception;
+	input [4:0] 	PF_ExcCode;
+	input [31:0] 	PPC;
+	input [31:0] 	NPC;
+	input 			PF_TLBRill_Exc;
+	input 			PF_TLB_Exc;
+	input 			valid;
+	input 			icache_sel;
+	input 			uncache_valid;
+	
 	output reg [31:0] PC,IF_PPC;
-	output reg IF_Exception;
+	output reg 		IF_Exception;
 	output reg [4:0] IF_ExcCode;
-	output reg IF_TLBRill_Exc,IF_TLB_Exc;
-	output reg IF_valid;
-	output reg IF_icache_sel;
-	output reg IF_uncache_valid;
+	output reg 		IF_TLB_Exc;
+	output reg 		IF_TLBRill_Exc;
+	output reg 		IF_valid;
+	output reg 		IF_icache_sel;
+	output reg 		IF_uncache_valid;
 
     always@(posedge clk)
 		if(!rst)
@@ -53,22 +59,29 @@ endmodule
 
 
 module IF_ID(
-	clk, rst,IF_IDWr, IF_Flush, PC, Instr,
-	IF_Exception, IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
+	clk,rst,IF_IDWr,IF_Flush,PC,Instr,IF_Exception,
+	IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
 
-	ID_PC, ID_Instr, Temp_ID_Excetion,Temp_ID_ExcCode,
+	ID_PC,ID_Instr,Temp_ID_Excetion,Temp_ID_ExcCode,
 	ID_TLBRill_Exc,ID_TLB_Exc
 );
-	input clk, rst,IF_IDWr, IF_Flush, IF_Exception;
-	input[31:0] PC, Instr;
-	input [4:0] IF_ExcCode;
-	input IF_TLBRill_Exc,IF_TLB_Exc;
+	input 			clk;
+	input 			rst;
+	input 			IF_IDWr;
+	input 			IF_Flush;
+	input 			IF_Exception;
+	input [31:0] 	Instr;
+	input [31:0] 	PC;
+	input [4:0] 	IF_ExcCode;
+	input 			IF_TLBRill_Exc;
+	input 			IF_TLB_Exc;
 
 	output reg [31:0] ID_PC;
 	output reg [31:0] ID_Instr;
-	output reg Temp_ID_Excetion;
+	output reg 		Temp_ID_Excetion;
 	output reg [4:0] Temp_ID_ExcCode;
-	output reg ID_TLBRill_Exc,ID_TLB_Exc;
+	output reg 		ID_TLBRill_Exc;
+	output reg 		ID_TLB_Exc;
 
 	always@(posedge clk)
 		if(!rst || IF_Flush) begin
@@ -104,42 +117,65 @@ module ID_EX(
 	EX_MUX12Sel,EX_tlb_searchen,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,
 	EX_StoreOp
 );
-	input clk, rst, ID_EXWr,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
-	input eret_flush;
-	input CP0WrEn;
-	input Exception;
-	input [4:0] ExcCode;
-	input isBD;
-	input isBranch;
-	input[1:0] MUX1Sel, RHLSel_Wr;
-	input[3:0] ALU2Op;
-	input[2:0] DMSel, MUX2Sel;
-	input[4:0] ALU1Op;
-	input[4:0] RS, RT, RD, shamt;
-	input[31:0] PC, GPR_RS, GPR_RT, Imm32;
-	input [7:0] CP0Addr;
-	input CP0Rd;
-	input start;
-	input ID_dcache_en;
-	input ID_TLBRill_Exc, ID_TLB_Exc;
-	input ID_MUX11Sel,ID_MUX12Sel;
-	input ID_tlb_searchen;
-	input TLB_flush,TLB_writeen,TLB_readen;
-	input [1:0] LoadOp,StoreOp;
+	input 			clk;
+	input 			rst;
+	input 			ID_EXWr;
+	input 			ID_Flush;
+	input 			DMWr;
+	input 			DMRd;
+	input 			MUX3Sel;
+	input 			ALU1Sel;
+	input 			RFWr;
+	input 			RHLWr;
+	input 			RHLSel_Rd;
+	input 			eret_flush;
+	input 			CP0WrEn;
+	input 			Exception;
+	input [4:0] 	ExcCode;
+	input 			isBD;
+	input 			isBranch;
+	input [1:0] 	RHLSel_Wr;
+	input [1:0] 	MUX1Sel;
+	input [3:0] 	ALU2Op;
+	input [2:0] 	MUX2Sel;
+	input [2:0] 	DMSel;
+	input [4:0] 	ALU1Op;
+	input [4:0] 	RS;
+	input [4:0]		RT;
+	input [4:0]		RD;
+	input [4:0]		shamt;
+	input [31:0]	PC;
+	input [31:0] 	GPR_RS;
+	input [31:0] 	GPR_RT;
+	input [31:0] 	Imm32;
+	input [7:0] 	CP0Addr;
+	input 			CP0Rd;
+	input 			start;
+	input 			ID_dcache_en;
+	input 			ID_TLBRill_Exc;
+	input 			ID_TLB_Exc;
+	input 			ID_MUX11Sel;
+	input 			ID_MUX12Sel;
+	input 			ID_tlb_searchen;
+	input 			TLB_flush;
+	input 			TLB_writeen;
+	input 			TLB_readen;
+	input [1:0] 	StoreOp;
+	input [1:0] 	LoadOp;
 
-	output reg EX_eret_flush;
-	output reg EX_CP0WrEn;
-	output reg EX_Exception;
+	output reg 		EX_eret_flush;
+	output reg 		EX_CP0WrEn;
+	output reg 		EX_Exception;
 	output reg [4:0] EX_ExcCode;
-	output reg EX_isBD;
-	output reg EX_isBranch;
-	output reg EX_RHLSel_Rd;
-	output reg EX_DMWr;
-	output reg EX_DMRd;
-	output reg EX_MUX3Sel;
-	output reg EX_ALU1Sel;
-	output reg EX_RFWr;
-	output reg EX_RHLWr;
+	output reg 		EX_isBD;
+	output reg 		EX_isBranch;
+	output reg 		EX_RHLSel_Rd;
+	output reg 		EX_DMWr;
+	output reg 		EX_DMRd;
+	output reg 		EX_MUX3Sel;
+	output reg 		EX_ALU1Sel;
+	output reg 		EX_RFWr;
+	output reg 		EX_RHLWr;
 	output reg [3:0] EX_ALU2Op;
 	output reg [1:0] EX_MUX1Sel;
 	output reg [1:0] EX_RHLSel_Wr;
@@ -150,16 +186,24 @@ module ID_EX(
 	output reg [4:0] EX_RT;
 	output reg [4:0] EX_RD;
 	output reg [4:0] EX_shamt;
-	output reg [31:0] EX_PC, EX_GPR_RS, EX_GPR_RT, EX_Imm32;
-	output reg [7:0] EX_CP0Addr;
-	output reg EX_CP0Rd;
-	output reg EX_start;
-	output reg EX_dcache_en;
-	output reg EX_TLBRill_Exc, EX_TLB_Exc;
-	output reg EX_MUX11Sel;
-	output reg EX_MUX12Sel,EX_tlb_searchen;
-	output reg EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen;
-	output reg [1:0] EX_LoadOp,EX_StoreOp;
+	output reg [31:0]EX_PC;
+	output reg [31:0]EX_GPR_RS;
+	output reg [31:0]EX_GPR_RT;
+	output reg [31:0]EX_Imm32;
+	output reg [7:0]EX_CP0Addr;
+	output reg 		EX_CP0Rd;
+	output reg 		EX_start;
+	output reg 		EX_dcache_en;
+	output reg 		EX_TLB_Exc;
+	output reg 		EX_TLBRill_Exc;
+	output reg 		EX_MUX11Sel;
+	output reg 		EX_tlb_searchen;
+	output reg 		EX_MUX12Sel;
+	output reg 		EX_TLB_flush;
+	output reg 		EX_TLB_writeen;
+	output reg 		EX_TLB_readen;
+	output reg [1:0]EX_StoreOp;
+	output reg [1:0]EX_LoadOp;
 
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
@@ -264,45 +308,77 @@ module EX_MEM1(
 		MEM1_MUX11Sel,MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,
 		MEM1_StoreOp,MEM1_MULOut,MEM1_start,MEM1_Trap
 	);
-	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
-	input Overflow;
-	input eret_flush;
-	input CP0WrEn;
-	input Exception;
-	input [4:0] ExcCode;
-	input isBD;
-	input[2:0] DMSel, MUX2Sel;
-	input[4:0] RD;
-	input[31:0] EX_PC, RHLOut,ALU1Out, GPR_RT, Imm32;
-	input [7:0] CP0Addr;
-	input CP0Rd;
-	input EX_dcache_en;
-	input EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel;
-	input EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen;
-	input [1:0] EX_LoadOp,EX_StoreOp;
-	input [31:0] MULOut;
-	input EX_start;
-	input Trap;
+	input 			clk;
+	input 			rst;
+	input 			EX_MEM1Wr;
+	input 			EX_Flush;
+	input 			DMWr;
+	input 			DMRd;
+	input 			RFWr;
+	input 			Overflow;
+	input 			eret_flush;
+	input 			CP0WrEn;
+	input 			Exception;
+	input [4:0] 	ExcCode;
+	input 			isBD;
+	input [2:0] 	MUX2Sel;
+	input [2:0] 	DMSel;
+	input [4:0] 	RD;
+	input [31:0] 	EX_PC;
+	input [31:0] 	RHLOut;
+	input [31:0] 	ALU1Out;
+	input [31:0] 	GPR_RT;
+	input [31:0] 	Imm32;
+	input [7:0] 	CP0Addr;
+	input 			CP0Rd;
+	input 			EX_dcache_en;
+	input 			EX_TLBRill_Exc;
+	input 			EX_tlb_searchen;
+	input 			EX_MUX11Sel;
+	input 			EX_TLB_Exc;
+	input 			EX_TLB_flush;
+	input 			EX_TLB_writeen;
+	input 			EX_TLB_readen;
+	input 			EX_MUX12Sel;
+	input [1:0] 	EX_StoreOp;
+	input [1:0] 	EX_LoadOp;
+	input [31:0] 	MULOut;
+	input 			EX_start;
+	input 			Trap;
 
-	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
-	output reg MEM1_eret_flush;
-	output reg MEM1_CP0WrEn;
-	output reg MEM1_Exception;
-	output reg [4:0] MEM1_ExcCode;
-	output reg MEM1_isBD;
-	output reg[2:0] MEM1_DMSel, MEM1_MUX2Sel;
-	output reg[4:0] MEM1_RD;
-	output reg[31:0] MEM1_PC, MEM1_RHLOut,MEM1_ALU1Out, MEM1_GPR_RT, MEM1_Imm32;
+	output reg 		MEM1_DMWr;
+	output reg 		MEM1_DMRd;
+	output reg 		MEM1_RFWr;
+	output reg 		MEM1_eret_flush;
+	output reg 		MEM1_CP0WrEn;
+	output reg 		MEM1_Exception;
+	output reg [4:0]MEM1_ExcCode;
+	output reg 		MEM1_isBD;
+	output reg [2:0]MEM1_MUX2Sel;
+	output reg [2:0]MEM1_DMSel;
+	output reg [4:0]MEM1_RD;
+	output reg [31:0] MEM1_PC;
+	output reg [31:0] MEM1_RHLOut;
+	output reg [31:0] MEM1_ALU1Out;
+	output reg [31:0] MEM1_GPR_RT;
+	output reg [31:0] MEM1_Imm32;
 	output reg [7:0] MEM1_CP0Addr;
-	output reg MEM1_CP0Rd;
-	output reg MEM1_dcache_en;
-	output reg MEM1_Overflow;
-	output reg MEM1_TLBRill_Exc,MEM1_tlb_searchen,MEM1_MUX11Sel;
-	output reg MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen;
-	output reg [1:0] MEM1_LoadOp, MEM1_StoreOp;
+	output reg 		MEM1_CP0Rd;
+	output reg 		MEM1_dcache_en;
+	output reg 		MEM1_Overflow;
+	output reg 		MEM1_TLBRill_Exc;
+	output reg		MEM1_tlb_searchen;
+	output reg		MEM1_MUX11Sel;
+	output reg		MEM1_TLB_Exc;
+	output reg		MEM1_TLB_flush;
+	output reg		MEM1_TLB_writeen;
+	output reg		MEM1_TLB_readen;
+	output reg 		MEM1_MUX12Sel;
+	output reg [1:0]MEM1_StoreOp;
+	output reg [1:0]MEM1_LoadOp;
 	output reg [31:0] MEM1_MULOut;
-	output reg MEM1_start;
-	output reg MEM1_Trap;
+	output reg 		MEM1_start;
+	output reg 		MEM1_Trap;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -379,65 +455,69 @@ module EX_MEM1(
 
 endmodule
 
-module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
-        MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWen, Exception,
-        eret_flush, uncache_valid, DMen, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
-		MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,
+module MEM1_MEM2(
+		clk,rst,PC,RFWr,MUX2Sel,MUX6Out,ALU1Out,RD,MEM1_Flush,CP0Out,MEM1_MEM2Wr,
+		DMSel,cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
+		MEM1_dCache_wstrb,GPR_RT,DMRd,CP0Rd,MEM1_TLB_flush,MEM1_TLB_writeen,
+		MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
         MEM2_DMSel, MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
-		MEM2_uncache_valid, MEM2_DMen,
-        MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, MEM2_DMRd, MEM2_CP0Rd,
-		MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_LoadOp,MEM2_wdata
+		MEM2_uncache_valid, MEM2_DMen,MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT,
+		MEM2_DMRd, MEM2_CP0Rd,MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_LoadOp,
+		MEM2_wdata
 		);
-	input clk;
-	input rst;
-	input MEM1_Flush;
-	input MEM1_MEM2Wr;
+	input 			clk;
+	input 			rst;
+	input 			MEM1_Flush;
+	input 			MEM1_MEM2Wr;
+	input [31:0] 	PC;
+	input 			RFWr;
+	input [2:0] 	MUX2Sel;
+	input [31:0] 	MUX6Out;
+	input [31:0] 	ALU1Out;
+	input [4:0] 	RD;
+	input [31:0] 	CP0Out;
+	input [2:0] 	DMSel;
+	input 			cache_sel;
+	input 			DMWen;
+	input 			Exception;
+	input 			eret_flush;
+	input 			uncache_valid;
+	input 			DMen;
+	input [31:0] 	Paddr;
+	input [3:0] 	MEM1_dCache_wstrb;
+	input [31:0] 	GPR_RT;
+	input 			DMRd;
+	input 			CP0Rd;
+	input 			MEM1_TLB_flush;
+	input 			MEM1_TLB_writeen;
+	input 			MEM1_TLB_readen;
+	input [1:0] 	MEM1_LoadOp;
+	input [31:0] 	MEM1_wdata;
 
-	input[31:0] PC;
-	input RFWr;
-	input[2:0] MUX2Sel;
-	input[31:0] MUX6Out;
-	input[31:0] ALU1Out;
-	input[4:0] RD;
-	input[31:0] CP0Out;
-	input[2:0] DMSel;
-	input cache_sel;
-	input DMWen;
-	input Exception;
-	input eret_flush;
-	input uncache_valid;
-	input DMen;
-	input[31:0] Paddr;
-	input[3:0] MEM1_dCache_wstrb;
-	input[31:0] GPR_RT;
-	input DMRd;
-	input CP0Rd;
-	input MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen;
-	input [1:0] MEM1_LoadOp;
-	input [31:0] MEM1_wdata;
-
-	output reg[31:0] MEM2_PC;
-	output reg MEM2_RFWr;
-	output reg[2:0] MEM2_MUX2Sel;
-	output reg[31:0] MEM2_MUX6Out;
-	output reg[31:0] MEM2_ALU1Out;
-	output reg[4:0] MEM2_RD;
-	output reg[31:0] MEM2_CP0Out;
-	output reg[2:0] MEM2_DMSel;
-	output reg MEM2_cache_sel;
-	output reg MEM2_DMWen;
-	output reg MEM2_Exception;
-	output reg MEM2_eret_flush;
-	output reg MEM2_uncache_valid;
-	output reg MEM2_DMen;
-	output reg[31:0] MEM2_Paddr;
-	output reg[3:0] MEM2_unCache_wstrb;
-	output reg[31:0] MEM2_GPR_RT;
-	output reg MEM2_DMRd;
-	output reg MEM2_CP0Rd;
-	output reg MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen;
+	output reg [31:0] MEM2_PC;
+	output reg 		MEM2_RFWr;
+	output reg [2:0] MEM2_MUX2Sel;
+	output reg [31:0] MEM2_MUX6Out;
+	output reg [31:0] MEM2_ALU1Out;
+	output reg [4:0] MEM2_RD;
+	output reg [31:0] MEM2_CP0Out;
+	output reg [2:0] MEM2_DMSel;
+	output reg 		MEM2_cache_sel;
+	output reg 		MEM2_DMWen;
+	output reg 		MEM2_Exception;
+	output reg 		MEM2_eret_flush;
+	output reg 		MEM2_uncache_valid;
+	output reg 		MEM2_DMen;
+	output reg [31:0] MEM2_Paddr;
+	output reg [3:0] MEM2_unCache_wstrb;
+	output reg [31:0] MEM2_GPR_RT;
+	output reg 		MEM2_DMRd;
+	output reg 		MEM2_CP0Rd;
+	output reg 		MEM2_TLB_flush;
+	output reg 		MEM2_TLB_writeen;
+	output reg 		MEM2_TLB_readen;
 	output reg [1:0] MEM2_LoadOp;
 	output reg [31:0] MEM2_wdata;
 
@@ -497,37 +577,35 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 endmodule
 
 module MEM2_WB(
-	clk, rst,MEM2_WBWr, MEM2_Flush,
-	PC, MUX2Out, MUX2Sel, RD, RFWr, DMOut,
-	MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_TLB_flush,
+	clk, rst,MEM2_WBWr, MEM2_Flush,PC, MUX2Out, MUX2Sel,
+	RD, RFWr, DMOut,MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_TLB_flush,
 
 	WB_PC, WB_MUX2Out, WB_MUX2Sel, WB_RD, WB_RFWr, WB_DMOut,
 	WB_TLB_writeen,WB_TLB_readen,WB_TLB_flush
 	);
-	input clk;
-	input rst;
-	input MEM2_WBWr;
-	input MEM2_Flush;
-    input MEM2_TLB_writeen;
-	input MEM2_TLB_readen;
-	input MEM2_TLB_flush;
+	input 			clk;
+	input 			rst;
+	input 			MEM2_WBWr;
+	input 			MEM2_Flush;
+	input 			MEM2_TLB_writeen;
+	input 			MEM2_TLB_readen;
+	input 			MEM2_TLB_flush;
+	input [31:0]	PC;
+	input [31:0] 	MUX2Out;
+	input [2:0] 	MUX2Sel;
+	input [4:0] 	RD;
+	input  			RFWr;
+	input [31:0] 	DMOut;
 
-	input[31:0] PC;
-	input[31:0] MUX2Out;
-	input[2:0] MUX2Sel;
-	input[4:0] RD;
-	input RFWr;
-	input[31:0] DMOut;
-
-	output reg[31:0] WB_PC;
-	output reg[31:0] WB_MUX2Out;
-	output reg[2:0] WB_MUX2Sel;
-	output reg[4:0] WB_RD;
-	output reg WB_RFWr;
-	output reg[31:0] WB_DMOut;
-    output reg WB_TLB_writeen;
-	output reg WB_TLB_readen;
-	output reg WB_TLB_flush;
+	output reg [31:0] WB_PC;
+	output reg [31:0] WB_MUX2Out;
+	output reg [2:0] WB_MUX2Sel;
+	output reg [4:0] WB_RD;
+	output reg  	WB_RFWr;
+	output reg [31:0] WB_DMOut;
+	output reg 		WB_TLB_writeen;
+	output reg 		WB_TLB_readen;
+	output reg 		WB_TLB_flush;
 
 	always@(posedge clk)
 		if(!rst || MEM2_Flush) begin
