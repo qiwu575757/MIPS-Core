@@ -739,8 +739,8 @@ assign IF_icache_wr_rdy=1;
 assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
 assign arid = IF_icache_rd_req ? 0: 1;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
-assign arlen =  MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
-assign arburst = MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
+assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
+assign arburst = IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 
