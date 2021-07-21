@@ -166,7 +166,7 @@ module mem1_cache_prep(
         ( (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00) ||
         ( (MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0 ) );
 
-    always@(Interrupt,MEM1_Overflow,Temp_M1_Exception,MEM1_Trap,AdES_sel,AdEL_sel,MEM1_TLB_Exc)
+    always@(*)
         if (Interrupt) begin
 			MEM1_Exception <= 1'b1;
 			MEM1_ExcCode <= `Int;
