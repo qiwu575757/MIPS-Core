@@ -543,9 +543,9 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     /*assign write_conflict1 = hit_write && DMRd
                             && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});*/
     assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
-                            && |(index^index_WB);
+                            && |(index ^ index_WB);
     assign write_bypass1 = hit_write && DMRd
-                            && ~|({tag,index,offset}^{tag_RB,index_RB,offset_RB});
+                            && ~|({tag,index,offset} ^ {tag_RB,index_RB,offset_RB});
     /*assign write_bypass2 = (C_STATE_WB == WRITE) && DMRd
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});*/
 
@@ -713,10 +713,8 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     always@(hit_code, rdata_way0, rdata_way1, ret_data,
             write_bypass1_delay,wdata_bypass1,
             conflict2_reg, conflict2_data)
-        if(write_bypass1_delay)
-            rdata = wdata_bypass1;
-        else if(conflict2_reg)
-            rdata = conflict2_data;
+        if(write_bypass1_delay | conflict2_reg)
+            rdata = write_bypass1_delay ? wdata_bypass1 : conflict2_data;
         else 
             case(hit_code)
                 2'b01: rdata = rdata_way0;
