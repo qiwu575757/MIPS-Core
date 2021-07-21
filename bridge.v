@@ -2,38 +2,56 @@ module  bridge_dm(
 	addr2,
 	Din,
 	DMSel2,
+	MEM2_LoadOp,
+	MEM2_GPR_RT,
 
 	dout
 );
-	input [1:0] addr2;
+	input [31:0] addr2;
 	input [31:0] Din;
 	input [2:0] DMSel2;
-	output reg[31:0] dout;
+	input [1:0] MEM2_LoadOp;
+	input [31:0] MEM2_GPR_RT;
 
-	always@(DMSel2,addr2,Din)
-		case(DMSel2)
-			3'b011: case(addr2)
-						2'b00:	dout = {24'b0,Din[ 7: 0]};
-						2'b01:	dout = {24'b0,Din[15: 8]};
-						2'b10:	dout = {24'b0,Din[23:16]};
-						default:dout = {24'b0,Din[31:24]};
-					endcase
-			3'b100: case(addr2)
-						2'b00:	dout = {{24{Din[ 7]}},Din[ 7: 0]};
-						2'b01:	dout = {{24{Din[15]}},Din[15: 8]};
-						2'b10:	dout = {{24{Din[23]}},Din[23:16]};
-						default:dout = {{24{Din[31]}},Din[31:24]};
-					endcase
-			3'b101:	case(addr2[1])
-						1'b0:	dout = {16'h0000,Din[15: 0]};
-						default:dout = {16'h0000,Din[31:16]};
-					endcase
-			3'b110: case(addr2[1])
-						1'b0:	dout = {{16{Din[15]}},Din[15: 0]};
-						default:dout = {{16{Din[31]}},Din[31:16]};
-					endcase
-			default: dout = Din;
-		endcase
+	output reg [31:0] dout;
+
+always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
+	case (MEM2_LoadOp)
+		2'b00 :
+			dout =
+				(DMSel2==3'b011) ?  // zero
+					(  	addr2[1:0]==2'b00 ? {24'b0,Din[7:0]} :
+						addr2[1:0]==2'b01 ? {24'b0,Din[15:8]} :
+						addr2[1:0]==2'b10 ? {24'b0,Din[23:16]} :
+										   {24'b0,Din[31:24]}) :
+				(DMSel2==3'b100) ?
+					(   addr2[1:0]==2'b00 ? {{24{Din[ 7]}},Din[ 7: 0]} :
+						addr2[1:0]==2'b01 ? {{24{Din[15]}},Din[15: 8]} :
+						addr2[1:0]==2'b10 ? {{24{Din[23]}},Din[23:16]} :
+										   {{24{Din[31]}},Din[31:24]}) :
+				(DMSel2==3'b101) ?
+					( 	addr2[1]==1'b0 	 ? {16'h0000,Din[15:0]}  :
+									 	   {16'h0000,Din[31:16]})  :
+				(DMSel2==3'b110) ?
+					(	addr2[1]==1'b0 	 ? {{16{Din[15]}},Din[15:0]}  :
+								    	   {{16{Din[31]}},Din[31:16]} ) :
+																	Din;
+		2'b10 :				//LWL
+			dout =
+				(addr2[1:0] == 2'b00) ? {Din[7:0],MEM2_GPR_RT[23:0]} :
+				(addr2[1:0] == 2'b01) ? {Din[15:0],MEM2_GPR_RT[15:0]} :
+				(addr2[1:0] == 2'b10) ? {Din[23:0],MEM2_GPR_RT[7:0]} :
+										Din[31:0];
+		2'b11 :				//LWR
+			dout =
+				(addr2[1:0] == 2'b00) ? Din[31:0]:
+				(addr2[1:0] == 2'b01) ? {MEM2_GPR_RT[31:24],Din[31:8]} :
+				(addr2[1:0] == 2'b10) ? {MEM2_GPR_RT[31:16],Din[31:16]} :
+										{MEM2_GPR_RT[31:8],Din[31:24]};
+	endcase
+
+end
+
 
 endmodule
 
@@ -43,7 +61,7 @@ endmodule
 // 借助状态机来控制
 // * start为1时，乘除法开始计算
 // * isBusy为1时，表示正在运行
-// * 乘法单周期运算，除法多周期（34个）。
+// * 乘法5周期运算，除法多周期（34个）。
 // * C是运算结果，支持读保存，即如果没有新的start，结果会保持为上一次的运算结果
 module bridge_RHL(
 		aclk,
@@ -57,61 +75,120 @@ module bridge_RHL(
 		EX_RHLSel_Rd,
 		MEM_Exception,
 		MEM_eret_flush,
+		dcache_stall,
 
 		isBusy,
-		RHLOut
+		RHLOut,
+		MULOut,
+		MUL_sign
 	);
 input aclk;
 input aresetn;
 input [31:0 ]A;
 input [31:0] B;
-input [1:0] ALU2Op;
+input [3:0] ALU2Op;
 input start;
 input EX_RHLWr;
 input[1:0] EX_RHLSel_Wr;
 input EX_RHLSel_Rd;
 input MEM_Exception;
 input MEM_eret_flush;
+input dcache_stall;
 
 output isBusy;
 output[31:0] RHLOut;
+output[31:0] MULOut;
+output reg MUL_sign;
 
 wire [63:0] divider_sign_out;
 wire [63:0] divider_unsign_out;
 wire [63:0] multi_sign_out;
 wire [63:0] multi_unsign_out;
+wire [63:0] multi_sign_out_temp;
+wire [63:0] multi_unsign_out_temp;
 reg [63:0] RHL;
+reg [63:0] TEMP_RHL;
+
 reg present_state_div;
 reg next_state_div;
 reg present_state_mult;
 reg next_state_mult;
 reg present_state_multu;
 reg next_state_multu;
+reg [3:0] Temp_ALU2Op;
+
 wire m_axis_dout_tvalid_sign;
 wire m_axis_dout_tvalid_unsign;
 wire multiplier_signed_valid;
 wire multiplier_unsigned_valid;
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
+assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写好几次
 
+/*
+				MULT: 	ALU2Op <= 4'b0000;		
+				MULTU: 	ALU2Op <= 4'b0001;		
+				DIVU: 	ALU2Op <= 4'b0010;		
+				DIV: 	ALU2Op <= 4'b0011;	
 
+				maddu:	ALU2Op <= 4'b0100;
+				madd:	ALU2Op <= 4'b0101;
+				msub:	ALU2Op <= 4'b0110;
+				msubu:	ALU2Op <= 4'b0111;
 
+				mul:	ALU2Op <= 4'b1000;
+*/
 assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
 
 
-				// 6'b011001: ALU2Op <= 2'b00;		/* MULTU */
-				// 6'b011000: ALU2Op <= 2'b01;		/* MULT */
-				// 6'b011011: ALU2Op <= 2'b10;		/* DIVU */
-				// 6'b011010: ALU2Op <= 2'b11;		/* DIV */
 reg[2:0] counter;
 
 always@(posedge aclk)
-	if(!aresetn || counter == 3'd4 ||multiplier_signed_valid || multiplier_unsigned_valid)
+	if(!aresetn || counter == 3'd4 )
 		counter <= 3'b000;
 	else if(present_state_mult == state_busy || present_state_multu == state_busy)
 		counter <= counter + 1;
+
+//store the value of RHL and ALU2Op for the madd, maddu, msub, msubu
+always @(posedge aclk) begin
+	if (!aresetn)
+		TEMP_RHL <= 64'b0;
+	else if (present_state_mult==state_free && next_state_mult==state_busy)
+		TEMP_RHL <= RHL;
+	else if (present_state_multu==state_free && next_state_multu==state_busy)
+		TEMP_RHL <= RHL;
+end
+
+always @(posedge aclk) begin
+	if (!aresetn)
+		Temp_ALU2Op <= 4'b0;
+	else if (present_state_mult==state_free && next_state_mult==state_busy )
+		Temp_ALU2Op <= ALU2Op;
+	else if (present_state_multu==state_free && next_state_multu==state_busy )
+		Temp_ALU2Op <= ALU2Op;
+end
+
+//the signal is signing the mul is working 
+always @(posedge aclk) begin
+	if (!aresetn)
+		MUL_sign <= 1'b0;
+	else if ((present_state_mult==state_free && next_state_mult==state_busy)&& ALU2Op==4'b1000)
+		MUL_sign <= 1'b1;// mul instr start to work
+	else if ((present_state_mult == state_busy) && (counter == 3'd3))
+		MUL_sign <= 1'b0;// mul instr end  working
+end
+
+assign multi_sign_out = //此处dache_stall是为了在进行madd指令计算结束后dcache_stall=1,导致重复计算
+		(Temp_ALU2Op == 4'b0101&~dcache_stall) ? TEMP_RHL+multi_sign_out_temp	:
+		(Temp_ALU2Op == 4'b0110&~dcache_stall) ? TEMP_RHL-multi_sign_out_temp	:
+										multi_sign_out_temp;
+
+assign multi_unsign_out = 
+		(Temp_ALU2Op == 4'b0100&~dcache_stall) ? TEMP_RHL+multi_unsign_out_temp	:
+		(Temp_ALU2Op == 4'b0111&~dcache_stall) ? TEMP_RHL-multi_unsign_out_temp	:
+										multi_unsign_out_temp;
 
 
 always @(posedge aclk) begin
@@ -125,9 +202,9 @@ always @(posedge aclk) begin
 		RHL <= {divider_sign_out[31:0],divider_sign_out[63:32]};
 	else if(m_axis_dout_tvalid_unsign ) //unsign
 		RHL <= {divider_unsign_out[31:0],divider_unsign_out[63:32]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01 && !MEM_Exception && !MEM_eret_flush )
+	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01)
 	    RHL <= {A,RHL[31:0]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00 && !MEM_Exception && !MEM_eret_flush )
+	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00)
 	    RHL <= {RHL[63:32],A};
 end
 
@@ -144,7 +221,7 @@ end
 
 always @(present_state_div, start, ALU2Op, m_axis_dout_tvalid_sign, m_axis_dout_tvalid_unsign, MEM_Exception, MEM_eret_flush) begin
 	if(present_state_div == state_free) begin
-	   if(start && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush)
+	   if(start && ~ALU2Op[2] && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush)
 	       next_state_div=state_busy;
 	   else
 	       next_state_div=state_free;
@@ -212,7 +289,7 @@ always @(present_state_multu, multiplier_unsigned_valid,counter) begin
 
 end
 
-wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
+wire divider_sign_valid=start && (ALU2Op == 4'b0011) && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
 Divider divider (
   .aclk(aclk),                                      // input wire aclk
@@ -224,7 +301,8 @@ Divider divider (
   .m_axis_dout_tvalid(m_axis_dout_tvalid_sign),          // output wire m_axis_dout_tvalid
   .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
-wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
+
+wire divider_unsign_valid = start && (ALU2Op == 4'b0010) && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
 Divider_Unsighed divider_unsign (
   .aclk(aclk),                                      // input wire aclk
@@ -237,21 +315,24 @@ Divider_Unsighed divider_unsign (
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
-assign multiplier_signed_valid = start && !ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+assign multiplier_signed_valid = start && (ALU2Op==4'b0001 || ALU2Op==4'b0101 || ALU2Op==4'b0110 || ALU2Op==4'b1000) 
+						&& !MEM_Exception && !MEM_eret_flush &~dcache_stall;
 multiplier_signed multiplier_signed(
 	.CLK(aclk),
 	.A(A),
 	.B(B),
 	.CE(next_state_mult),
-	.P(multi_sign_out)
+	.P(multi_sign_out_temp)
 );
-assign multiplier_unsigned_valid = start && !ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
+
+assign multiplier_unsigned_valid = start &&  (ALU2Op==4'b0000 || ALU2Op==4'b0100 || ALU2Op==4'b0111) 
+					&& !MEM_Exception && !MEM_eret_flush &~dcache_stall;
 multiplier_unsigned multiplier_unsigned(
 	.CLK(aclk),
 	.A(A),
 	.B(B),
 	.CE(next_state_multu),
-	.P(multi_unsign_out)
+	.P(multi_unsign_out_temp)
 );
 
 endmodule
@@ -472,23 +553,11 @@ reg arid_reg;// 寄存事务id
 reg conf_wr;// write event argument
 reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
-reg is_writing;
 initial begin
 	count_wr16 = 0;
 	conf_wr=0;
 	dram_wr=0;
 	uncache_wr_data_reg=0;
-	is_writing =0;
-end
-
-always @(posedge clk) begin
-	if(!rst)
-		is_writing=0;
-	else if(MEM_dcache_wr_req)
-		is_writing=1;
-	else if(next_wr_state == state_wr_finish)
-		is_writing=0;
-
 end
 
 always @(posedge clk) begin
@@ -528,7 +597,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		uncache_wr_data_reg<=0;
+		uncache_wr_data_reg=0;
 	end
 	else if(current_wr_state==state_wr_req)
 	begin
@@ -602,7 +671,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		arid_reg<=0;
+		arid_reg=0;
 	end
 	else if(current_rd_state==state_rd_free
 	||current_rd_state==state_rd_finish)
@@ -630,7 +699,7 @@ always @(*) begin
 	case(current_rd_state)
 		state_rd_free,state_rd_finish:
 		begin
-			if ((MEM_dcache_rd_req|IF_icache_rd_req) & ~is_writing)
+			if (MEM_dcache_rd_req|IF_icache_rd_req)
 			begin
 				next_rd_state = state_rd_req;
 			end
@@ -658,27 +727,27 @@ always @(*) begin
 	endcase
 end
 //
-assign MEM_dcache_rd_rdy =(~is_writing)&(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
-assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & rid[0]);
+assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_ret_valid = (rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = (~is_writing)&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
-assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_wr_rdy = awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign IF_icache_rd_rdy = arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);
 assign IF_icache_ret_data = rdata;
 assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
-assign arid = IF_icache_rd_req ? 0: 1;
 assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
+assign arid = IF_icache_rd_req ? 0: 1;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
 assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
-assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
+assign arburst = IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 
-assign awaddr =MEM_dcache_wr_addr;
+assign awaddr = MEM_dcache_wr_addr;
 assign awsize = MEM_dcache_wr_type;
 assign awlen = conf_wr ? 4'b0:4'b1111;
 assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
