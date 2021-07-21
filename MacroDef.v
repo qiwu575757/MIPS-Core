@@ -20,10 +20,27 @@
 `define nor_    6'b100111 //或非
 
 `define slt     6'b101010 //小于置 1(有符号)
-`define sltu    6'b101011 //小于置 1(有符号)                  
+`define sltu    6'b101011 //小于置 1(有符号)
 
 `define movn    6'b001011
 `define movz    6'b001010
+
+//op_trap instr
+/*R_Type*/
+`define teq     6'b110100
+`define tge     6'b110000
+`define tgeu    6'b110001
+`define tlt     6'b110010
+`define tltu    6'b110011
+`define tne     6'b110110
+/*I_Type*/
+`define teqi    5'b01100//RT addr
+`define tgei    5'b01000
+`define tgeiu   5'b01001
+`define tlti    5'b01010
+`define tltiu   5'b01011
+`define tnei    5'b01110
+
 //-----------calc_i--------------------//
 `define mult  6'b011000
 `define multu 6'b011001
@@ -86,10 +103,12 @@
 `define bgtz  6'b000111
 
 `define bltz  5'b00000
-`define bgez  5'b00001                             
-`define bgezal  5'b10001                             
-`define bltzal  5'b10000                             
+`define bgez  5'b00001
+`define bgezal  5'b10001
+`define bltzal  5'b10000
 `define b_special 6'b000001
+
+`define beql    6'b010100
 //b_special include bltz bgez
 
 //--------------super---------------------//

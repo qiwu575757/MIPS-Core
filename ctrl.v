@@ -4,10 +4,11 @@
 	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
  		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,CMPOut3,
 
-		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
-		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
-		CP0Rd, start, RHL_visit,dcache_en,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn
+		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op,
+		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
+		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
+		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
+		LoadOp,StoreOp,movz_movn,Branch_flush
 	);
 	input clk;
 	input rst;
@@ -58,9 +59,12 @@
 	output TLB_flush,TLB_readen,TLB_writeen;
 	output reg [1:0] LoadOp,StoreOp;
 	output  movz_movn;
+	output reg Branch_flush;
 
-	wire ri;			//reserved instr		
-	reg rst_sign;				
+
+	wire ri;			//reserved instr
+	reg rst_sign;
+	reg Trap_Op;
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -71,7 +75,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal);
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -111,18 +115,50 @@
 		end
 	end
 
-	always @(OP or Funct) begin		/* the genenration of isBranch */
+	always @(OP or Funct or rt) begin		/* the genenration of isBranch */
 		 case (OP)
 			6'b000100: isBranch <= 1;		/* BEQ */
 			6'b000101: isBranch <= 1;		/* BNE */
-			6'b000001: isBranch <= 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
 			6'b000111: isBranch <= 1;		/* BGTZ */
 			6'b000110: isBranch <= 1;		/* BLEZ */
+			6'b000001:
+				case (rt)
+					5'b00001:			/* BGEZ */
+						isBranch <= 1;
+					5'b00011:			/* BGEZL */
+						isBranch <= 1;
+					5'b00000:			/* BLTZ */
+						isBranch <= 1;
+					5'b00010:			/* BLTZL */
+						isBranch <= 1;
+					5'b10001:			/* BGEZAL */
+						isBranch <= 1;
+					5'b10011:			/* BGEZALL */
+						isBranch <= 1;
+					5'b10000:			/* BLTZAL */
+						isBranch <= 1;
+					5'b10010:			/* BLTZALL */
+						isBranch <= 1;
+					default:
+						isBranch <= 0;
+				endcase
+			6'b010100: isBranch <= 1;		/* BEQL */
+			6'b010101: isBranch <= 1;		/* BNEl */
+			6'b010111:
+				if ( rt == 5'b0 )
+					isBranch <= 1;		/* BGTZL */
+				else
+					isBranch <= 0;
+			6'b010110:
+				if ( rt == 5'b0 )
+					isBranch <= 1;		/* BLEZL */
+				else
+					isBranch <= 0;
 			6'b000000:
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
-				isBranch <= 1;
-			else
-				isBranch <= 0;
+				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
+					isBranch <= 1;
+				else
+					isBranch <= 0;
 			6'b000010: isBranch <= 1;        /* J */
 			6'b000011: isBranch <= 1;        /* JAL */
 			default: isBranch <= 0;
@@ -131,24 +167,55 @@
 
 	assign isBD = EXE_isBranch;		/* the generation of isBD */
 
-	always @(OP or Funct) begin		/* the genenration of B_JOp */
+	always @(OP or Funct or rt) begin		/* the genenration of B_JOp */
 		 case (OP)
 			6'b000100: B_JOp <= 1;		/* BEQ */
 			6'b000101: B_JOp <= 1;		/* BNE */
-			6'b000001: B_JOp <= 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
 			6'b000111: B_JOp <= 1;		/* BGTZ */
 			6'b000110: B_JOp <= 1;		/* BLEZ */
+			6'b000001:
+				case (rt)
+					5'b00001:			/* BGEZ */
+						B_JOp <= 1;
+					5'b00011:			/* BGEZL */
+						B_JOp <= 1;
+					5'b00000:			/* BLTZ */
+						B_JOp <= 1;
+					5'b00010:			/* BLTZL */
+						B_JOp <= 1;
+					5'b10001:			/* BGEZAL */
+						B_JOp <= 1;
+					5'b10011:			/* BGEZALL */
+						B_JOp <= 1;
+					5'b10000:			/* BLTZAL */
+						B_JOp <= 1;
+					5'b10010:			/* BLTZALL */
+						B_JOp <= 1;
+					default:
+						B_JOp <= 0;
+				endcase
+			6'b010100: B_JOp <= 1;		/* BEQL */
+			6'b010101: B_JOp <= 1;		/* BNEl */
+			6'b010111:
+				if ( rt == 5'b0)
+					B_JOp <= 1;		/* BGTZL */
+				else
+					B_JOp <= 0;
+			6'b010110:
+				if ( rt == 5'b0 )
+					B_JOp <= 1;		/* BLEZL */
+				else
+					B_JOp <= 0;
 			6'b000000:
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
-				B_JOp <= 1;
-			else
-				B_JOp <= 0;
+				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
+					B_JOp <= 1;
+				else
+					B_JOp <= 0;
 			default:   B_JOp <= 0;
 		endcase
 	end
 
-
-	always @(OP or Funct or rt or rs) begin			/* the generation of RFWr */ 
+	always @(OP or Funct or rt or rs) begin			/* the generation of RFWr */
 		case (OP)
 			6'b000000:
 			case (Funct)
@@ -183,19 +250,19 @@
 			6'b001110: RFWr <= 1;		/* XORI */
 			6'b001010: RFWr <= 1;		/* SLTI */
 			6'b001011: RFWr <= 1;		/* SLTIU */
-			6'b000001: 
-				if (rt == 5'b10001)
-					RFWr <= 1;		/* BGEZAL */
-				else if (rt == 5'b10000)
-					RFWr <= 1;		/* BLTZAL */
-				else
-					RFWr <= 0;
+			6'b000001:
+				case (rt)
+					5'b10001,5'b10000,5'b10011,5'b10010:
+						RFWr <= 1;/* BGEZAL BLTZAL BGEZALL BLTZALL */
+					default:
+						RFWr <= 0;
+				endcase
 			6'b000011: RFWr <= 1;		/* JAL */
-			6'b011100: 
+			6'b011100:
 				case(Funct)
-					`clo :	RFWr <= 1;		/*CLO*/
-					`clz :	RFWr <= 1;		/*CLZ*/
-					`mul :	RFWr <= 1;		/*MUL*/
+					`clo :	RFWr <= 1;		/* CLO */
+					`clz :	RFWr <= 1;		/* CLZ */
+					`mul :	RFWr <= 1;		/* MUL */
 					default: RFWr <= 0;
 				endcase
 			6'b100100: RFWr <= 1;		/* LBU */
@@ -213,7 +280,6 @@
 			default: RFWr <= 0;
 		endcase
 	end
-
 
 	always @(OP or Funct) begin			/* the generation of RHLWr */
 		if (OP == 6'b000000) begin
@@ -239,7 +305,7 @@
 		else
 			RHLWr <= 0;
 	end
-	
+
 	always @(OP or Funct) begin			/* the generation of start */
 		if (OP == 6'b000000) begin
 			case (Funct)
@@ -263,7 +329,7 @@
 		else
 			start <= 0;
 	end
-		
+
 	always @(OP) begin			/* the generation of DMWr */
 		case (OP)
 			6'b101000: DMWr <= 1;	/* SB */
@@ -274,7 +340,7 @@
 			default: DMWr <= 0;
 		endcase
 	end
-	
+
 	always @(OP) begin		/* the generation of DMRd */
 		case (OP)
 			6'b100100: DMRd <= 1;		/* LBU */
@@ -295,31 +361,37 @@
 			CP0Rd <= 1'b0;
 	end
 
-	always @(OP or Funct) begin		/* the generation of ALU1Op */
+	always @(OP, Funct, rt) begin		/* the generation of ALU1Op */
 		case (OP)
 			6'b000000:
-			case (Funct)
-				6'b100000: ALU1Op <= 5'b00000;	/* ADD */
-				6'b100010: ALU1Op <= 5'b00001;	/* SUB */
-				6'b100101: ALU1Op <= 5'b00010;	/* OR */
-				6'b100100: ALU1Op <= 5'b00011;	/* AND */
-				6'b100111: ALU1Op <= 5'b00100;	/* NOR */
-				6'b100110: ALU1Op <= 5'b00101;	/* XOR */
-				6'b000100: ALU1Op <= 5'b00110;	/* SLLV */
-				6'b000000: ALU1Op <= 5'b00110;	/* SLL */
-				6'b000110: ALU1Op <= 5'b00111;	/* SRLV */
-				6'b000010: ALU1Op <= 5'b00111;	/* SRL */
-				6'b000111: ALU1Op <= 5'b01000;	/* SRAV */
-				6'b000011: ALU1Op <= 5'b01000;	/* SRA */
-				6'b101010: ALU1Op <= 5'b01001;	/* SLT */
-				6'b101011: ALU1Op <= 5'b01010;	/* SLTU */
-				6'b001010: ALU1Op <= 5'b01011;	/* MOVZ */
-				6'b001011: ALU1Op <= 5'b01011;	/* MOVN */
-				6'b100001: ALU1Op <= 5'b01100;	/* ADDU */
-				6'b100011: ALU1Op <= 5'b10000;	/* SUBU */
+				case (Funct)
+					6'b100000: ALU1Op <= 5'b00000;	/* ADD */
+					6'b100010: ALU1Op <= 5'b00001;	/* SUB */
+					6'b100101: ALU1Op <= 5'b00010;	/* OR */
+					6'b100100: ALU1Op <= 5'b00011;	/* AND */
+					6'b100111: ALU1Op <= 5'b00100;	/* NOR */
+					6'b100110: ALU1Op <= 5'b00101;	/* XOR */
+					6'b000100: ALU1Op <= 5'b00110;	/* SLLV */
+					6'b000000: ALU1Op <= 5'b00110;	/* SLL */
+					6'b000110: ALU1Op <= 5'b00111;	/* SRLV */
+					6'b000010: ALU1Op <= 5'b00111;	/* SRL */
+					6'b000111: ALU1Op <= 5'b01000;	/* SRAV */
+					6'b000011: ALU1Op <= 5'b01000;	/* SRA */
+					6'b101010: ALU1Op <= 5'b01001;	/* SLT */
+					6'b101011: ALU1Op <= 5'b01010;	/* SLTU */
+					6'b001010: ALU1Op <= 5'b01011;	/* MOVZ */
+					6'b001011: ALU1Op <= 5'b01011;	/* MOVN */
+					6'b100001: ALU1Op <= 5'b01100;	/* ADDU */
+					6'b100011: ALU1Op <= 5'b10000;	/* SUBU */
+					`teq:	   ALU1Op <= 5'b10001;
+					`tge:	   ALU1Op <= 5'b10010;
+					`tgeu:	   ALU1Op <= 5'b10011;
+					`tlt:	   ALU1Op <= 5'b10100;
+					`tltu:	   ALU1Op <= 5'b10101;
+					`tne:	   ALU1Op <= 5'b10110;
 
-				default: ALU1Op <= 5'b11111;
-			endcase
+					default: ALU1Op <= 5'b11111;
+				endcase
 			6'b001000: ALU1Op <= 5'b00000;		/* ADDI */
 			6'b001001: ALU1Op <= 5'b01100;		/* ADDUI */
 			6'b001101: ALU1Op <= 5'b00010;		/* ORI */
@@ -339,12 +411,22 @@
 			6'b100011: ALU1Op <= 5'b00000;		/* LW */
 			6'b100010: ALU1Op <= 5'b00000;		/* LWL */
 			6'b100110: ALU1Op <= 5'b00000;		/* LWR */
-			6'b011100: 
-			case(Funct)
-				`clo :	ALU1Op  <= 0'b01101;		/*CLO*/
-				`clz :	ALU1Op  <= 0'b01110;		/*CLZ*/
-				default: ALU1Op <= 0'b11111;
-			endcase
+			6'b011100:
+				case(Funct)
+					`clo :	ALU1Op  <= 0'b01101;		/*CLO*/
+					`clz :	ALU1Op  <= 0'b01110;		/*CLZ*/
+					default: ALU1Op <= 0'b11111;
+				endcase
+			6'b000001:
+				case(rt)
+					`teqi:	   ALU1Op <= 5'b10001;
+					`tgei:	   ALU1Op <= 5'b10010;
+					`tgeiu:	   ALU1Op <= 5'b10011;
+					`tlti:	   ALU1Op <= 5'b10100;
+					`tltiu:	   ALU1Op <= 5'b10101;
+					`tnei:	   ALU1Op <= 5'b10110;
+					default:   ALU1Op <= 5'b11111;
+				endcase
 
 			default: ALU1Op <= 5'b11111;
 		endcase
@@ -352,7 +434,7 @@
 
 	always @(OP or Funct) begin		/* the generation of ALU2Op */
 		case (OP)
-			6'b000000: 
+			6'b000000:
 				case (Funct)
 					6'b011001: ALU2Op <= 4'b0000;		/* MULTU */
 					6'b011000: ALU2Op <= 4'b0001;		/* MULT */
@@ -385,7 +467,7 @@
 		else
 			ALU1Sel <= 1'b0;
 	end
-	
+
 	always @(OP or Funct) begin		/* the generation of RHLSel_Wr */
 		case (OP)
 			6'b000000:
@@ -409,7 +491,6 @@
 			default: RHLSel_Wr <= 2'b00;
 		endcase
 	end
-	
 
 	always @(OP or Funct) begin		/* the generation of RHL_visit */
 		case (OP)
@@ -447,9 +528,9 @@
 			endcase
 			default: RHLSel_Rd <= 1'b0;
 		endcase
-	end	
-			
-	always @(OP) begin		/* the generation of EXTOp */
+	end
+
+	always @(OP or rt) begin		/* the generation of EXTOp */
 		case (OP)
 			6'b001000: EXTOp <= 2'b01;			/* ADDI */
 			6'b001001: EXTOp <= 2'b01;			/* ADDUI */
@@ -471,6 +552,17 @@
 			6'b100011: EXTOp <= 2'b01;	        /* LW */
 			6'b100010: EXTOp <= 2'b01;			/* LWL */
 			6'b100110: EXTOp <= 2'b01;			/* LWR */
+			6'b000001:
+				case ( rt )
+					`teqi 	:	EXTOp <= 2'b01;
+					`tgei 	:	EXTOp <= 2'b01;
+					`tgeiu	:	EXTOp <= 2'b01;
+					`tlti 	:	EXTOp <= 2'b01;
+					`tltiu	:	EXTOp <= 2'b01;
+					`tnei 	:	EXTOp <= 2'b01;
+					default:	EXTOp <= 2'b00;
+				endcase
+
 			default: EXTOp <= 2'b00;
 		endcase
 	end
@@ -482,7 +574,17 @@
 					NPCOp <= 2'b01;
 				else
 					NPCOp <= 2'b00;
+			6'b010100:				/* BEQL */
+				if (CMPOut1 == 0)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
 			6'b000101:				/* BNE */
+				if (CMPOut1 == 1)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
+			6'b010101:				/* BNEL */
 				if (CMPOut1 == 1)
 					NPCOp <= 2'b01;
 				else
@@ -490,31 +592,55 @@
 			6'b000001:
 				case (rt)
 					5'b00001:			/* BGEZ */
-					if (CMPOut2 != 2'b10)
-						NPCOp <= 2'b01;
-					else
-						NPCOp <= 2'b00;
+						if (CMPOut2 != 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
+					5'b00011:			/* BGEZL */
+						if (CMPOut2 != 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
 					5'b00000:			/* BLTZ */
-					if (CMPOut2 == 2'b10)
-						NPCOp <= 2'b01;
-					else
-						NPCOp <= 2'b00;
+						if (CMPOut2 == 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
+					5'b00010:			/* BLTZL */
+						if (CMPOut2 == 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
 					5'b10001:			/* BGEZAL */
-					if (CMPOut2 != 2'b10)
-						NPCOp <= 2'b01;
-					else
-						NPCOp <= 2'b00;
+						if (CMPOut2 != 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
+					5'b10011:			/* BGEZALL */
+						if (CMPOut2 != 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
 					5'b10000:			/* BLTZAL */
-					if (CMPOut2 == 2'b10)
-						NPCOp <= 2'b01;
-					else
-						NPCOp <= 2'b00;
+						if (CMPOut2 == 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
+					5'b10010:			/* BLTZALL */
+						if (CMPOut2 == 2'b10)
+							NPCOp <= 2'b01;
+						else
+							NPCOp <= 2'b00;
+
 					default: NPCOp <= 2'b00;
 				endcase
-			6'b000010: NPCOp <= 2'b10;	/* J */
-			6'b000011: NPCOp <= 2'b10;	/* JAL */
 			6'b000110:				/* BLEZ */
 				if(CMPOut2 != 2'b01)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
+			6'b010110:				/* BLEZL */
+				if(CMPOut2 != 2'b01 && rt == 5'b0)
 					NPCOp <= 2'b01;
 				else
 					NPCOp <= 2'b00;
@@ -523,7 +649,14 @@
 					NPCOp <= 2'b01;
 				else
 					NPCOp <= 2'b00;
-			6'b000000: 
+			6'b010111:				/* BGTZL */
+				if(CMPOut2 == 2'b01 && rt == 5'b0)
+					NPCOp <= 2'b01;
+				else
+					NPCOp <= 2'b00;
+			6'b000010: NPCOp <= 2'b10;	/* J */
+			6'b000011: NPCOp <= 2'b10;	/* JAL */
+			6'b000000:
 				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR or JALR */
 					NPCOp <= 2'b11;
 				else
@@ -535,7 +668,8 @@
 	always @(OP or Funct) begin		/* the genenration of MUX1Sel */
 		 case (OP)
 			6'b000000: MUX1Sel <= 2'b01;
-			6'b000001: MUX1Sel <= 2'b10;		/* BGEZAL or BLTZAL*/
+			6'b000001: MUX1Sel <= 2'b10;		/* BGEZAL, BLTZAL, BGEZALL, BLTZALL */
+			/*此处没有对trap 型指令进行控制，由于之前已经将RFWr 置零*/
 			6'b000011: MUX1Sel <= 2'b10;		/* JAL */
 			`special2:
 				case(Funct)
@@ -543,13 +677,13 @@
 					default:MUX1Sel <= 2'b00;
 				endcase
 
-			default: MUX1Sel <= 2'b00;		
+			default: MUX1Sel <= 2'b00;
 		endcase
 	end
 
 	always @(OP or Funct or rs) begin		/* the genenration of MUX2Sel */
 		 case (OP)
-			6'b000000: 
+			6'b000000:
 				case (Funct)
 					6'b010000: MUX2Sel <= 3'b000;	/* MFHI */
 					6'b010010: MUX2Sel <= 3'b000;	/* MFLO */
@@ -596,7 +730,6 @@
 		endcase
 	end
 
-
 	always @(OP or Funct) begin		/* the genenration of DMSel */
 		 case (OP)
 			6'b101000: DMSel <= 3'b000;		/* SB */
@@ -637,13 +770,13 @@
 		else
 		begin
 			ID_tlb_searchen = 1'b0;
-			ID_MUX11Sel = 1'b0;		
+			ID_MUX11Sel = 1'b0;
 		end
 	end
 
 	////used for the TLBR ,TLBWI, mtc0 entryHi, mtc0 Config, to clear the instrs after the two instr
-	assign TLB_flush = 
-		( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi || Funct == `tlbwr)) || 
+	assign TLB_flush =
+		( OP == `tlb && (Funct == `tlbr || Funct == `tlbwi || Funct == `tlbwr)) ||
 		(CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b01010_000)	||
 		(CP0WrEn == 1'b1 && {rd,Funct[2:0]} == 8'b10000_000);
 
@@ -657,7 +790,7 @@
 		case (OP)
 			6'b100010: LoadOp <= 2'b10;			/* LWL */
 			6'b100110: LoadOp <= 2'b11;			/* LWR */
-			default :  LoadOp <= 2'b0;	
+			default :  LoadOp <= 2'b0;
 		endcase
 	end
 
@@ -670,9 +803,93 @@
 	end
 
 	/*
-		movz_movn = 1 imply that the instr is movz or movn and the condition is OK or 
+		movz_movn = 1 imply that the instr is movz or movn and the condition is OK or
 		the instr is not the movn or movz
 	*/
 	assign movz_movn = ~( (OP == 6'b0) && ((Funct==`movn&&CMPOut3) || (Funct==`movz&&!CMPOut3)) );
+
+	//Trap instr
+	always @(OP or Funct or rt) begin
+		case (OP)
+			6'b000000:
+				case (Funct)
+					`teq	:	Trap_Op <= 1'b1;
+					`tge	:	Trap_Op <= 1'b1;
+					`tgeu	:	Trap_Op <= 1'b1;
+					`tlt	:	Trap_Op <= 1'b1;
+					`tltu	:	Trap_Op <= 1'b1;
+					`tne	:	Trap_Op <= 1'b1;
+					default:	Trap_Op <= 1'b0;
+				endcase
+			6'b000001:
+				case ( rt )
+					`teqi 	:	Trap_Op <= 1'b1;
+					`tgei 	:	Trap_Op <= 1'b1;
+					`tgeiu	:	Trap_Op <= 1'b1;
+					`tlti 	:	Trap_Op <= 1'b1;
+					`tltiu	:	Trap_Op <= 1'b1;
+					`tnei 	:	Trap_Op <= 1'b1;
+					default:	Trap_Op <= 1'b0;
+				endcase
+
+			default:	Trap_Op <= 1'b0;
+		endcase
+	end
+
+	/*
+		Branch_flush, if the branch is taken, the Branch_flush = 0.
+		Execute the delay slot only if the branch is taken
+	*/
+	always @(OP or rt or CMPOut1 or CMPOut2) begin
+		case (OP)
+			6'b010100:				/* BEQL */
+				if (CMPOut1 == 0)
+					Branch_flush <= 0;
+				else
+					Branch_flush <= 1;
+			6'b010101:				/* BNEL */
+				if (CMPOut1 == 1)
+					Branch_flush <= 0;
+				else
+					Branch_flush <= 1;
+			6'b000001:
+				case (rt)
+					5'b00011:			/* BGEZL */
+						if (CMPOut2 != 2'b10)
+							Branch_flush <= 0;
+						else
+							Branch_flush <= 1;
+					5'b00010:			/* BLTZL */
+						if (CMPOut2 == 2'b10)
+							Branch_flush <= 0;
+						else
+							Branch_flush <= 1;
+					5'b10011:			/* BGEZALL */
+						if (CMPOut2 != 2'b10)
+							Branch_flush <= 0;
+						else
+							Branch_flush <= 1;
+					5'b10010:			/* BLTZALL */
+						if (CMPOut2 == 2'b10)
+							Branch_flush <= 0;
+						else
+							Branch_flush <= 1;
+
+					default: Branch_flush <= 0;
+				endcase
+			6'b010110:				/* BLEZL */
+				if(CMPOut2 != 2'b01 && rt == 5'b0)
+					Branch_flush <= 0;
+				else
+					Branch_flush <= 1;
+			6'b010111:				/* BGTZL */
+				if(CMPOut2 == 2'b01 && rt == 5'b0)
+					Branch_flush <= 0;
+				else
+					Branch_flush <= 1;
+
+			default: Branch_flush <= 0;
+		endcase
+	end
 
 endmodule

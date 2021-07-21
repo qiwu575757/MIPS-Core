@@ -53,7 +53,7 @@ endmodule
 
 
 module IF_ID(
-	clk, rst,IF_IDWr, IF_Flush, PC, Instr, 
+	clk, rst,IF_IDWr, IF_Flush, PC, Instr,
 	IF_Exception, IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
 
 	ID_PC, ID_Instr, Temp_ID_Excetion,Temp_ID_ExcCode,
@@ -91,15 +91,15 @@ module IF_ID(
 endmodule
 
 module ID_EX(
-	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel, 
-	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt, 
+	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Sel, MUX3Sel, ALU1Sel, DMWr, DMSel,
+	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, RD, Imm32, shamt,
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 	ID_TLBRill_Exc,ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,ID_TLB_Exc,TLB_flush,TLB_writeen,TLB_readen,
 	LoadOp,StoreOp,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
-	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
+	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_RD, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT,
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,EX_TLBRill_Exc,EX_MUX11Sel,
 	EX_MUX12Sel,EX_tlb_searchen,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,
 	EX_StoreOp
@@ -205,7 +205,7 @@ module ID_EX(
 			EX_LoadOp <= 2'b00;
 			EX_StoreOp <= 2'b00;
 		end
-		else if(ID_EXWr) 
+		else if(ID_EXWr)
 		begin
 			EX_eret_flush <= eret_flush;
 			EX_CP0WrEn <= CP0WrEn;
@@ -252,17 +252,17 @@ module ID_EX(
 endmodule
 
 module EX_MEM1(
-		clk, rst, EX_MEM1Wr, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel,RHLOut, 
+		clk, rst, EX_MEM1Wr, Imm32, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel,RHLOut,
         ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
         CP0Addr, CP0Rd, EX_dcache_en, Overflow,EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel,
 		EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,EX_StoreOp,
-		MULOut,EX_start,
+		MULOut,EX_start,Trap,
 
-		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
-        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT, 
+		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode,
+        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT,
         MEM1_Imm32, MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow,MEM1_TLBRill_Exc,MEM1_tlb_searchen,
 		MEM1_MUX11Sel,MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,
-		MEM1_StoreOp,MEM1_MULOut,MEM1_start
+		MEM1_StoreOp,MEM1_MULOut,MEM1_start,MEM1_Trap
 	);
 	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -282,6 +282,7 @@ module EX_MEM1(
 	input [1:0] EX_LoadOp,EX_StoreOp;
 	input [31:0] MULOut;
 	input EX_start;
+	input Trap;
 
 	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
 	output reg MEM1_eret_flush;
@@ -301,6 +302,7 @@ module EX_MEM1(
 	output reg [1:0] MEM1_LoadOp, MEM1_StoreOp;
 	output reg [31:0] MEM1_MULOut;
 	output reg MEM1_start;
+	output reg MEM1_Trap;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -337,6 +339,7 @@ module EX_MEM1(
 			MEM1_StoreOp <= 2'b0;
 			MEM1_MULOut <= 32'b0;
 			MEM1_start <= 1'b0;
+			MEM1_Trap <= 1'b0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -371,11 +374,12 @@ module EX_MEM1(
 			MEM1_StoreOp <= EX_StoreOp;
 			MEM1_MULOut <= MULOut;
 			MEM1_start <= EX_start;
+			MEM1_Trap <= Trap;
 		end
 
 endmodule
 
-module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD, 
+module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
         MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWen, Exception,
         eret_flush, uncache_valid, DMen, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, CP0Rd,
 		MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,
@@ -418,7 +422,7 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 	output reg MEM2_RFWr;
 	output reg[2:0] MEM2_MUX2Sel;
 	output reg[31:0] MEM2_MUX6Out;
-	output reg[31:0] MEM2_ALU1Out;	
+	output reg[31:0] MEM2_ALU1Out;
 	output reg[4:0] MEM2_RD;
 	output reg[31:0] MEM2_CP0Out;
 	output reg[2:0] MEM2_DMSel;
@@ -469,7 +473,7 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, ALU1Out, RD,
 			MEM2_RFWr <= RFWr;
 			MEM2_MUX2Sel <= MUX2Sel;
 			MEM2_MUX6Out <= MUX6Out;
-			MEM2_ALU1Out <= ALU1Out;	
+			MEM2_ALU1Out <= ALU1Out;
 			MEM2_RD <= RD;
 			MEM2_CP0Out <= CP0Out;
 			MEM2_DMSel <= DMSel;

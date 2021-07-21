@@ -1,34 +1,31 @@
 module alu1(
-	A, B, ALU1Op, ALU1Sel, Shamt, 
-	
-	C,Overflow
+	A, B, ALU1Op, ALU1Sel, Shamt,
+
+	C,Overflow,Trap
 	);
 	input[31:0] A, B;
 	input[4:0] ALU1Op;
 	input[4:0] Shamt;
 	input ALU1Sel;
-	
+
 	output reg Overflow;
 	output reg[31:0] C;
+    output reg Trap;
 
 	wire[4:0] temp;
 	wire Less;
+    wire Trap_Equal;
+    wire Trap_Less;
 	reg [5:0] CLO_RESULT;
 	reg [5:0] CLZ_RESULT;
-	
+
 	assign temp = ALU1Sel ? Shamt : A[4:0];
 	assign Less = ((ALU1Op == 5'b01001) && A[31]^B[31]) ? ~(A < B) : (A < B);
+    assign Trap_Equal = A == B;
+    assign Trap_Less =
+    ( (ALU1Op == 5'b10010 || ALU1Op == 5'b10100) && A[31]^B[31]) ? ~(A < B) : (A < B);//signed/unsigned compare
 
 	always@(A, B, ALU1Op, Less, temp, CLO_RESULT, CLZ_RESULT)
-		/*if(ALU1Op == 4'b1000)begin					//arithmetical right shift
-						C = B;
-						if(temp[4]) C = {{16{B[31]}},C[31:16]};
-						if(temp[3]) C = {{8{B[31]}},C[31:8]};
-						if(temp[2]) C = {{4{B[31]}},C[31:4]};
-						if(temp[1]) C = {{2{B[31]}},C[31:2]};
-						if(temp[0]) C = {B[31],C[31:1]};*
-					 end
-		else begin*/
 		case(ALU1Op)
 			5'b00000:	C = A + B;			//add
 			5'b00001:	C = A - B;			//sub
@@ -42,11 +39,11 @@ module alu1(
             5'b01100:   C = A + B;			//addui addu
 			5'b01011:	C = A;				//movn, movz
 			5'b01101:	C = {26'd0,CLO_RESULT};//clo
-			5'b01110:	C = {26'd0,CLZ_RESULT};//clz 
+			5'b01110:	C = {26'd0,CLZ_RESULT};//clz
             5'b10000:   C = A - B;			//subu
 			default:	C = {31'h00000000,Less};//	signed/unsigned compare
 		endcase
-	
+
 	always@(A,B,C,ALU1Op)
 		if(ALU1Op == 5'b00000) begin
 			if(A[31] == 1'b1 && B[31] == 1'b1 && C[31] == 1'b0)
@@ -56,7 +53,7 @@ module alu1(
 			else
 				Overflow = 1'b0;
 		end
-		else if(ALU1Op == 5'b00001) begin 
+		else if(ALU1Op == 5'b00001) begin
 			if(A[31] == 1'b1 && B[31] == 1'b0 && C[31] == 1'b0)
 				Overflow = 1'b1;
 			else if(A[31] == 1'b0 && B[31] == 1'b1 && C[31] == 1'b1)
@@ -66,6 +63,33 @@ module alu1(
 		end
 		else
 			Overflow = 1'b0;
+
+    always @(Trap_Equal,Trap_Less,ALU1Op) begin
+        case (ALU1Op)
+            5'b10001://teq,teqi
+                if (Trap_Equal)
+                    Trap <= 1'b1;
+                else
+                    Trap <= 1'b0;
+            5'b10010,5'b10011://tge,tgei,tgeu,tgeiu
+                if (~Trap_Less)
+                    Trap <= 1'b1;
+                else
+                    Trap <= 1'b0;
+            5'b10100,5'b10101://tlt,tlti,tltu,tltiu
+                if (Trap_Less)
+                    Trap <= 1'b1;
+                else
+                    Trap <= 1'b0;
+            5'b10110://tne,tnei
+                if (~Trap_Equal)
+                    Trap <= 1'b1;
+                else
+                    Trap <= 1'b0;
+
+            default:Trap <= 1'b0;
+        endcase
+    end
 
     always@(A) begin
         casex (A)
@@ -214,5 +238,3 @@ module alu1(
     end
 
 endmodule
-
-

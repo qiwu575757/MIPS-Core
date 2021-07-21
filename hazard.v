@@ -1,14 +1,15 @@
 module bypass(
-	EX_RS, EX_RT, ID_RS, ID_RT, 
+	EX_RS, EX_RT, ID_RS, ID_RT,
 	MEM1_RD, MEM2_RD, WB_RD,
 	MEM1_RFWr, MEM2_RFWr, WB_RFWr,
-	BJOp, dcache_stall,
-	
+	BJOp, dcache_stall,ALU1Op,
+
 	MUX4Sel, MUX5Sel, MUX8Sel, MUX9Sel
 	);
 	input MEM1_RFWr, MEM2_RFWr, WB_RFWr, BJOp;
 	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, WB_RD;
 	input dcache_stall;
+	input [4:0] ALU1Op;
 
 	output reg[1:0] MUX4Sel, MUX5Sel;
 	output reg[1:0] MUX8Sel, MUX9Sel;
@@ -41,21 +42,21 @@ module bypass(
 		else
 			MUX8Sel = 2'b00;		//NO bypath for RS
 
- 	always@(MEM1_RFWr, MEM2_RFWr, ID_RS, ID_RT, MEM1_RD, MEM2_RD, BJOp)
-		if (BJOp && MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
-			MUX9Sel = 2'B01;		//MEM bypath for RT
-		else if(BJOp && MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RT))
+	/*for movn movz and BJ*/
+ 	always@(MEM1_RFWr, MEM2_RFWr, ID_RS, ID_RT, MEM1_RD, MEM2_RD, BJOp, ALU1Op)
+		if ((BJOp || ALU1Op==5'b01011) && MEM1_RFWr && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
+			MUX9Sel = 2'b01;		//MEM bypath for RT
+		else if((BJOp || ALU1Op==5'b01011) && MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RT))
 			MUX9Sel = 2'b10;
 		else
 			MUX9Sel = 0;		//NO bypath for RT
-
 
 endmodule
 
 module stall(
 	clk,rst ,EX_RT, MEM1_RT, MEM2_RT, ID_RS, ID_RT,
-	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd, 
-	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,rst_sign, 
+	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd,
+	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,rst_sign,
 	MEM1_ex, MEM1_RFWr, MEM2_RFWr,MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok,MEM_dCache_en,MEM_dCache_addr_ok,
     MEM1_cache_sel,MEM1_dCache_en,,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
@@ -96,8 +97,8 @@ module stall(
 
 	assign stall_0 = (EX_DMRd || EX_CP0Rd) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
 	assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
-	assign stall_2 = BJOp && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) );
-	assign stall_3 = BJOp && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ;
+	assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) );
+	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ;
 	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3;
 
 	always@(
