@@ -496,7 +496,7 @@ always @(posedge clk) begin
 	if(!rst)
 		writing_addr=0;
 	else if(MEM_dcache_wr_req)
-		writing_addr=1;
+		writing_addr=MEM_dcache_wr_addr;
 
 end
 
