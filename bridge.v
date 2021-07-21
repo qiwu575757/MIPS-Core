@@ -473,6 +473,7 @@ reg conf_wr;// write event argument
 reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
 reg is_writing;
+reg [31:0] writing_addr;
 initial begin
 	count_wr16 = 0;
 	conf_wr=0;
@@ -488,6 +489,14 @@ always @(posedge clk) begin
 		is_writing=1;
 	else if(next_wr_state == state_wr_finish)
 		is_writing=0;
+
+end
+
+always @(posedge clk) begin
+	if(!rst)
+		writing_addr=0;
+	else if(MEM_dcache_wr_req)
+		writing_addr=1;
 
 end
 
@@ -658,12 +667,12 @@ always @(*) begin
 	endcase
 end
 //
-assign MEM_dcache_rd_rdy =(~is_writing)&(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_rd_rdy =((~is_writing)|(MEM_dcache_rd_addr!=writing_addr))&(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = (~is_writing)&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign MEM_dcache_wr_rdy = ((~is_writing)|(IF_icache_rd_addr!=writing_addr))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
 assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);
@@ -678,7 +687,7 @@ assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 
-assign awaddr =MEM_dcache_wr_addr;
+assign awaddr =writing_addr;
 assign awsize = MEM_dcache_wr_type;
 assign awlen = conf_wr ? 4'b0:4'b1111;
 assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
