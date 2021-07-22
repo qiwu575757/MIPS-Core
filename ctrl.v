@@ -8,7 +8,7 @@
 		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn,Branch_flush
+		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal
 	);
 	input 			clk;
 	input 			rst;
@@ -26,7 +26,7 @@
 	input [4:0] 	Temp_ID_ExcCode;
 	input 			ID_TLB_Exc;
 	input 			CMPOut3;
-	
+
 	output reg [1:0]MUX1Sel;
 	output reg [2:0]MUX2Sel;
 	output reg 		MUX3Sel;
@@ -63,11 +63,13 @@
 	output reg [1:0]LoadOp;
 	output  		movz_movn;
 	output reg 		Branch_flush;
-	
+	output 			LL_signal;
+	output 			SC_signal;
+
 	wire 			ri;			//reserved instr
 	reg 			rst_sign;
 	reg 			Trap_Op;
-	
+
 	always @(posedge clk) begin
 		if (!rst)
 			rst_sign <= 1'b1;
@@ -77,7 +79,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op;
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref);
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -274,6 +276,8 @@
 			6'b100011: RFWr <= 1;		/* LW */
 			6'b100010: RFWr <= 1;		/* LWL */
 			6'b100110: RFWr <= 1;		/* LWR */
+			6'b110000: RFWr <= 1;		/* LL */
+			6'b111000: RFWr <= 1;		/* SC */
 			`cop0:
 				if (rs == `mfc0)
 					RFWr <= 1;
@@ -339,6 +343,7 @@
 			6'b101011: DMWr <= 1;	/* SW */
 			6'b101010: DMWr <= 1;	/* SWL */
 			6'b101110: DMWr <= 1;	/* SWR */
+			6'b111000: DMWr <= 1;	/* SC */
 			default: DMWr <= 0;
 		endcase
 	end
@@ -352,6 +357,7 @@
 			6'b100011: DMRd <= 1;		/* LW */
 			6'b100010: DMRd <= 1;		/* LWL */
 			6'b100110: DMRd <= 1;		/* LWR */
+			6'b110000: DMRd <= 1;		/* LL */
 			default: DMRd <= 0;
 		endcase
 	end
@@ -406,6 +412,7 @@
 			6'b101011: ALU1Op <= 5'b00000;		/* SW */
 			6'b101010: ALU1Op <= 5'b00000;		/* SWL */
 			6'b101110: ALU1Op <= 5'b00000;		/* SWR */
+			6'b111000: ALU1Op <= 5'b00000;		/* SC */
 			6'b100100: ALU1Op <= 5'b00000;		/* LBU */
 			6'b100000: ALU1Op <= 5'b00000;		/* LB */
 			6'b100101: ALU1Op <= 5'b00000;		/* LHU */
@@ -413,6 +420,7 @@
 			6'b100011: ALU1Op <= 5'b00000;		/* LW */
 			6'b100010: ALU1Op <= 5'b00000;		/* LWL */
 			6'b100110: ALU1Op <= 5'b00000;		/* LWR */
+			6'b110000: ALU1Op <= 5'b00000;		/* LL */
 			6'b011100:
 				case(Funct)
 					`clo :	ALU1Op  <= 0'b01101;		/*CLO*/
@@ -547,6 +555,7 @@
 			6'b101011: EXTOp <= 2'b01;	   		/* SW */
 			6'b101010: EXTOp <= 2'b01;			/* SWL */
 			6'b101110: EXTOp <= 2'b01;			/* SWR */
+			6'b111000: EXTOp <= 2'b01;			/* SC */
 			6'b100100: EXTOp <= 2'b01;	  		/* LBU */
 			6'b100000: EXTOp <= 2'b01;	  		/* LB */
 			6'b100101: EXTOp <= 2'b01;	   		/* LHU */
@@ -554,6 +563,7 @@
 			6'b100011: EXTOp <= 2'b01;	        /* LW */
 			6'b100010: EXTOp <= 2'b01;			/* LWL */
 			6'b100110: EXTOp <= 2'b01;			/* LWR */
+			6'b110000: EXTOp <= 2'b01;			/* LL */
 			6'b000001:
 				case ( rt )
 					`teqi 	:	EXTOp <= 2'b01;
@@ -667,7 +677,7 @@
 		endcase
 	end
 
-	always @(OP or Funct) begin		/* the genenration of MUX1Sel */
+	always @(OP or Funct) begin		/* the genenration of MUX1Sel, choose the TARGET REG */
 		 case (OP)
 			6'b000000: MUX1Sel <= 2'b01;
 			6'b000001: MUX1Sel <= 2'b10;		/* BGEZAL, BLTZAL, BGEZALL, BLTZALL */
@@ -679,7 +689,7 @@
 					default:MUX1Sel <= 2'b00;
 				endcase
 
-			default: MUX1Sel <= 2'b00;
+			default: MUX1Sel <= 2'b00;/* The target reg is RT reg */
 		endcase
 	end
 
@@ -712,6 +722,7 @@
 			6'b100110: MUX2Sel <= 3'b100;		/* LWR */
 			6'b100101: MUX2Sel <= 3'b100;		/* LHU */
 			6'b100011: MUX2Sel <= 3'b100;		/* LW */
+			6'b110000: MUX2Sel <= 3'b100;		/* LL */
 			6'b000001: MUX2Sel <= 3'b011;		/* BGEZAL or BLTZAL */
 			6'b001111: MUX2Sel <= 3'b001;		/* LUI */
 			6'b000011: MUX2Sel <= 3'b011;		/* JAL */
@@ -720,6 +731,7 @@
 					MUX2Sel <= 3'b101;
 				else
 					MUX2Sel <= 3'b010;
+			6'b111000: MUX2Sel <= 3'b111;		/* SC */
 
 			default: MUX2Sel <= 3'b010;
 		endcase
@@ -737,6 +749,7 @@
 			6'b101000: DMSel <= 3'b000;		/* SB */
 			6'b101001: DMSel <= 3'b001;		/* SH */
 			6'b101011: DMSel <= 3'b010;		/* SW */
+			6'b111000: DMSel <= 3'b010;		/* SC */
 			6'b100100: DMSel <= 3'b011;		/* LBU */
 			6'b100000: DMSel <= 3'b100;		/* LB */
 			6'b100101: DMSel <= 3'b101;		/* LHU */
@@ -750,6 +763,7 @@
 			6'b101000: dcache_en<= 1'b1;	      	/* SB */
 			6'b101001: dcache_en<= 1'b1;	      	/* SH */
 			6'b101011: dcache_en<= 1'b1;	   		/* SW */
+			6'b111000: dcache_en<= 1'b1;	   		/* SC */
 			6'b101010: dcache_en<= 1'b1;			/* SWL */
 			6'b101110: dcache_en<= 1'b1;			/* SWR */
 			6'b100100: dcache_en<= 1'b1;	  		/* LBU */
@@ -759,6 +773,7 @@
 			6'b100011: dcache_en<= 1'b1;	        /* LW */
 			6'b100010: dcache_en<= 1'b1;			/* LWL */
 			6'b100110: dcache_en<= 1'b1;			/* LWR */
+			6'b110000: dcache_en<= 1'b1;			/* LL */
 			default: dcache_en <= 1'b0;
 	endcase
 	end
@@ -893,5 +908,9 @@
 			default: Branch_flush <= 0;
 		endcase
 	end
+
+	//LL SC signal
+	assign LL_signal = (OP == 6'b110000);
+	assign SC_signal = (OP == 6'b111000);
 
 endmodule

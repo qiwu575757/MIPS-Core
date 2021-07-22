@@ -110,7 +110,7 @@
 
 `define beql    6'b010100
 //b_special include bltz bgez
-
+`define pref    6'b110011
 //--------------super---------------------//
 `define cop0    6'b010000
 

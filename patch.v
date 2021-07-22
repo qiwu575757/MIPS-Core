@@ -71,18 +71,21 @@ endmodule
 
 
 module mem1_cache_prep(
-    MEM1_dcache_en,MEM1_eret_flush,MEM1_ALU1Out, MEM1_DMWr,
+    clk,rst,MEM1_dcache_en,MEM1_eret_flush,MEM1_ALU1Out,MEM1_DMWr,
     MEM1_DMSel, MEM1_RFWr,MEM1_Overflow, Temp_M1_Exception,
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,s1_d,
     s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,
     Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,MEM1_LoadOp,
     MEM1_StoreOp,MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
+    MEM1_LL_signal,MEM1_SC_signal,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata
+    MEM1_wdata,MEM1_SCOut
     );
+    input           clk;
+    input           rst;
     input           MEM1_dcache_en;//MEM1_dcache_en = 1 => load or store
     input           MEM1_eret_flush;
     input [31:0]    MEM1_ALU1Out;
@@ -109,6 +112,8 @@ module mem1_cache_prep(
     input [2:0]     Config_K0_out;
     input [2:0]     s1_c;
     input           MEM1_Trap;
+    input           MEM1_LL_signal;
+    input           MEM1_SC_signal;
 
     output [31:0]   MEM1_Paddr;
     output          MEM1_cache_sel;
@@ -123,6 +128,7 @@ module mem1_cache_prep(
     output          MEM1_uncache_valid;
     output          MEM1_DMen;
     output reg [31:0] MEM1_wdata;
+    output [31:0]   MEM1_SCOut;
 
     wire data_mapped;
     wire valid;
@@ -130,6 +136,9 @@ module mem1_cache_prep(
     wire kseg0, kseg1;
     wire tlbs, tlbl, tlbmod;
     wire AdES_sel, AdEL_sel;
+    wire SC_OK;
+    reg  LLbit;
+    reg [31:0] LL_addr;
 
     assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30])) & MEM1_dcache_en;//load or store
     assign MEM1_Paddr =
@@ -214,11 +223,29 @@ module mem1_cache_prep(
 		end
 
     /* dcache control signal*/
-    assign DMWen_dcache = MEM1_DMWr && !Temp_M1_Exception && !MEM1_eret_flush;//0->load,1->store
+    assign DMWen_dcache = MEM1_DMWr & !Temp_M1_Exception & !MEM1_eret_flush &
+            (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
     assign MEM1_dcache_valid = MEM1_dcache_en & IF_iCache_data_ok & !MEM1_Exception &
-                        !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel;
-    assign MEM1_uncache_valid = MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception & !MEM1_eret_flush;
-    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
+            !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception &
+            !MEM1_eret_flush&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+
+    /* LL SC Instr */
+    always @(posedge clk) begin
+        if ( !rst | MEM1_eret_flush | MEM1_Exception )
+            LLbit <= 1'b0;
+        else if ( MEM1_LL_signal )
+            LLbit <= 1'b1;
+    end
+    always @(posedge clk) begin
+        if ( !rst | MEM1_eret_flush | MEM1_Exception )
+            LLbit <= 32'b0;
+        else if ( MEM1_LL_signal )
+            LL_addr <= MEM1_ALU1Out;
+    end
+    assign SC_OK = LLbit & (LL_addr == MEM1_ALU1Out) & MEM1_SC_signal;
+    assign MEM1_SCOut = {30'b0,(MEM1_dcache_valid|MEM1_uncache_valid)};
 
 /* set writeen signal and store data */
     assign MEM1_dCache_wstrb =
