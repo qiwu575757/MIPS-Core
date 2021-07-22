@@ -116,10 +116,10 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
     validtag_block VT_Way1(
         clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     Data_Block Data_Way0(
-        clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
+        clk, VTen, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
     Data_Block Data_Way1(
-        clk, 1, Data_Way1_wen, Data_addr, Data_in, Data_Way1_out
+        clk, VTen, Data_Way1_wen, Data_addr, Data_in, Data_Way1_out
     );
 
     //tag compare && hit judgement
@@ -296,10 +296,8 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
         else
             VT_addr = index;
 
-    always@(index, C_STATE, stall_0, index_RB, replace_index_MB)
-        if(stall_0) 
-            Data_addr = index_RB;
-        else if(C_STATE == REFILL)
+    always@(index, C_STATE, index_RB, replace_index_MB)
+        if(C_STATE == REFILL)
             Data_addr = replace_index_MB;
         else
             Data_addr = index;
@@ -522,9 +520,9 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     validtag_block VT_Way1(
         clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
     dirty_block D_Way0(
-        clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
+        clk, resetn, 1, D_Way0_wen, D_addr, D_in, Way0_Dirty);
     dirty_block D_Way1(
-        clk, resetn, D_Way1_wen, D_addr, D_in, Way1_Dirty);
+        clk, resetn, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty);
 
     Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
@@ -880,7 +878,7 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
                     else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;
                     else
-                        N_STATE = REPLACE;
+                        N_STATE = REFILL;
             REPLACE:/*if(!wr_valid)
                         N_STATE = REPLACE;
                     else*/
@@ -915,7 +913,6 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     //assign rd_req = (N_STATE == REFILL) ;
     //assign wr_req = (N_STATE == REPLACE) ;
     assign rd_req = ((C_STATE == MISS) & ~(replace_Valid_MB &replace_Dirty_MB)) |
-                    ((C_STATE == REPLACE) & wr_valid) |
                     ((C_STATE == REFILL) & ~(ret_valid&ret_last));
     /*assign wr_req = ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB ) 
                     | ((C_STATE == REPLACE) & ~wr_valid);*/
@@ -969,7 +966,7 @@ module uncache_dm(
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
 
-    parameter DEFAULT = 2'b00;
+    parameter IDLE = 2'b00;
     parameter LOAD    = 2'b01;
     parameter STORE   = 2'b10;
     parameter FINISH  = 2'b11;
@@ -983,18 +980,18 @@ module uncache_dm(
 
     always@(posedge clk)
         if(!resetn)
-            C_STATE <= DEFAULT;
+            C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
 
     always@(C_STATE, load, store, /*rd_rdy,*/ wr_rdy, ret_valid, ret_last/* wr_valid*/)
         case(C_STATE)
-            DEFAULT:    if(load /*&& rd_rdy*/)
+            IDLE:    if(load /*&& rd_rdy*/)
                             N_STATE = LOAD;
                         else if(store && wr_rdy)
-                            N_STATE = STORE;
+                            N_STATE = FINISH;
                         else
-                            N_STATE = DEFAULT;
+                            N_STATE = IDLE;
             LOAD:       if(ret_valid && ret_last)
                             N_STATE = FINISH;
                         else
@@ -1003,8 +1000,8 @@ module uncache_dm(
                             N_STATE = FINISH;
                         //else
                         //    N_STATE = STORE;
-            FINISH:     N_STATE = DEFAULT;
-            default:    N_STATE = DEFAULT;
+            FINISH:     N_STATE = IDLE;
+            default:    N_STATE = IDLE;
         endcase
 
     /*assign data_ok = ~valid |
@@ -1013,7 +1010,8 @@ module uncache_dm(
     assign data_ok = ~valid | (C_STATE == FINISH);
     assign rdata = data_reg;
 
-    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) | (C_STATE == STORE);
+    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) |
+                        ((C_STATE == IDLE) & store & wr_rdy);
 
     always@(posedge clk)
         if(!resetn)
@@ -1023,8 +1021,8 @@ module uncache_dm(
 
     //assign rd_req = (N_STATE == LOAD);
     //assign wr_req = (N_STATE == STORE);
-    assign rd_req = ((C_STATE == DEFAULT) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
-    assign wr_req = ((C_STATE == DEFAULT) & store & wr_rdy) ;
+    assign rd_req = ((C_STATE == IDLE) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
+    assign wr_req = ((C_STATE == IDLE) & store & wr_rdy) ;
     assign rd_type =
         ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
         ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
@@ -1048,9 +1046,10 @@ module uncache_dm(
         endcase
 endmodule
 
-module dirty_block(clk, rst, wen, addr, din, dout);
+module dirty_block(clk, rst, en, wen, addr, din, dout);
     input clk;
     input rst;
+    input en;
     input wen;
     input[5:0] addr;
     input din;
@@ -1067,10 +1066,12 @@ module dirty_block(clk, rst, wen, addr, din, dout);
     always@(posedge clk)
         if(!rst)
             dout <= 1'b0;
-        else if(wen)    //write first
-            dout <= din;
-        else
-            dout <= dirty[addr];
+        else if(en) begin
+            if(wen)    //write first
+                dout <= din;
+            else
+                dout <= dirty[addr];
+        end
 
 endmodule
 
