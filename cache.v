@@ -358,7 +358,8 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
         /*output*/  addr_ok, data_ok, rdata,
         //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
+                    uncache_out, cache_sel
         );
 
     //clock and reset
@@ -397,6 +398,10 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     output[31:0] wr_addr;           //write address
     output[3:0] wr_wstrb;           //write code,assign 4'b1111
     output[511:0] wr_data;          //data to be replaced from Cache to AXI-Bus
+
+    input[31:0] uncache_out;
+    input cache_sel;
+
 
     //Cache RAM
     /*
@@ -709,10 +714,11 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
     always@(hit_code, rdata_way0, rdata_way1, ret_data,
-            write_bypass1_delay,wdata_bypass1,
-            conflict2_reg, conflict2_data)
-        if(write_bypass1_delay | conflict2_reg)
-            rdata = write_bypass1_delay ? wdata_bypass1 : conflict2_data;
+            write_bypass1_delay,wdata_bypass1, conflict2_reg, conflict2_data,
+            cache_sel, uncache_out)
+        if(cache_sel | write_bypass1_delay | conflict2_reg)
+            rdata = cache_sel ? uncache_out : 
+                    write_bypass1_delay ? wdata_bypass1 : conflict2_data;
         else 
             case(hit_code)
                 2'b01: rdata = rdata_way0;

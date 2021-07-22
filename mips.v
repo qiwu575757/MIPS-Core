@@ -710,7 +710,8 @@ dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd),
     .rd_rdy(MEM_dcache_rd_rdy), .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last),
     .ret_data(MEM_dcache_ret_data), .wr_valid(bvalid), .wr_req(MEM_dcache_wr_req),
     .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), .wr_wstrb(MEM_dcache_wr_wstrb),
-    .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy)
+    .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy),
+    .uncache_out(uncache_Out), .cache_sel(MEM2_cache_sel)
 	);
 	//-------------MEM2---------------//
 MEM1_MEM2 U_MEM1_MEM2(
@@ -752,19 +753,19 @@ uncache_dm U_UNCACHE_DM(
 bridge_dm U_BRIDGE_DM(
 		 .addr2(MEM2_offset),
 		 .DMSel2(MEM2_DMSel),
-		 .Din(cache_Out),
+		 .Din(dcache_Out),
 
 		 .dout(DMOut)
 	);
 
 cache_select_dm U_CACHE_SELECT_DM(
-				MEM2_cache_sel, uncache_Out, dcache_Out, MEM_unCache_data_ok, MEM_dCache_data_ok,
+				MEM2_cache_sel, MEM_unCache_data_ok, MEM_dCache_data_ok,
                 MEM_uncache_rd_req, MEM_dcache_rd_req, MEM_uncache_wr_req, MEM_dcache_wr_req,
                 MEM_uncache_rd_type, MEM_dcache_rd_type, MEM_uncache_wr_type, MEM_dcache_wr_type,
                 MEM_uncache_rd_addr, MEM_dcache_rd_addr, MEM_uncache_wr_addr, MEM_dcache_wr_addr,
                 MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb, dcache_last_stall, uncache_last_stall,
 
-                cache_Out, MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
+                MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
                 MEM_wr_addr, MEM_wr_wstrb, MEM_last_stall
                 );
 
