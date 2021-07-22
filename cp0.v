@@ -65,7 +65,7 @@ module CP0(
     input [31:0]    EntryLo0_in;
     input [31:0]    EntryLo1_in;
     input [31:0]    Index_in;
-    
+
     output [31:0]   data_out;
     output [31:0]   EPC_out;
     output          Interrupt;         //中断
@@ -75,7 +75,7 @@ module CP0(
     output [31:0]   EntryHi_out;
     output [31:0]   Random_out;
     output [2:0]    Config_K0_out;
-    
+
     reg [31:0]      Index;
     reg [31:0]      Random;
     reg [31:0]      EntryLo0;
@@ -98,7 +98,7 @@ module CP0(
     reg [31:0]      TagHi;
     reg             tick;
     wire    count_eq_compare;       //Count == Compare
-    
+
 
 assign count_eq_compare = (Compare == Count);
 assign Interrupt =
@@ -393,7 +393,7 @@ assign data_out =
             EPC <= MEM_bd ? MEM_PC - 32'd4 : MEM_PC;//excrption to modify the EPC，EPC_OUT = EPC
         end
         else if (CP0WrEn && addr == `EPC_index) begin
-            EPC <= data_in - 32'd4;//mtc0 to modify the EPC，EPC_OUT = EPC + 4
+            EPC <= data_in;//mtc0 to modify the EPC，EPC_OUT = EPC + 4
          end
     end
 
