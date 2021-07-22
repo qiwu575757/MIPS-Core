@@ -209,7 +209,7 @@ assign data_out =
 
     //Random generarion
     always @(posedge clk) begin
-        if ( !rst )
+        if ( !rst || Random[3:0] <= Wired[3:0])
             Random <= {28'b0,4'b1111};
         else if (CP0WrEn && addr == `Wired_index)
             Random[3:0] <= 4'b1111;
