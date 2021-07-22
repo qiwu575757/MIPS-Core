@@ -6,7 +6,9 @@
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
-		CP0Rd, start, RHL_visit,dcache_en
+		CP0Rd, start, RHL_visit,dcache_en,
+		BJType,
+		BrType
 	);
 	input clk;
 	input rst;
@@ -47,10 +49,11 @@
 	output reg start;
 	output reg RHL_visit;
 	output reg dcache_en;
+	output reg [1:0] BrType;
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
-	reg[3:0] BJType;			//分支跳转类型
+	output reg[3:0] BJType;			//分支跳转类型
 
 
 	always @(posedge clk) begin
@@ -389,6 +392,31 @@
 			6'b100001: EXTOp = 2'b01;	   		/* LH */
 			6'b100011: EXTOp = 2'b01;	        /* LW */
 			default: EXTOp = 2'b00;
+		endcase
+	end
+
+	always @(OP or rt or Funct) begin		/* the generation of BrType */
+		case (OP)
+			6'b000011: BrType = 2'b11;		//JAL
+			6'b000100,						//BEQ
+			6'b000101: BrType = 2'b10;		//BNE
+			6'b000001: 
+			case (rt)
+				5'b00001,					//BGEZ
+				5'b00000: BrType = 2'b10;	//BLTZ
+				5'b10001,					//BGEZAL
+				5'b10000: BrType = 2'b11;	//BLTZAL
+				default: BrType = 2'b00;
+			endcase
+			6'b000010,						//J
+			6'b000110,						//BLEZ
+			6'b000111: BrType = 2'b10;		//BGTZ
+			6'b000000:
+			case (Funct)
+				6'b001000: BrType = 2'b01;	//JR
+				default: BrType = 2'b00;
+			endcase
+			default: BrType = 2'b00;
 		endcase
 	end
 

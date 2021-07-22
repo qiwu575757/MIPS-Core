@@ -22,7 +22,79 @@ module instr_fetch_pre(
 
 endmodule
 
+module branch_predict_prep(
+    input[31:0] IF_PC,
+    input[31:0] PF_PC,
+    input[25:0] Imm,
+    input PF_predict,
+    input flush_signal_IF,
+    input[31:0] ret_addr,
+    input branch,
+    input[31:0] target_address,
+    input MEM_ex,
+    input MEM_eret_flush,
+    input[31:0] EPC,
 
+    output[31:0] NPC_op00,
+    output[31:0] NPC_op01,
+    output[31:0] NPC_op10,
+    output flush_condition_00,
+    output flush_condition_01,
+    output flush_condition_10,
+    output flush_condition_11,
+    output[31:0] target_address_final,
+    output predict_final,
+    output ee,
+    output[31:0] NPC_ee
+);
+    wire[31:0] IF_PC_add4;
+    wire[31:0] PF_PC_add4;
+    wire branch_signal;
+    //wire npc_condition;
+
+    assign IF_PC_add4 = IF_PC + 4;
+    assign PF_PC_add4 = PF_PC + 4;
+    assign NPC_op00 =  IF_PC_add4;
+    assign NPC_op01 = IF_PC + {{14{Imm[15]}},Imm[15:0],2'b00} ;
+    assign NPC_op10 = {IF_PC[31:28],Imm[25:0],2'b00} ;
+
+    //assign npc_condition = (PF_predict && PF_PC != IF_PC_add4); 
+    
+    assign flush_condition_00 = (NPC_op00 != PF_PC) & ~flush_signal_IF;
+    assign flush_condition_01 = (NPC_op01 != PF_PC);
+    assign flush_condition_10 = (NPC_op10 != PF_PC);
+    assign flush_condition_11 = (ret_addr != PF_PC);
+
+    assign branch_signal = (branch && !flush_signal_IF);
+
+    assign target_address_final = branch_signal ? target_address : PF_PC_add4;
+
+    assign predict_final = branch_signal ? 1'b1 : 1'b0;
+    
+    assign ee = MEM_ex | MEM_eret_flush;
+    assign NPC_ee = MEM_eret_flush ? EPC : 32'hbfc0_0380;
+
+endmodule
+
+module ex_prep(
+    input [1:0] EX_NPCOp,
+    input [25:0] EX_Imm26,
+    input [31:0] ID_PC,
+
+    output reg [31:0] EX_address
+);
+
+    always @(EX_NPCOp, EX_Imm26, ID_PC) begin
+        case(EX_NPCOp)				
+				2'b01:	if(EX_Imm26[15])								
+							EX_address = ID_PC + {14'h3fff,EX_Imm26[15:0],2'b00};
+						else
+							EX_address = ID_PC + {14'h0000,EX_Imm26[15:0],2'b00};
+				2'b10:	EX_address = { ID_PC[31:28],EX_Imm26[25:0],2'b00};
+				default:EX_address = ID_PC + 4;								
+			endcase
+    end
+endmodule
 
 module mem1_cache_prep(
     MEM1_dcache_en,MEM1_eret_flush, MEM1_Exception,
@@ -67,7 +139,7 @@ module mem1_cache_prep(
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�???
+// 1.设置写使能信�????
     assign MEM1_dCache_wstrb=(~DMWen_dcache)?4'b0:
 							(MEM1_DMSel==3'b000)?
 								(MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :

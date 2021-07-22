@@ -53,7 +53,7 @@ module mips(
 );
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
-// 时钟与复位信�???
+// 时钟与复位信�????
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道
@@ -111,14 +111,9 @@ module mips(
     wire PF_icache_valid;
     wire[31:0] PF_PC;
 
-    wire[31:0] NPC_IF_PC;
-    wire[31:0] NPC_PF_PC;
-    wire[31:0] NPC_EPC;
-    wire[31:0] NPC_ret_addr;
-    wire[25:0] NPC_Imm;
-    wire[1:0] NPC_NPCOp;
-    wire NPC_MEM_eret_flush;
-    wire NPC_MEM_ex;
+    wire[31:0] ret_addr_reg;
+    wire[1:0] NPCOp_reg;
+    wire PF_predict;
 	//--------------IF----------------//
     wire[31:0] PC;
     wire[31:0] PPC;
@@ -142,8 +137,10 @@ module mips(
 
 	wire IF_Exception;
 	wire [4:0] IF_ExcCode;
-    wire flush_signal;
     wire IF_icache_valid;
+    wire branch;
+    wire [31:0] target_addr;
+    wire flush_signal_IF;
     //--------------ID----------------//
     wire[31:0] ID_PC;
     wire[31:0] ID_Instr;
@@ -187,6 +184,8 @@ module mips(
 	wire[4:0] Temp_ID_ExcCode,ID_ExcCode;
     wire ID_Exception;
     wire[4:0] MUX1Out;
+    wire [1:0] ID_BrType;
+    wire [3:0] ID_BJType;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -231,6 +230,11 @@ module mips(
 
     wire Temp_EX_Excetion;
 	wire[4:0] Temp_EX_ExcCode;
+    wire [1:0] EX_BrType;
+    wire [31:0] EX_address;
+    wire [3:0] EX_BJType;
+    wire [25:0] EX_Imm26;
+    wire [1:0] EX_NPCOp;
 	//-------------MEM1---------------//
     wire MEM1_eret_flush;
     wire MEM1_Exception;
@@ -374,25 +378,84 @@ module mips(
     wire[31:0] MEM_wr_addr;
     wire[3:0] MEM_wr_wstrb;
 
+    wire predict;
+
+    wire[31:0] NPC_op00;
+    wire[31:0] NPC_op01;
+    wire[31:0] NPC_op10;
+    wire flush_condition_00;
+    wire flush_condition_01;
+    wire flush_condition_10;
+    wire flush_condition_11;
+    wire[31:0] target_address_final;
+    wire predict_final;
+    wire ee;
+    wire[31:0] NPC_ee;
+
+    wire[31:0] NPC_op00_reg;
+    wire[31:0] NPC_op01_reg;
+    wire[31:0] NPC_op10_reg;
+    wire flush_condition_00_reg;
+    wire flush_condition_01_reg;
+    wire flush_condition_10_reg;
+    wire flush_condition_11_reg;
+    wire[31:0] target_address_final_reg;
+    wire predict_final_reg;
+    wire ee_reg;
+    wire[31:0] NPC_ee_reg;
+
 /**************DATA PATH***************/
     //--------------PF----------------//
 
 PC U_PC(
         .clk(clk), .rst(rst), .wr(PCWr), .flush(PC_Flush),
-		.IF_PC(PC), .PF_PC(PF_PC), .Imm(ID_Instr[25:0]), .EPC(EPCOut), .ret_addr(MUX8Out),
-        .NPCOp(NPCOp), .MEM_eret_flush(MEM1_eret_flush), .MEM_ex(MEM1_Exception),
+		.ret_addr(MUX8Out),.NPCOp(NPCOp), .NPC_op00(NPC_op00), .NPC_op01(NPC_op01), .NPC_op10(NPC_op10),
+        .flush_condition_00(flush_condition_00), .flush_condition_01(flush_condition_01),
+        .flush_condition_10(flush_condition_10), .flush_condition_11(flush_condition_11),
+        .target_address_final(target_address_final),.predict_final(predict_final), .ee(ee), .NPC_ee(NPC_ee),
 
-		.NPC_IF_PC(NPC_IF_PC), .NPC_PF_PC(NPC_PF_PC), .NPC_Imm(NPC_Imm), .NPC_EPC(NPC_EPC), 
-        .NPC_ret_addr(NPC_ret_addr), .NPC_NPCOp(NPC_NPCOp), .NPC_MEM_eret_flush(NPC_MEM_eret_flush), 
-        .NPC_MEM_ex(NPC_MEM_ex)
+		.ret_addr_reg(ret_addr_reg),.NPCOp_reg(NPCOp_reg), .NPC_op00_reg(NPC_op00_reg), 
+        .NPC_op01_reg(NPC_op01_reg), .NPC_op10_reg(NPC_op10_reg),
+        .flush_condition_00_reg(flush_condition_00_reg), .flush_condition_01_reg(flush_condition_01_reg),
+        .flush_condition_10_reg(flush_condition_10_reg), .flush_condition_11_reg(flush_condition_11_reg),
+        .target_address_final_reg(target_address_final_reg),.predict_final_reg(predict_final_reg), 
+        .ee_reg(ee_reg), .NPC_ee_reg(NPC_ee_reg)
+
 );
 
+branch_predict_prep U_BRANCH_PREDICT_PREP(
+    .IF_PC(PC), 
+    .PF_PC(PF_PC),
+    .Imm(ID_Instr[25:0]),
+    .PF_predict(PF_predict),
+    .flush_signal_IF(flush_signal_IF),
+    .ret_addr(MUX8Out),
+    .branch(branch),
+    .target_address(target_addr),
+    .MEM_ex(MEM1_Exception),
+    .MEM_eret_flush(MEM1_eret_flush),
+    .EPC(EPCOut),
+
+    .NPC_op00(NPC_op00),
+    .NPC_op01(NPC_op01),
+    .NPC_op10(NPC_op10),
+    .flush_condition_00(flush_condition_00),
+    .flush_condition_01(flush_condition_01),
+    .flush_condition_10(flush_condition_10),
+    .flush_condition_11(flush_condition_11),
+    .target_address_final(target_address_final),
+    .predict_final(predict_final),
+    .ee(ee),
+    .NPC_ee(NPC_ee)
+);
 
 instr_fetch_pre U_INSTR_FETCH(
     PF_PC, PCWr, isStall,
 
     PF_ExcCode,PF_Exception,PPC, PF_icache_valid
     );
+
+
 
 
 	//--------------IF----------------//
@@ -424,11 +487,36 @@ icache U_ICACHE(
 	.wr_type(IF_icache_wr_type),.rd_addr(IF_icache_rd_addr),.wr_addr(IF_icache_wr_addr),
 	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data)
 	);
+
+branch_predictor U_BRANCH_PREDICTOR(
+    .clk(clk),
+    .resetn(rst),
+    .index(PC[9:2]),
+    .EX_index(EX_PC[9:2]),
+    .EX_taken(|EX_NPCOp),
+
+    .branch(branch)
+);
+
+branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
+    .clk(clk),
+    .resetn(rst),
+    .index(PC[6:2]),
+    .tag(PC[31:7]),
+    .EX_index(EX_PC[6:2]),
+    .EX_tag(EX_PC[31:7]),
+    .EX_BrType(EX_BrType),                                  
+    .EX_address(EX_address),     
+    .EX_taken(|EX_NPCOp),                          
+                                                          
+    .target_address(target_addr)
+);
+
     //--------------ID----------------//
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),
-		.PC(flush_signal ? PF_PC : PC), .Instr(IF_iCache_rdata &{32{~flush_signal}}&{32{IF_icache_valid}}),
-        .IF_Exception(IF_Exception&{~flush_signal}), .IF_ExcCode(IF_ExcCode&{5{~flush_signal}}),
+		.PC(flush_signal_IF ? PF_PC : PC), .Instr(IF_iCache_rdata &{32{~flush_signal_IF}}&{32{IF_icache_valid}}),
+        .IF_Exception(IF_Exception&{~flush_signal_IF}), .IF_ExcCode(IF_ExcCode&{5{~flush_signal_IF}}),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode)
@@ -480,7 +568,7 @@ ctrl U_CTRL(
 		.NPCOp(NPCOp), .EXTOp(EXTOp), .ALU1Op(ALU1Op), .ALU1Sel(ALU1Sel), .ALU2Op(ALU2Op), .RHLSel_Rd(RHLSel_Rd),
 		.RHLSel_Wr(RHLSel_Wr), .DMSel(DMSel), .B_JOp(B_JOp), .eret_flush(eret_flush), .CP0WrEn(CP0WrEn),
 		.ID_Exception(ID_Exception), .ID_ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), .CP0Rd(CP0Rd), .start(start),
-		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en)
+		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en), .BJType(ID_BJType), .BrType(ID_BrType)
 	);
 
 mux1 U_MUX1(
@@ -498,6 +586,7 @@ ID_EX U_ID_EX(
 		.Exception(ID_Exception), .ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch),
 		.CP0Addr({ID_Instr[15:11], ID_Instr[2:0]}), .CP0Rd(CP0Rd), .start(start & ~EX_isBusy),.ID_dcache_en(MUX7Out[3]),
         .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
+        .ID_BrType(ID_BrType), .ID_BJType(ID_BJType), .ID_Imm26(ID_Instr[25:0]), .ID_NPCOp(NPCOp),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception),
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -507,7 +596,8 @@ ID_EX U_ID_EX(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .EX_RD(EX_RD), .EX_shamt(EX_shamt), .EX_PC(EX_PC),
 		.EX_GPR_RS(EX_GPR_RS), .EX_GPR_RT(EX_GPR_RT), .EX_Imm32(EX_Imm32), .EX_CP0Addr(EX_CP0Addr),
 		.EX_CP0Rd(EX_CP0Rd), .EX_start(EX_start),.EX_dcache_en(EX_dcache_en),
-        .EX_MUX4Sel(EX_MUX4Sel), .EX_MUX5Sel(EX_MUX5Sel)
+        .EX_MUX4Sel(EX_MUX4Sel), .EX_MUX5Sel(EX_MUX5Sel),
+        .EX_BrType(EX_BrType), .EX_BJType(EX_BJType), .EX_Imm26(EX_Imm26), .EX_NPCOp(EX_NPCOp)
 	);
 
 
@@ -549,6 +639,14 @@ alu1 U_ALU1(
 
 		.C(ALU1Out),.Overflow(Overflow)
 	);
+
+ex_prep U_EX_PREP(
+    .EX_NPCOp(EX_NPCOp),
+    .EX_Imm26(EX_Imm26),
+    .ID_PC(ID_PC),
+
+    .EX_address(EX_address)
+);
 	//-------------MEM1---------------//
 EX_MEM1 U_EX_MEM1(
 		.clk(clk), .rst(rst), .EX_MEM1Wr(EX_MEM1Wr), .EX_PC(EX_PC), .DMWr(EX_DMWr),
@@ -688,10 +786,13 @@ mux10 U_MUX10(
 //physical address tranfer
 
 npc U_NPC(
-		.IF_PC(NPC_IF_PC), .PF_PC(NPC_PF_PC), .Imm(NPC_Imm), .ret_addr(NPC_ret_addr), .NPCOp(NPC_NPCOp),
-		.EPC(NPC_EPC), .MEM_eret_flush(NPC_MEM_eret_flush), .MEM_ex(NPC_MEM_ex),
+		.ret_addr(ret_addr_reg), .NPCOp(NPCOp_reg), .NPC_op00(NPC_op00_reg), .NPC_op01(NPC_op01_reg),
+        .NPC_op10(NPC_op10_reg), .flush_condition_00(flush_condition_00_reg), 
+        .flush_condition_01(flush_condition_01_reg), .flush_condition_10(flush_condition_10_reg),
+        .flush_condition_11(flush_condition_11_reg),.target_address_final(target_address_final_reg),
+        .predict_final(predict_final_reg), .ee(ee_reg), .NPC_ee(NPC_ee_reg),
 
-		.NPC(PF_PC), .flush_signal(flush_signal)
+		.NPC(PF_PC), .flush_signal_PF(flush_signal_IF), .predict(PF_predict)
 	);
 
 flush U_FLUSH(
@@ -776,7 +877,7 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bvalid    ,
     bready    ,
 // icache
-	IF_icache_rd_req,// icache �??? dcache 同时缺失怎么�???
+	IF_icache_rd_req,// icache �???? dcache 同时缺失怎么�????
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,
