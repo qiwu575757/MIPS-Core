@@ -157,9 +157,7 @@ module CP0(
             tick <= 1'b0;
         else 
             tick <= ~tick;
-        if(!rst)
-            Count <= 32'h0;
-        else if (CP0WrEn && addr == `Count_index)
+        if (CP0WrEn && addr == `Count_index)
             Count <= data_in;
         else if (tick)
             Count <= Count + 1'b1;
