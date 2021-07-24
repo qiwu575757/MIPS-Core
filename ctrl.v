@@ -1,14 +1,14 @@
  `include "MacroDef.v"
 
  module ctrl(
-	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch, Interrupt,
- 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,CMPOut3,
+	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch,
+ 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,CMPOut3,shamt,
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op,
 		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal
+		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump
 	);
 	input 			clk;
 	input 			rst;
@@ -20,12 +20,12 @@
 	input 			CMPOut1;
 	input [1:0] 	CMPOut2;
 	input 			EXE_isBranch;
-	input 			Interrupt;
 	input 			Temp_ID_Excetion;
 	input 			IF_Flush;
 	input [4:0] 	Temp_ID_ExcCode;
 	input 			ID_TLB_Exc;
 	input 			CMPOut3;
+	input [4:0]		shamt;
 
 	output reg [1:0]MUX1Sel;
 	output reg [2:0]MUX2Sel;
@@ -65,10 +65,12 @@
 	output reg 		Branch_flush;
 	output 			LL_signal;
 	output 			SC_signal;
+	output 			Jump;
 
 	wire 			ri;			//reserved instr
 	reg 			rst_sign;
 	reg 			Trap_Op;
+	reg 			Cpu_Op;
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -79,7 +81,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref);
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -95,8 +97,7 @@
 			CP0WrEn <= 1'b0;
 	end
 
-	always @(OP or Funct or ri or rst or IF_Flush
-	or Temp_ID_Excetion or Interrupt or rst_sign) begin	/* the generation of Exception and ExcCode */
+	always @(*) begin	/* the generation of Exception and ExcCode */
 		if (Temp_ID_Excetion) begin
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= Temp_ID_ExcCode;
@@ -104,6 +105,10 @@
 		else if (!ri && !rst_sign && !IF_Flush) begin
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= `RI;
+		end
+		else if (Cpu_Op && !IF_Flush) begin
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `Cpu;
 		end
 		else if (OP == `R_type && Funct == `break) begin
 			ID_Exception <= 1'b1;
@@ -423,9 +428,9 @@
 			6'b110000: ALU1Op <= 5'b00000;		/* LL */
 			6'b011100:
 				case(Funct)
-					`clo :	ALU1Op  <= 0'b01101;		/*CLO*/
-					`clz :	ALU1Op  <= 0'b01110;		/*CLZ*/
-					default: ALU1Op <= 0'b11111;
+					`clo :	ALU1Op  <= 5'b01101;		/*CLO*/
+					`clz :	ALU1Op  <= 5'b01110;		/*CLZ*/
+					default: ALU1Op <= 5'b11111;
 				endcase
 			6'b000001:
 				case(rt)
@@ -677,6 +682,8 @@
 		endcase
 	end
 
+	assign Jump = NPCOp != 2'b0;//imply the pipeline will jump or the branch is taken
+
 	always @(OP or Funct) begin		/* the genenration of MUX1Sel, choose the TARGET REG */
 		 case (OP)
 			6'b000000: MUX1Sel <= 2'b01;
@@ -912,5 +919,28 @@
 	//LL SC signal
 	assign LL_signal = (OP == 6'b110000);
 	assign SC_signal = (OP == 6'b111000);
+
+	//Cpu_Op signal
+	always @(*) begin
+		case (OP)
+			6'b010001,6'b010010:
+				case ( rs )
+					5'b01000:
+						Cpu_Op <= 1'b1;
+					default: Cpu_Op <= 1'b0;
+				endcase
+			6'b011000,6'b011001:
+				Cpu_Op <= 1'b1;
+			6'b000000:
+				if ( Funct == 6'b111111 && rs == 5'b0)
+					Cpu_Op <= 1'b1;
+				else if ( Funct == 6'b111111 && shamt == 5'b0)
+					Cpu_Op <= 1'b1;
+				else
+					Cpu_Op <= 1'b0;
+
+			default: Cpu_Op <= 1'b0;
+		endcase
+	end
 
 endmodule

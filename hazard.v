@@ -60,11 +60,11 @@ module stall(
 	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,rst_sign,
 	MEM1_ex, MEM1_RFWr, MEM2_RFWr,MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok,MEM_dCache_en,MEM_dCache_addr_ok,
-    MEM1_cache_sel,MEM1_dCache_en,,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
+    MEM1_cache_sel,MEM1_dCache_en,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
 	ALU2Op,EX_SC_signal,MEM1_SC_signal,
 
 	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,data_ok,
-	dcache_stall, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr
+	dcache_stall,ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr,PF_IFWr
 );
 	input 			clk;
 	input 			rst;
@@ -114,6 +114,7 @@ module stall(
 	output reg 		EX_MEM1Wr;
 	output reg 		MEM1_MEM2Wr;
 	output reg 		MEM2_WBWr;
+	output reg 		PF_IFWr;
 	output 			data_ok;
 
 	wire 			addr_ok;
@@ -134,22 +135,10 @@ module stall(
 	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ;
 	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3;
 
-	always@(
-		rst_sign,MEM1_ex,MEM1_eret_flush,dcache_stall,isbusy,RHL_visit,
-		MUL_sign,ALU2Op,ID_tlb_searchen,EX_CP0WrEn,data_stall
-	)
-	    if(rst_sign) begin
-			inst_sram_en = 1'b0;
-			PCWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if(MEM1_ex || MEM1_eret_flush) begin
+	always@( * )
+		if(MEM1_ex || MEM1_eret_flush) begin
 			inst_sram_en = 1'b1;
+			PF_IFWr = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;
 			ID_EXWr = 1'b1;
@@ -161,6 +150,7 @@ module stall(
 		else if(dcache_stall) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
+			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
 			ID_EXWr = 1'b0;
 			EX_MEM1Wr =1'b0;
@@ -171,6 +161,7 @@ module stall(
 		else if(isbusy && RHL_visit ) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
+			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
 			ID_EXWr = 1'b1;
 			EX_MEM1Wr =1'b1;
@@ -181,6 +172,7 @@ module stall(
 		else if (MUL_sign || (ALU2Op==4'b1000 & isbusy)) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
+			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
 			ID_EXWr = 1'b0;
 			EX_MEM1Wr =1'b0;
@@ -192,6 +184,7 @@ module stall(
 		begin
 		    inst_sram_en = 1'b0;
 			PCWr = 1'b0;
+			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
 			ID_EXWr = 1'b1;
 			EX_MEM1Wr =1'b1;
@@ -202,6 +195,7 @@ module stall(
 		else if(data_stall) begin
 		    inst_sram_en = 1'b0;
 			PCWr = 1'b0;
+			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
 			ID_EXWr = 1'b1;
 			EX_MEM1Wr =1'b1;
@@ -212,6 +206,7 @@ module stall(
 		else begin
 			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
+			PF_IFWr = 1'b1;
 			IF_IDWr = 1'b1;
 			ID_EXWr = 1'b1;
 			EX_MEM1Wr =1'b1;

@@ -1,10 +1,39 @@
 `include "MacroDef.v"
 
-module PF_IF(
-	clk,rst,wr,NPC,PF_Exception,PF_ExcCode,PF_TLBRill_Exc,
-	PF_TLB_Exc, valid, icache_sel, uncache_valid,PPC,
+module PC (
+	clk,rst,PCWr,PC_Flush,
+	NPC,Instr_Flush,
 
-	PC,IF_Exception,IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
+	PF_PC,PF_Instr_Flush
+);
+	input 			clk;
+	input 			rst;
+	input 			PCWr;
+	input			PC_Flush;
+	input [31:0]	NPC;
+	input [1:0]		Instr_Flush;
+
+	output reg[31:0]PF_PC;
+	output reg		PF_Instr_Flush;
+
+	always @(posedge clk) begin
+		if(!rst | PC_Flush)begin
+			PF_PC <= 32'hbfc0_0000;
+			PF_Instr_Flush <= 1'b0;
+		end
+		else if ( PCWr ) begin
+			PF_PC <= NPC;
+			PF_Instr_Flush <= Instr_Flush;
+		end
+	end
+
+endmodule
+
+module PF_IF(
+	clk,rst,wr,PF_PC,PF_Exception,PF_ExcCode,PF_TLBRill_Exc,
+	PF_TLB_Exc, valid, icache_sel, uncache_valid,PPC,PF_Flush,
+
+	IF_PC,IF_Exception,IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
 	IF_valid, IF_icache_sel, IF_uncache_valid, IF_PPC
 );
 	input 			clk;
@@ -13,14 +42,16 @@ module PF_IF(
 	input 			PF_Exception;
 	input [4:0] 	PF_ExcCode;
 	input [31:0] 	PPC;
-	input [31:0] 	NPC;
+	input [31:0] 	PF_PC;
 	input 			PF_TLBRill_Exc;
 	input 			PF_TLB_Exc;
 	input 			valid;
 	input 			icache_sel;
 	input 			uncache_valid;
+	input 			PF_Flush;
 
-	output reg [31:0] PC,IF_PPC;
+	output reg [31:0] IF_PC;
+	output reg [31:0] IF_PPC;
 	output reg 		IF_Exception;
 	output reg [4:0] IF_ExcCode;
 	output reg 		IF_TLB_Exc;
@@ -30,11 +61,11 @@ module PF_IF(
 	output reg 		IF_uncache_valid;
 
     always@(posedge clk)
-		if(!rst)
+		if(!rst | PF_Flush)
 		begin
 			IF_ExcCode <= 5'b0;
 			IF_Exception <= 1'b0;
-			PC <= 32'hbfbf_fffc;
+			IF_PC <= 32'h0;
 			IF_TLBRill_Exc <= 1'b0;
 			IF_TLB_Exc <= 1'b0;
 			IF_valid <= 1'b0;
@@ -46,7 +77,7 @@ module PF_IF(
 		begin
 			IF_ExcCode <= PF_ExcCode;
 			IF_Exception <= PF_Exception;
-			PC <= NPC;
+			IF_PC <= PF_PC;
 			IF_TLBRill_Exc <= PF_TLBRill_Exc;
 			IF_TLB_Exc <= PF_TLB_Exc;
 			IF_valid <= valid;
@@ -59,7 +90,7 @@ endmodule
 
 
 module IF_ID(
-	clk,rst,IF_IDWr,IF_Flush,PC,Instr,IF_Exception,
+	clk,rst,IF_IDWr,IF_Flush,IF_PC,Instr,IF_Exception,
 	IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
 
 	ID_PC,ID_Instr,Temp_ID_Excetion,Temp_ID_ExcCode,
@@ -71,7 +102,7 @@ module IF_ID(
 	input 			IF_Flush;
 	input 			IF_Exception;
 	input [31:0] 	Instr;
-	input [31:0] 	PC;
+	input [31:0] 	IF_PC;
 	input [4:0] 	IF_ExcCode;
 	input 			IF_TLBRill_Exc;
 	input 			IF_TLB_Exc;
@@ -93,7 +124,7 @@ module IF_ID(
 			ID_TLB_Exc <= 1'b0;
 		end
 		else if(IF_IDWr) begin
-			ID_PC <= PC;
+			ID_PC <= IF_PC;
 			ID_Instr <= Instr;
 			Temp_ID_Excetion <= IF_Exception;
 			Temp_ID_ExcCode <= IF_ExcCode;

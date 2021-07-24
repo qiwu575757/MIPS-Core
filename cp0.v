@@ -35,9 +35,9 @@
 
 
 module CP0(
-    clk, rst, CP0WrEn, addr, data_in, MEM_Exc, MEM_eret_flush,
-    MEM_bd,ext_int_in, MEM_ExcCode, MEM_PC,EntryLo0_Wren,
-    EntryLo1_Wren,Index_Wren,MEM1_TLB_Exc,MEM_badvaddr,EntryLo0_in,
+    clk, rst, CP0WrEn, addr, data_in, MEM1_Exception, MEM1_eret_flush,
+    MEM1_isBD,ext_int_in, MEM1_ExcCode, MEM1_PC,EntryLo0_Wren,
+    EntryLo1_Wren,Index_Wren,MEM1_TLB_Exc,MEM1_badvaddr,EntryLo0_in,
     EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
@@ -48,13 +48,13 @@ module CP0(
     input           CP0WrEn;
     input [7:0]     addr;
     input [31:0]    data_in;
-    input           MEM_Exc;         //M级中断标识
-    input           MEM_eret_flush;  //M级eret指令清空信号
-    input           MEM_bd;          //延迟槽标识
+    input           MEM1_Exception;         //M级中断标识
+    input           MEM1_eret_flush;  //M级eret指令清空信号
+    input           MEM1_isBD;          //延迟槽标识
     input [5:0]     ext_int_in;      //外部硬件中断标识
-    input [4:0]     MEM_ExcCode;     //M级例外编码
-    input [31:0]    MEM_badvaddr;    //bad virtual address
-    input [31:0]    MEM_PC;
+    input [4:0]     MEM1_ExcCode;     //M级例外编码
+    input [31:0]    MEM1_badvaddr;    //bad virtual address
+    input [31:0]    MEM1_PC;
     input           EntryLo0_Wren;
     input           EntryLo1_Wren;
     input           Index_Wren;
@@ -105,8 +105,6 @@ assign Interrupt =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
 assign EPC_out = EPC;
     //used for TLB
-assign s_asid = EntryHi[7:0];
-assign s_vpn2 = EntryHi[31:13];
 assign EntryLo1_out = EntryLo1;
 assign EntryLo0_out = EntryLo0;
 assign Index_out = Index;
@@ -168,7 +166,7 @@ assign data_out =
         else if ( EntryHi_Wren )
             EntryHi <= EntryHi_in;
         else if ( MEM1_TLB_Exc )
-            EntryHi[31:13] <= MEM_badvaddr[31:13];
+            EntryHi[31:13] <= MEM1_badvaddr[31:13];
     end
 
     //EntryLo0 generation
@@ -193,8 +191,8 @@ assign data_out =
 
     //BadVAddr generation
     always @(posedge clk) begin
-        if ( (MEM_Exc && (MEM_ExcCode == `AdEL || MEM_ExcCode == `AdES)) || MEM1_TLB_Exc)
-            BadVAddr <= MEM_badvaddr;
+        if ( (MEM1_Exception && (MEM1_ExcCode == `AdEL || MEM1_ExcCode == `AdES)) || MEM1_TLB_Exc)
+            BadVAddr <= MEM1_badvaddr;
     end
 
     //Wired generation
@@ -255,7 +253,7 @@ assign data_out =
         if ( !rst )
             Context[3:0] <= 4'b0;
         else if (MEM1_TLB_Exc)//tlb exception
-            Context[22:4] <= MEM_badvaddr[31:13];
+            Context[22:4] <= MEM1_badvaddr[31:13];
         else if (CP0WrEn && addr == `Context_index)
             Context[31:23] <= data_in[31:23];
             //a pointer into current PTE(page table entry) array in memory
@@ -309,9 +307,9 @@ assign data_out =
     always @(posedge clk) begin
         if (!rst)
             `status_exl <= 1'b0;
-        else if (MEM_Exc)
+        else if (MEM1_Exception)
             `status_exl <= 1'b1;
-        else if (MEM_eret_flush)
+        else if (MEM1_eret_flush)
             `status_exl <= 1'b0;
         else if (CP0WrEn && addr == `Status_index)
             `status_exl <= data_in[1];
@@ -338,8 +336,8 @@ assign data_out =
     always @(posedge clk) begin
         if (!rst)
             `cause_bd <= 1'b0;
-        else if (MEM_Exc && !`status_exl)
-            `cause_bd <= MEM_bd;
+        else if (MEM1_Exception && !`status_exl)
+            `cause_bd <= MEM1_isBD;
     end
 
     //Cause
@@ -374,8 +372,8 @@ assign data_out =
     always @(posedge clk) begin
         if (!rst)
             `cause_excode <= 5'b0;
-        else if (MEM_Exc)
-            `cause_excode <= MEM_ExcCode;
+        else if (MEM1_Exception)
+            `cause_excode <= MEM1_ExcCode;
     end
 
     //Cause
@@ -389,8 +387,8 @@ assign data_out =
 
     //EPC
     always @(posedge clk) begin
-        if (MEM_Exc && !`status_exl) begin
-            EPC <= MEM_bd ? MEM_PC - 32'd4 : MEM_PC;//excrption to modify the EPC，EPC_OUT = EPC
+        if (MEM1_Exception && !`status_exl) begin
+            EPC <= MEM1_isBD ? MEM1_PC - 32'd4 : MEM1_PC;//excrption to modify the EPC，EPC_OUT = EPC
         end
         else if (CP0WrEn && addr == `EPC_index) begin
             EPC <= data_in;//mtc0 to modify the EPC，EPC_OUT = EPC + 4

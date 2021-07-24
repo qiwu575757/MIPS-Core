@@ -1,15 +1,15 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    NPC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
+    PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
-    Config_K0_out,Branch_flush,
+    Config_K0_out,Branch_flush,PF_Instr_Flush,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
     PF_uncache_valid
     );
-    input [31:0]    NPC;
+    input [31:0]    PF_PC;
     input           PCWr;
     input           s0_v;
     input           s0_found;
@@ -24,6 +24,7 @@ module instr_fetch_pre(
     input [2:0]     s0_c;
     input [2:0]     Config_K0_out;
     input           Branch_flush;
+    input           PF_Instr_Flush;
 
     output          PF_AdEL;
     output          PF_TLB_Exc;
@@ -42,11 +43,11 @@ module instr_fetch_pre(
 
     /*Exception generation*/
     //the tlb exception should influence the cache and uncache valid or not
-    assign mapped = ( ~NPC[31] || (NPC[31]&NPC[30]) ) ? 1 : 0;
+    assign mapped = ( ~PF_PC[31] || (PF_PC[31]&PF_PC[30]) ) ? 1 : 0;
     assign PPC =
-		!mapped ? {3'b000,NPC[28:0]} : {s0_pfn,NPC[11:0]};
+		!mapped ? {3'b000,PF_PC[28:0]} : {s0_pfn,PF_PC[11:0]};
 
-    assign PF_AdEL = NPC[1:0] != 2'b00 && PCWr;
+    assign PF_AdEL = PF_PC[1:0] != 2'b00 && PCWr;
     assign PF_TLBRill_Exc	= ~PF_AdEL & mapped & (!s0_found) & PCWr;
     assign PF_TLB_Exc   = mapped & (!s0_found || (s0_found&!s0_v) ) & !PF_AdEL;//tlbl
     assign PF_Exception = PF_AdEL | PF_TLB_Exc;
@@ -54,8 +55,8 @@ module instr_fetch_pre(
                             PF_TLB_Exc ? `TLBL : 5'b0;
 
     /*icache sel*/
-    assign kseg0 = (NPC[31:29] == 3'b100);
-    assign kseg1 = (NPC[31:29] == 3'b101);
+    assign kseg0 = (PF_PC[31:29] == 3'b100);
+    assign kseg1 = (PF_PC[31:29] == 3'b101);
     //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
     assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
 
@@ -65,7 +66,8 @@ module instr_fetch_pre(
     assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
     assign PF_uncache_valid = PF_valid & PF_icache_sel;
     assign Invalidate_signal =
-        Branch_flush | TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush;
+        Branch_flush | TLB_flush | EX_TLB_flush | MEM1_TLB_flush |
+        MEM2_TLB_flush | WB_TLB_flush | PF_Instr_Flush;
 
 endmodule
 
@@ -240,7 +242,7 @@ module mem1_cache_prep(
     end
     always @(posedge clk) begin
         if ( !rst | MEM1_eret_flush | MEM1_Exception )
-            LLbit <= 32'b0;
+            LL_addr <= 32'b0;
         else if ( MEM1_LL_signal )
             LL_addr <= MEM1_ALU1Out;
     end
