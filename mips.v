@@ -495,7 +495,7 @@ module mips(
     //--------------PF----------------//
 PC U_PC (
     .clk(clk),.rst(rst),.PCWr(PCWr),.PC_Flush(PC_Flush),
-    .NPC(NPC),.Instr_Flush(Jump|MEM1_Exception|MEM1_eret_flush|Interrupt),
+    .NPC(NPC),.Instr_Flush(Jump|MEM1_Exception|MEM1_eret_flush|Interrupt|WB_TLB_flush),
 
 	.PF_PC(PF_PC),.PF_Instr_Flush(PF_Instr_Flush)
 );
