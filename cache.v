@@ -291,16 +291,15 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
 
     //block address control
     always@(index, C_STATE, replace_index_MB)
-        if(C_STATE == REFILL)
+        if(C_STATE == REFILL) begin
             VT_addr = replace_index_MB;
-        else
-            VT_addr = index;
-
-    always@(index, C_STATE, index_RB, replace_index_MB)
-        if(C_STATE == REFILL)
             Data_addr = replace_index_MB;
-        else
+        end
+        else begin
+            VT_addr = index;
             Data_addr = index;
+        end
+
 
     //main FSM
     /*
@@ -321,7 +320,7 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
                     else
                         N_STATE = IDLE;
             LOOKUP: if(exception)
-                        N_STATE = LOOKUP;
+                        N_STATE = IDLE;
                     else if(!cache_hit)
                         N_STATE = MISS;
                     else if(valid)
@@ -340,14 +339,14 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
         endcase
 
     //output signals
-    assign addr_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP)) ;
+    assign addr_ok = 1'b1;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
     //assign rd_req = (N_STATE == REFILL) ;
     assign rd_req = ((C_STATE == MISS) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
     assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
-    assign RBWr = (data_ok & valid) | ((C_STATE == LOOKUP) & exception) ;
+    assign RBWr = valid ;
     assign VTen = ~stall_1 | (C_STATE == REFILL);
 
 endmodule
@@ -455,6 +454,7 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
 
+
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
     reg replace_Valid_MB;
@@ -504,6 +504,8 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
 
     reg conflict2_reg;
     reg[31:0] conflict2_data;
+    wire rdata_sel;
+    reg[31:0] rdata_prior;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -713,17 +715,23 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(hit_code, rdata_way0, rdata_way1, ret_data,
-            write_bypass1_delay,wdata_bypass1, conflict2_reg, conflict2_data,
-            cache_sel, uncache_out)
-        if(cache_sel | write_bypass1_delay | conflict2_reg)
-            rdata = cache_sel ? uncache_out : 
-                    write_bypass1_delay ? wdata_bypass1 : conflict2_data;
+    always@(write_bypass1_delay,wdata_bypass1, conflict2_data, cache_sel, uncache_out)
+        if(cache_sel)
+            rdata_prior = uncache_out;
+        else if(write_bypass1_delay)
+            rdata_prior = wdata_bypass1;
+        else
+            rdata_prior = conflict2_data;
+
+    assign rdata_sel = (cache_sel | write_bypass1_delay | conflict2_reg);
+
+    always@(way0_hit, rdata_way0, rdata_way1, rdata_sel, rdata_prior)
+        if(rdata_sel)
+            rdata = rdata_prior;
         else 
-            case(hit_code)
-                2'b01: rdata = rdata_way0;
-                2'b10: rdata = rdata_way1;
-                default: rdata = ret_data;
+            case(way0_hit)
+                1'b0:    rdata = rdata_way1;
+                default: rdata = rdata_way0;
             endcase
 
     //write from cpu to cache (store)

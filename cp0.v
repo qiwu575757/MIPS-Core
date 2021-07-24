@@ -84,8 +84,7 @@ module CP0(
     reg tick;                   
 
     assign count_eq_compare = (Compare == Count);
-    assign Interrupt = 
-        ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
+    assign Interrupt =  |(Cause[15:8] & `status_im)  & (`status_ie & ~`status_exl);
     assign EPC_out = EPC;
     //used for TLB
 

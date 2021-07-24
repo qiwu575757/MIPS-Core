@@ -1,5 +1,5 @@
 module rf(
-	Addr1, Addr2, Addr3, WD, RFWr, clk, rst, 
+	Addr1, Addr2, Addr3, WD, RFWr, clk, rst,
 	
 	RD1, RD2
 );
@@ -20,5 +20,6 @@ module rf(
 
 	assign RD1 = register[Addr1];
 	assign RD2 = register[Addr2];
+
 
 endmodule

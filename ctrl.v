@@ -6,9 +6,7 @@
 
 		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
-		CP0Rd, start, RHL_visit,dcache_en,
-		BJType,
-		BrType
+		CP0Rd, start, RHL_visit,dcache_en, BrType
 	);
 	input clk;
 	input rst;
@@ -53,7 +51,10 @@
 
 	wire ri;			//reserved instr		
 	reg rst_sign;				
-	output reg[3:0] BJType;			//分支跳转类型
+
+	reg B_cmp;
+	reg[2:0] B_Type;
+	reg[1:0] J_Type;
 
 
 	always @(posedge clk) begin
@@ -420,69 +421,107 @@
 		endcase
 	end
 
-	always @(OP or rt or Funct) begin							/* the generation of BJType */
+	always @(OP or rt) begin							/* the generation of B_Type */
 		case (OP)
-			6'b000100: BJType = 4'b0000;				/* BEQ */
-			6'b000101: BJType = 4'b0001;				/* BNE */
+			6'b000100: B_Type = 3'b000;				/* BEQ */
+			6'b000101: B_Type = 3'b001;				/* BNE */
 			6'b000001:
 			case (rt)
-				5'b00001: BJType = 4'b0010; 			/* BGEZ */
-				5'b00000: BJType = 4'b0011;				/* BLTZ */
-				5'b10001: BJType = 4'b0010;				/* BGEZAL */
-				5'b10000: BJType = 4'b0011;				/* BLTZAL */
-				default: BJType = 4'b1000;
+				5'b00001: B_Type = 3'b010; 			/* BGEZ */
+				5'b00000: B_Type = 3'b011;			/* BLTZ */
+				5'b10001: B_Type = 3'b010;			/* BGEZAL */
+				5'b10000: B_Type = 3'b011;			/* BLTZAL */
+				default:  B_Type = 3'b111;
 			endcase
-			6'b000010: BJType = 4'b0100;				/* J */
-			6'b000011: BJType = 4'b0100;				/* JAL */
-			6'b000110: BJType = 4'b0101;				/* BLEZ */
-			6'b000111: BJType = 4'b0110;				/* BGTZ */
-			6'b000000: 
-			case (Funct)
-				6'b001000: BJType = 4'b0111;			/* JR */
-				6'b001001: BJType = 4'b0111;			/* JALR */
-			default: BJType = 4'b1000;
-			endcase
-			default: BJType = 4'b1000;
+			6'b000110: B_Type = 3'b100;				/* BLEZ */
+			6'b000111: B_Type = 3'b101;				/* BGTZ */
+			default:   B_Type = 3'b111;
 		endcase
 	end
 
-	always @(BJType or CMPOut1 or CMPOut2) begin		/* the genenration of NPCOp */
-		 case (BJType)
-			4'b0000:				/* BEQ */
-			if (CMPOut1 == 0)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0001:				/* BNE */
-			if (CMPOut1 == 1)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0010:				/* BGEZ or BGEZAL */
-			if (CMPOut2 != 2'b10)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0011:			/* BLTZ or BLTZAL */
-			if (CMPOut2 == 2'b10)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0100: NPCOp = 2'b10;	/* J or JAL */
-			4'b0101:				/* BLEZ */
-			if(CMPOut2 != 2'b01)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0110:				/* BGTZ */
-			if(CMPOut2 == 2'b01)
-				NPCOp = 2'b01;
-			else
-				NPCOp = 2'b00;
-			4'b0111: NPCOp = 2'b11; 	/* JR or JALR */
-			default: NPCOp = 2'b00;
+	always @(OP or Funct) begin								/* the generation of J_Type */
+		case (OP)
+			6'b000010: J_Type = 2'b01;				/* J */
+			6'b000011: J_Type = 2'b01;				/* JAL */
+			6'b000000: 
+			case (Funct)
+				6'b001000: J_Type = 2'b10;			/* JR */
+				6'b001001: J_Type = 2'b10;			/* JALR */
+			default: J_Type = 2'b00;
+			endcase
+			default: J_Type = 2'b00;
 		endcase
 	end
+
+	always @(OP or rt or Funct) begin							/* the generation of B_cmp */
+		case (OP)
+			6'b000100: B_cmp = 1'b1;				/* BEQ */
+			6'b000101: B_cmp = 1'b1;				/* BNE */
+			6'b000001:
+			case (rt)
+				5'b00001: B_cmp = 1'b1; 			/* BGEZ */
+				5'b00000: B_cmp = 1'b1;				/* BLTZ */
+				5'b10001: B_cmp = 1'b1;				/* BGEZAL */
+				5'b10000: B_cmp = 1'b1;				/* BLTZAL */
+				default: B_cmp = 1'b0;
+			endcase
+			6'b000010: B_cmp = 1'b0;				/* J */
+			6'b000011: B_cmp = 1'b0;				/* JAL */
+			6'b000110: B_cmp = 1'b1;				/* BLEZ */
+			6'b000111: B_cmp = 1'b1;				/* BGTZ */
+			6'b000000: 
+			case (Funct)
+				6'b001000: B_cmp = 1'b0;			/* JR */
+				6'b001001: B_cmp = 1'b0;			/* JALR */
+			default: B_cmp = 1'b0;
+			endcase
+			default: B_cmp = 1'b0;
+		endcase
+	end
+
+	always@(B_cmp, B_Type, J_Type, CMPOut1, CMPOut2)
+		if(B_cmp) begin
+			case(B_Type)
+				3'b000://BEQ
+					if(CMPOut1 == 1'b0)	
+						NPCOp = 2'b01;
+					else 
+						NPCOp = 2'b00;
+				3'b001://BNE
+					if(CMPOut1 == 1'b1)	
+						NPCOp = 2'b01;
+					else 
+						NPCOp = 2'b00;
+				3'b010://BGEZ,BGEZAL
+					if (CMPOut2 != 2'b10)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				3'b011://BLTZ,BLTZAL
+					if (CMPOut2 == 2'b10)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				3'b100://BLEZ
+					if(CMPOut2 != 2'b01)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				default://BGTZ
+					if(CMPOut2 == 2'b01)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+			endcase
+		end
+		else begin
+			case(J_Type)
+				2'b01:	NPCOp = 2'b10;
+				2'b10:	NPCOp = 2'b11;
+				default:NPCOp = 2'b00;
+			endcase
+		end
+
 
 	always @(OP or Funct) begin		/* the genenration of MUX1Sel */
 		 case (OP)

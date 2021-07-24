@@ -22,5 +22,5 @@ module cmp(
 			CMPOut2 = 2'b10;	//negative
 		else
 			CMPOut2 = 2'b01;	//positive
-			
+
 endmodule

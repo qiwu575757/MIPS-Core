@@ -39,12 +39,12 @@ endmodule
 
 
 
-// 这个模块用于当前与cpu与乘除器的交互�??
-// 借助状�?�机来控�?
-// * start�?1时，乘除法开始计�?
-// * isBusy�?1时，表示正在运行
-// * 乘法单周期运算，除法多周期（34个）�?
-// * C是运算结果，支持读保存，即如果没有新的start，结果会保持为上�?次的运算结果
+// 这个模块用于当前与cpu与乘除器的交互�??
+// 借助状�?�机来控�?
+// * start�?1时，乘除法开始计�?
+// * isBusy�?1时，表示正在运行
+// * 乘法单周期运算，除法多周期（34个）�?
+// * C是运算结果，支持读保存，即如果没有新的start，结果会保持为上�?次的运算结果
 module bridge_RHL(
 		aclk,
 		aresetn,
@@ -95,7 +95,12 @@ assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
 
 
 
-assign isBusy= next_state_div | next_state_mult | next_state_multu;
+//assign isBusy= next_state_div | next_state_mult | next_state_multu;
+
+assign isBusy = ((start&!MEM_Exception&!MEM_eret_flush) & (!present_state_div&ALU2Op[1] | !present_state_mult&!ALU2Op[1]&ALU2Op[0] | !present_state_multu&!ALU2Op[1]&!ALU2Op[0])) |
+				((counter != 3'd4) &(present_state_mult|present_state_multu)) | (present_state_div&~m_axis_dout_tvalid_sign&~m_axis_dout_tvalid_unsign);
+
+
 
 parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
@@ -256,20 +261,20 @@ multiplier_unsigned multiplier_unsigned(
 
 endmodule
 
-// 因为cache的接口设计是偏向类sram接口�?
-// �?以用这个模块进行 cpu和cache对axi的交�?
-// 写着写着又写成转接口�? XD
+// 因为cache的接口设计是偏向类sram接口�?
+// �?以用这个模块进行 cpu和cache对axi的交�?
+// 写着写着又写成转接口�? XD
 // 写的很粗糙，有巨大优化空间，目前仅仅为了实现功能
-// 将来也许会对cache等做进一步优�?
+// 将来也许会对cache等做进一步优�?
 
 //              -----------
-// ***********  |�? �? �? 理| ************
+// ***********  |�? �? �? 理| ************
 //              -----------
-//	1.借助状�?�机实现,按照五个通道的axi设计，顺势设出两个状态机，再多添�?个空闲�?�一个完�?
-//      FSM_R: 读请求，读响应，空闲�? 完成
-//		FSM_W：写请求，写数据，写响应，空闲�?�完�?
-//  2.根据握手信号实现前请求状态到响应状�?�的转换
-//  3.根据当前状�?�和其他�?些信号的组合逻辑生成�?些诸如data_ok,addr_ok的信�?
+//	1.借助状�?�机实现,按照五个通道的axi设计，顺势设出两个状态机，再多添�?个空闲�?�一个完�?
+//      FSM_R: 读请求，读响应，空闲�? 完成
+//		FSM_W：写请求，写数据，写响应，空闲�?�完�?
+//  2.根据握手信号实现前请求状态到响应状�?�的转换
+//  3.根据当前状�?�和其他�?些信号的组合逻辑生成�?些诸如data_ok,addr_ok的信�?
 //  4.如果icache和dcache同时缺失，优先响应read dcache
 module axi_sram_bridge(
 
@@ -355,10 +360,10 @@ module axi_sram_bridge(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信�?
+// 时钟与复位信�?
     input clk      ;
     input rst      ;   //low active
-// 读请求�?�道
+// 读请求�?�道
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -369,14 +374,14 @@ module axi_sram_bridge(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应�?�道
+//读相应�?�道
     input [ 3:0]    rid       ;
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求�?�道
+//写请求�?�道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 3:0]   awlen     ;
@@ -387,14 +392,14 @@ module axi_sram_bridge(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据�?�道
+// 写数据�?�道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应�?�道
+// 写相应�?�道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;
@@ -431,7 +436,7 @@ module axi_sram_bridge(
 	input [31:0]MEM_uncache_wr_data;
 
 reg [3:0] count_wr16;
-//暂时用不到的信号初始�?
+//暂时用不到的信号初始�?
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
@@ -445,7 +450,7 @@ reg [3:0] count_wr16;
 
     // assign wlast    =   1;
 
-//状�?�定�?
+//状�?�定�?
 /*FSM_R*/
 parameter state_rd_free = 2'b00;
 parameter state_rd_req = 2'b01;
@@ -531,7 +536,7 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[511:32]}};//�?要与 wdata 保持�?�?
+		temp_data={32'b0,{temp_data[511:32]}};//�?要与 wdata 保持�?�?
 	end
 end
 always @(posedge clk) begin
@@ -694,7 +699,7 @@ assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
 assign awburst = conf_wr ? 2'b0 : 2'b1;
 
 assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
-assign wstrb = MEM_dcache_wr_wstrb; //可能有问�?
+assign wstrb = MEM_dcache_wr_wstrb; //可能有问�?
 assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );
 assign wlast = conf_wr ? 1: dram_wr ? count_wr16==4'hf : 0;
 assign bready = 1;

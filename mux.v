@@ -25,7 +25,7 @@ module mux2(
 	input[2:0] MUX2Sel;
 	output[31:0] WD;
 
-	assign WD = (MUX2Sel == 3'b101) ? CP0Out : MUX6Out;
+	assign WD = (MUX2Sel[2]&MUX2Sel[0]) ? CP0Out : MUX6Out;
 
 endmodule
 
@@ -95,7 +95,7 @@ module mux6(
 	input[2:0] MUX6Sel;
 	output[31:0] out;
 	
-	assign out = (MUX6Sel == 3'b010) ? ALU1Out : MUX11Out; 
+	assign out = (MUX6Sel[1]& ~MUX6Sel[0]) ? ALU1Out : MUX11Out; 
 
 endmodule
 
@@ -156,7 +156,7 @@ module mux10(WB_MUX2Out, WB_DMOut, WB_MUX2Sel, MUX10Out);
 	input[2:0] WB_MUX2Sel;
 	output[31:0] MUX10Out;
 
-	assign MUX10Out = (WB_MUX2Sel == 3'b100) ? WB_DMOut : WB_MUX2Out;
+	assign MUX10Out = (WB_MUX2Sel[2]& ~WB_MUX2Sel[0]) ? WB_DMOut : WB_MUX2Out;
 endmodule
 
 module mux11(Imm32, PC, RHLOut, EX_MUX2Sel, MUX11Out);
