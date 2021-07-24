@@ -525,7 +525,8 @@ icache U_ICACHE(
 	/*output*/
 	.rd_req(IF_icache_rd_req),.wr_req(IF_icache_wr_req),.rd_type(IF_icache_rd_type),
 	.wr_type(IF_icache_wr_type),.rd_addr(IF_icache_rd_addr),.wr_addr(IF_icache_wr_addr),
-	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data)
+	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data),
+    .valid_CI(1'b0), .op_CI(1'b0), .index_CI(6'd0), .tag_CI(20'd0)
 	);
 	//--------------IF----------------//
 PF_IF U_PF_IF(
@@ -779,7 +780,8 @@ dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(~(IF_data_ok&M
     .rd_rdy(MEM_dcache_rd_rdy), .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last),
     .ret_data(MEM_dcache_ret_data), .wr_valid(bvalid), .wr_req(MEM_dcache_wr_req),
     .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), .wr_wstrb(MEM_dcache_wr_wstrb),
-    .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy)
+    .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy),
+    .valid_CI(1'b0), .op_CI(2'b0), .index_CI(6'd0), .tag_CI(20'd0)
 	);
 	//-------------MEM2---------------//
 MEM1_MEM2 U_MEM1_MEM2(
