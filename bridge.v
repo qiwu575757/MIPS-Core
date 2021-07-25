@@ -91,6 +91,8 @@ wire m_axis_dout_tvalid_sign;
 wire m_axis_dout_tvalid_unsign;
 wire multiplier_signed_valid;
 wire multiplier_unsigned_valid;
+reg[2:0] counter;
+
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
 
 
@@ -110,7 +112,7 @@ parameter state_busy = 1'b1 ;
 				// 6'b011000: ALU2Op <= 2'b01;		/* MULT */
 				// 6'b011011: ALU2Op <= 2'b10;		/* DIVU */
 				// 6'b011010: ALU2Op <= 2'b11;		/* DIV */
-reg[2:0] counter;
+
 
 always@(posedge aclk)
 	if(!aresetn || counter == 3'd4 ||multiplier_signed_valid || multiplier_unsigned_valid)

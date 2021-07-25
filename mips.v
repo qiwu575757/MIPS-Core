@@ -425,6 +425,8 @@ module mips(
 	wire[4:0] rd_forMUX1;
     wire[31:0] EX_GPR_RT_forALU1;
     wire[31:0] MUX5Out_forALU1;
+    wire[2:0]  WB_MUX2Sel_forEX;
+    wire[31:0] MUX10Out_forEX;
 
 /**************DATA PATH***************/
     //--------------PF----------------//
@@ -576,7 +578,8 @@ mux7 U_MUX7(
 	);
 
 mux8 U_MUX8(
-		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX8Sel(MUX8Sel), .WD(MUX10Out),
+		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+        .MUX8Sel(MUX8Sel), .WD(MUX10Out),
 
 		.out(MUX8Out)
 	);
@@ -584,7 +587,8 @@ mux8 U_MUX8(
 
 
 mux9 U_MUX9(
-		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), .MUX9Sel(MUX9Sel), .WD(MUX10Out),
+		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+        .MUX9Sel(MUX9Sel), .WD(MUX10Out),
 
 		.out(MUX9Out)
 	);
@@ -639,19 +643,22 @@ mux3 U_MUX3(
 	);
 
 mux4 U_MUX4(
-		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX4Sel(EX_MUX4Sel),
+		.GPR_RS(EX_GPR_RS), .data_EX(MUX6Out), .data_MEM1(MUX2Out), 
+        .data_MEM2(MUX10Out_forEX), .MUX4Sel(EX_MUX4Sel),
 
 		.out(MUX4Out)
 	);
 
 mux5 U_MUX5(
-		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX5Sel(EX_MUX5Sel),
+		.GPR_RT(EX_GPR_RT), .data_EX(MUX6Out), .data_MEM1(MUX2Out), 
+        .data_MEM2(MUX10Out_forEX), .MUX5Sel(EX_MUX5Sel),
 
 		.out(MUX5Out)
 	);
 
 mux5 U_MUX5_forALU1(
-		.GPR_RT(EX_GPR_RT_forALU1), .data_EX(MUX6Out), .data_MEM1(MUX2Out), .data_MEM2(MUX10Out), .MUX5Sel(EX_MUX5Sel),
+		.GPR_RT(EX_GPR_RT_forALU1), .data_EX(MUX6Out), .data_MEM1(MUX2Out), 
+        .data_MEM2(MUX10Out_forEX), .MUX5Sel(EX_MUX5Sel),
 
 		.out(MUX5Out_forALU1)
 	);
@@ -719,6 +726,9 @@ mux6 U_MUX6(
 
 		.out(MUX6Out)
 	);
+
+
+
 exception U_EXCEPTION(
     MEM1_Overflow, Temp_M1_Exception, MEM1_DMWr, MEM1_DMSel, MEM1_ALU1Out_forEXC,
     MEM1_DMRd, Temp_M1_ExcCode, MEM1_PC, MEM1_RFWr,Interrupt,
@@ -779,6 +789,9 @@ mux2 U_MUX2(
 		.WD(MUX2Out)
 	);
 
+
+
+
 uncache_dm U_UNCACHE_DM(
         .clk(clk), .resetn(rst), .DMSel(MEM2_DMSel), .last_stall(uncache_last_stall),
         .valid(MEM2_uncache_valid), .op(DMWen_uncache), .addr(MEM2_Paddr), .wstrb(MEM2_unCache_wstrb),
@@ -816,13 +829,20 @@ MEM2_WB U_MEM2_WB(
             .DMOut(DMOut), 
 
 			.WB_PC(WB_PC), .WB_MUX2Out(WB_MUX2Out), .WB_MUX2Sel(WB_MUX2Sel),
-            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut)
+            .WB_RD(WB_RD), .WB_RFWr(WB_RFWr), .WB_DMOut(WB_DMOut), .WB_MUX2Sel_forEX(WB_MUX2Sel_forEX)
             );
 
 mux10 U_MUX10(
             .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
             .MUX10Out(MUX10Out)
         );
+
+mux10 U_MUX10_forEX(
+            .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel_forEX),
+            .MUX10Out(MUX10Out_forEX)
+        );
+
+
     //-------------ELSE---------------//
 //physical address tranfer
 
