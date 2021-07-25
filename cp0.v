@@ -15,7 +15,7 @@
 `define Status_index        8'b01100_000
 `define Cause_index         8'b01101_000
 `define EPC_index           8'b01110_000
-`define PRId_index          8'b01111_000
+`define PRID_index          8'b01111_000
 `define Ebase_index         8'b01111_001
 `define Config_index        8'b10000_000
 `define Config1_index       8'b10000_001
@@ -90,7 +90,7 @@ module CP0(
     reg [31:0]      Status;
     reg [31:0]      Cause;
     reg [31:0]      EPC;
-    reg [31:0]      PRId;
+    reg [31:0]      PRID;
     reg [31:0]      Ebase;
     reg [31:0]      Config;
     reg [31:0]      Config1;
@@ -128,7 +128,7 @@ assign data_out =
                 (addr == `Status_index  )     ?     Status              :
                 (addr == `Cause_index   )     ?     Cause               :
                 (addr == `EPC_index     )     ?     EPC                 :
-                (addr == `PRId_index    )     ?     PRId                :
+                (addr == `PRID_index    )     ?     PRID                :
                 (addr == `Ebase_index   )     ?     Ebase               :
                 (addr == `Config_index  )     ?     Config              :
                 (addr == `Config1_index )     ?     Config1             :
@@ -215,7 +215,8 @@ assign data_out =
             Random[3:0] <= Random[3:0] - 1'b1;
     end
 
-    //Config generation, 这些配置寄存器的信息可能需要修改
+    //Config generation, 地址映射相关
+    //这些配置寄存器的信息可能需要修改
     always @(posedge clk) begin
         if ( !rst )
         begin
@@ -232,7 +233,7 @@ assign data_out =
             Config[2:0] <= data_in[2:0];
     end
 
-    //Config1 generation
+    //Config1 generation,缓存属性相关
     always @(posedge clk) begin
         if ( !rst )
         begin
@@ -269,6 +270,12 @@ assign data_out =
     always @(posedge clk) begin
         if (CP0WrEn && addr == `TagLo_index)
             TagLo <= data_in;
+    end
+
+    //PRID generation
+    always @(posedge clk) begin
+        if ( !rst )
+            PRID <= 32'h4220;
     end
 
     //Count generation

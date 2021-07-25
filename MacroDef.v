@@ -25,6 +25,8 @@
 `define movn    6'b001011
 `define movz    6'b001010
 
+`define sync    6'b001111
+
 //op_trap instr
 /*R_Type*/
 `define teq     6'b110100
