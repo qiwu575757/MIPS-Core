@@ -6,7 +6,7 @@ module icache(       clk, resetn, exception, stall,
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
-            valid_CI, op_CI, index_CI, tag_CI
+            valid_CI, op_CI, index_CI, way_CI, tag_CI
         );
 
     //clock and reset
@@ -42,6 +42,7 @@ module icache(       clk, resetn, exception, stall,
     input valid_CI;     //CACHE Instruction
     input op_CI;        //1: Index Invalid, 0: Hit Invalid
     input[5:0] index_CI;
+    input way_CI;
     input[19:0] tag_CI;
 
     //Cache RAM
@@ -82,7 +83,7 @@ module icache(       clk, resetn, exception, stall,
     reg[5:0] offset_RB;
     reg op_CI_RB;
     reg[5:0] index_CI_RB;
-    reg[19:0] tag_CI_RB;
+    reg way_CI_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
@@ -139,8 +140,8 @@ module icache(       clk, resetn, exception, stall,
     assign way1_hit = Way1_Valid && (Way1_Tag == tag);
     assign cache_hit = way0_hit || way1_hit ;
     assign hit_code = {way1_hit,way0_hit};
-    assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI_RB);
-    assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI_RB);
+    assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI);
+    assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI);
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI;
 
     always@(posedge clk)
@@ -178,7 +179,7 @@ module icache(       clk, resetn, exception, stall,
             offset_RB <= 6'd0;
             op_CI_RB <= 1'b0;
             index_CI_RB <= 6'd0;
-            tag_CI_RB <= 20'd0;
+            way_CI_RB <= 1'b0;
         end
         else if(RBWr) begin
             index_RB <= index;
@@ -186,7 +187,7 @@ module icache(       clk, resetn, exception, stall,
             offset_RB <= offset;
             op_CI_RB <= op_CI;
             index_CI_RB <= index_CI;
-            tag_CI_RB <= tag_CI;
+            way_CI_RB <= way_CI;
         end
 
     //Miss Buffer
@@ -305,9 +306,9 @@ module icache(       clk, resetn, exception, stall,
 
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = (ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8))
-                        | (invalid & (op_CI_RB & ~tag_CI_RB[0] | ~op_CI_RB & way0_hit_CI));
+                        | (invalid & (op_CI_RB & ~way_CI_RB | ~op_CI_RB & way0_hit_CI));
     assign VT_Way1_wen = (ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8))
-                        | (invalid & (op_CI_RB & tag_CI_RB[0] | ~op_CI_RB & way1_hit_CI));
+                        | (invalid & (op_CI_RB & way_CI_RB | ~op_CI_RB & way1_hit_CI));
     assign VT_in = (C_STATE == INSTR) ? 21'd0 : {1'b1,replace_tag_new_MB};
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
@@ -370,7 +371,7 @@ module icache(       clk, resetn, exception, stall,
 
     //output signals
     assign addr_ok = 1'b1;
-    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit);
+    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) || (C_STATE == INSTR);
     //assign rd_req = (N_STATE == REFILL) ;
     assign rd_req = ((C_STATE == MISS) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
@@ -389,7 +390,7 @@ module dcache(       clk, resetn, DMRd, stall,
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
-                valid_CI,op_CI, index_CI, tag_CI
+                valid_CI,op_CI, index_CI, way_CI, tag_CI
         );
 
     //clock and reset
@@ -429,6 +430,7 @@ module dcache(       clk, resetn, DMRd, stall,
     input valid_CI;
     input[1:0] op_CI;   //10:index writeback invalid, 01:hit invalid, 11:hit writeback invalid
     input[5:0] index_CI;
+    input way_CI;
     input[19:0] tag_CI;
     //Cache RAM
     /*
@@ -484,7 +486,7 @@ module dcache(       clk, resetn, DMRd, stall,
     reg valid_CI_RB;
     reg[1:0] op_CI_RB;
     reg[5:0] index_CI_RB;
-    reg[19:0] tag_CI_RB;
+    reg[19:0] way_CI_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
@@ -537,7 +539,7 @@ module dcache(       clk, resetn, DMRd, stall,
     wire VTen;
     reg invalid;
     reg ok_CI;
-    wire way_CI;
+    wire way_CI_sel;
     reg already_writeback;
 
     reg conflict2_reg;
@@ -581,8 +583,8 @@ module dcache(       clk, resetn, DMRd, stall,
     assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
     assign hit_code = {way1_hit,way0_hit};
 
-    assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI_RB);
-    assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI_RB);
+    assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI);
+    assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI);
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI ;
 
     /*assign write_conflict1 = hit_write && DMRd
@@ -649,7 +651,7 @@ module dcache(       clk, resetn, DMRd, stall,
             valid_CI_RB <= 1'b0;
             op_CI_RB <= 2'b00;
             index_CI_RB <= 6'd0;
-            tag_CI_RB <= 20'd0;
+            way_CI_RB <= 1'b0;
         end
         else if((valid | valid_CI) && ok) begin
             op_RB <= op;
@@ -663,7 +665,7 @@ module dcache(       clk, resetn, DMRd, stall,
             valid_CI_RB <= valid_CI;
             op_CI_RB <= op_CI;
             index_CI_RB <= index_CI;
-            tag_CI_RB <= tag_CI;
+            way_CI_RB <= way_CI;
         end
         else if(~addr_ok && data_ok)
             op_RB <= 1'b0;
@@ -689,13 +691,13 @@ module dcache(       clk, resetn, DMRd, stall,
             replace_tag_new_MB <= tag;
         end
         else if(C_STATE == INSTR) begin
-            replace_way_MB <= way_CI;
-            replace_data_MB <= way_CI ? Data_Way1_out : Data_Way0_out;
-            replace_Valid_MB <= way_CI ? Way1_Valid : Way0_Valid;
-            replace_Dirty_MB <= way_CI ? Way1_Dirty : Way0_Dirty;
+            replace_way_MB <= way_CI_sel;
+            replace_data_MB <= way_CI_sel ? Data_Way1_out : Data_Way0_out;
+            replace_Valid_MB <= way_CI_sel ? Way1_Valid : Way0_Valid;
+            replace_Dirty_MB <= way_CI_sel ? Way1_Dirty : Way0_Dirty;
             replace_index_MB <= index_CI_RB;
-            replace_tag_old_MB <= way_CI ? Way1_Tag : Way0_Tag;
-            replace_tag_new_MB <= tag_CI_RB;
+            replace_tag_old_MB <= way_CI_sel ? Way1_Tag : Way0_Tag;
+            replace_tag_new_MB <= tag_CI;
         end
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
@@ -875,9 +877,9 @@ module dcache(       clk, resetn, DMRd, stall,
 
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = (ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8)) |
-                        ((C_STATE == INSTR) & invalid & ~way_CI);
+                        ((C_STATE == INSTR) & invalid & ~way_CI_sel);
     assign VT_Way1_wen = (ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8)) |
-                        ((C_STATE == INSTR) & invalid & way_CI);
+                        ((C_STATE == INSTR) & invalid & way_CI_sel);
     assign VT_in = (C_STATE == INSTR) ? 21'd0 : {1'b1,replace_tag_new_MB};
     assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
     assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
@@ -998,7 +1000,7 @@ module dcache(       clk, resetn, DMRd, stall,
             2'b10://index writeback invalid
                     if(already_writeback)
                         invalid = 1'b1;
-                    else if(~(way_CI ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                    else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
                         invalid = 1'b1;
                     else
                         invalid = 1'b0;
@@ -1011,7 +1013,7 @@ module dcache(       clk, resetn, DMRd, stall,
                     if(cache_hit_CI) begin
                         if(already_writeback)
                             invalid = 1'b1;
-                        else if(~(way_CI ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                        else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
                             invalid = 1'b1;
                         else
                             invalid = 1'b0;
@@ -1026,7 +1028,7 @@ module dcache(       clk, resetn, DMRd, stall,
             2'b10://index writeback invalid
                     if(already_writeback)
                         ok_CI = 1'b1;
-                    else if(~(way_CI ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                    else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
                         ok_CI = 1'b1;
                     else
                         ok_CI = 1'b0;
@@ -1036,7 +1038,7 @@ module dcache(       clk, resetn, DMRd, stall,
                     if(cache_hit_CI) begin
                         if(already_writeback)
                             ok_CI = 1'b1;
-                        else if(~(way_CI ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                        else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
                             ok_CI = 1'b1;
                         else
                             ok_CI = 1'b0;
@@ -1046,7 +1048,7 @@ module dcache(       clk, resetn, DMRd, stall,
             default:ok_CI = 1'b1;
         endcase
 
-    assign way_CI = op_CI_RB[0] ? way1_hit_CI : tag_CI_RB[0]; 
+    assign way_CI_sel = op_CI_RB[0] ? way1_hit_CI : way_CI_RB; 
 
 
     always@(posedge clk)

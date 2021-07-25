@@ -8,7 +8,8 @@
 		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump
+		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump,
+		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI
 	);
 	input 			clk;
 	input 			rst;
@@ -66,6 +67,11 @@
 	output 			LL_signal;
 	output 			SC_signal;
 	output 			Jump;
+
+	output reg 		icache_valid_CI;
+	output reg 		icache_op_CI;
+	output reg 		dcache_valid_CI;
+	output reg [1:0]dcache_op_CI;
 
 	wire 			ri;			//reserved instr
 	reg 			rst_sign;
@@ -426,6 +432,7 @@
 			6'b100010: ALU1Op <= 5'b00000;		/* LWL */
 			6'b100110: ALU1Op <= 5'b00000;		/* LWR */
 			6'b110000: ALU1Op <= 5'b00000;		/* LL */
+			6'b101111: ALU1Op <= 5'b00000;		/* CACHE */
 			6'b011100:
 				case(Funct)
 					`clo :	ALU1Op  <= 5'b01101;		/*CLO*/
@@ -942,5 +949,46 @@
 			default: Cpu_Op <= 1'b0;
 		endcase
 	end
+
+		always@(OP or rt)	//generation of icache_valid_CI
+		if(OP == 6'b101111) begin
+			case(rt)
+				5'b00000: icache_valid_CI = 1'b1;	/* Index Invalid */
+				5'b10000: icache_valid_CI = 1'b1;	/* Hit Invalid */
+				default:  icache_valid_CI = 1'b0; 
+			endcase
+		end
+		else
+			icache_valid_CI = 1'b0;
+
+	always@(OP or rt)		//generation of icache_op_CI
+		if(OP == 6'b101111 && rt == 5'b00000) 
+			icache_op_CI = 1'b1;	/* Index Invalid */
+		else
+			icache_op_CI = 1'b0;	/* Hit Invalid */
+
+	always@(OP or rt)		//generation of dcache_valid_CI
+		if(OP == 6'b101111) begin
+			case(rt)
+				5'b00001: dcache_valid_CI = 1'b1;	/* Index Writeback Invalid */
+				5'b10001: dcache_valid_CI = 1'b1;	/* Hit Invalid */
+				5'b10101: dcache_valid_CI = 1'b1;	/* Hit Writeback Invalid */
+				default:  dcache_valid_CI = 1'b0; 
+			endcase
+		end
+		else
+			dcache_valid_CI = 1'b0;
+
+	always@(OP or rt)		//generation of dcache_op_CI
+		if(OP == 6'b101111) begin
+			case(rt)
+				5'b00001: dcache_op_CI = 2'b10;	/* Index Writeback Invalid */
+				5'b10001: dcache_op_CI = 2'b01;	/* Hit Invalid */
+				5'b10101: dcache_op_CI = 2'b11;	/* Hit Writeback Invalid */
+				default:  dcache_op_CI = 2'b00; 
+			endcase
+		end
+		else
+			dcache_op_CI = 2'b00;
 
 endmodule

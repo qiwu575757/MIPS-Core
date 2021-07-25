@@ -2,7 +2,7 @@ module npc(
 	IF_PC, Imm, EPC, ret_addr, NPCOp,
 	MEM1_eret_flush, MEM1_Exception,
 	MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC,
-	PF_PC,
+	PF_PC, WB_icache_valid_CI,
 
 	NPC
 	);
@@ -18,6 +18,7 @@ module npc(
 	input 			MEM1_TLBRill_Exc;
 	input 			WB_TLB_flush;
 	input [31:0] 	MEM2_PC;
+	input			WB_icache_valid_CI;
 
 	output reg [31:0] NPC;
 
@@ -26,7 +27,7 @@ module npc(
 			NPC = EPC;
 		else if (MEM1_Exception)		//TLB Rill and normal exception
 			NPC = !MEM1_TLBRill_Exc ? 32'hBFC0_0380 : 32'hBFC0_0200;
-		else if (WB_TLB_flush)	//TLBWI TLBR clear up
+		else if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
 			NPC = MEM2_PC;
 		else begin
 			case(NPCOp)
