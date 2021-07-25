@@ -128,7 +128,7 @@ module mips(
     wire [31:0]     PF_PC;
     wire            PF_IFWr;
     wire            PF_Flush;
-    wire [1:0]      PF_Instr_Flush;
+    wire            PF_Instr_Flush;
 	//--------------IF----------------//
     wire            IF_AdEL;
     wire[31:0]      NPC;
