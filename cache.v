@@ -251,11 +251,11 @@ module icache(       clk, resetn, exception, stall,
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(hit_code, rdata_way0, rdata_way1, ret_data)
+    always@(hit_code, rdata_way0, rdata_way1)
         case(hit_code)
             2'b01:  rdata = rdata_way0;
             2'b10:  rdata = rdata_way1;
-            default:rdata = ret_data;
+            default:rdata = 32'd0;
         endcase
 
     //write from cpu to cache (store)
