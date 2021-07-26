@@ -202,16 +202,16 @@ endmodule
 
 module ID_EX(
 	clk, rst, ID_EXWr,ID_Flush, RHLSel_Rd, PC, ALU1Op, ALU2Op, MUX1Out, MUX3Sel, ALU1Sel, DMWr, DMSel, 
-	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX2Sel, GPR_RS, GPR_RT, RS, RT, Imm32, shamt, 
+	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX11Sel, GPR_RS, GPR_RT, RS, RT, Imm32, shamt, 
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 	MUX4Sel, MUX5Sel,	ID_BrType, ID_Imm26, ID_NPCOp,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_RD, EX_RHLSel_Wr,
-	EX_DMSel, EX_MUX2Sel, EX_ALU1Op, EX_RS, EX_RT, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
+	EX_DMSel, EX_MUX11Sel, EX_ALU1Op, EX_RS, EX_RT, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,
 	EX_MUX4Sel, EX_MUX5Sel, EX_BrType, EX_Imm26, EX_NPCOp,
-	EX_GPR_RT_forALU1
+	EX_GPR_RS_forALU1, EX_GPR_RT_forALU1
 );
 	input clk, rst, ID_EXWr,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
@@ -221,7 +221,7 @@ module ID_EX(
 	input isBD;
 	input isBranch;
 	input[1:0] ALU2Op, RHLSel_Wr;
-	input[2:0] DMSel, MUX2Sel;
+	input[2:0] DMSel, MUX11Sel;
 	input[3:0] ALU1Op;
 	input[4:0] RS, RT, shamt, MUX1Out;
 	input[31:0] PC, GPR_RS, GPR_RT, Imm32;
@@ -250,7 +250,7 @@ module ID_EX(
 	output reg [1:0] EX_ALU2Op;
 	output reg [1:0] EX_RHLSel_Wr;
 	output reg [2:0] EX_DMSel;
-	output reg [2:0] EX_MUX2Sel;
+	output reg [2:0] EX_MUX11Sel;
 	output reg [3:0] EX_ALU1Op;
 	output reg [4:0] EX_RS;
 	output reg [4:0] EX_RT;
@@ -265,6 +265,7 @@ module ID_EX(
 	output reg [25:0] EX_Imm26;
 	output reg [1:0] EX_NPCOp;
 
+	output reg[31:0] EX_GPR_RS_forALU1;
 	output reg[31:0] EX_GPR_RT_forALU1;
 
 	always@(posedge clk)
@@ -286,7 +287,7 @@ module ID_EX(
 			EX_RD <= 5'd0;
 			EX_RHLSel_Wr <= 2'b00;
 			EX_DMSel <= 3'b000;
-			EX_MUX2Sel <= 3'b000;
+			EX_MUX11Sel <= 3'b000;
 			EX_ALU1Op <= 4'h0;
 			EX_RS <= 5'd0;
 			EX_RT <= 5'd0;
@@ -304,6 +305,7 @@ module ID_EX(
 			EX_BrType <= 2'b00;
 			EX_NPCOp <= 2'b00;
 			EX_Imm26 <= 26'd0;
+			EX_GPR_RS_forALU1 <= 32'd0;
 			EX_GPR_RT_forALU1 <= 32'd0;
 		end
 		else if(ID_EXWr) 
@@ -325,7 +327,7 @@ module ID_EX(
 			EX_RD <= MUX1Out;
 			EX_RHLSel_Wr <= RHLSel_Wr;
 			EX_DMSel <= DMSel;
-			EX_MUX2Sel <= MUX2Sel;
+			EX_MUX11Sel <= MUX11Sel;
 			EX_ALU1Op <= ALU1Op;
 			EX_RS <= RS;
 			EX_RT <= RT;
@@ -343,19 +345,20 @@ module ID_EX(
 			EX_BrType <= ID_BrType;
 			EX_NPCOp <= ID_NPCOp;
 			EX_Imm26 <= ID_Imm26;
+			EX_GPR_RS_forALU1 <= GPR_RS;
 			EX_GPR_RT_forALU1 <= GPR_RT;
 		end
 endmodule
 
 module EX_MEM1(
-		clk, rst, EX_MEM1Wr, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX2Sel, MUX11Out, 
+		clk, rst, EX_MEM1Wr, EX_PC, DMWr, DMSel, DMRd, RFWr, MUX11Out, 
         ALU1Out, GPR_RT, RD, EX_Flush, eret_flush, CP0WrEn, Exception, ExcCode, isBD,
-        CP0Addr, CP0Rd, EX_dcache_en, Overflow,
+        CP0Addr, CP0Rd, EX_dcache_en, Overflow, MUX6Sel, MUX2Sel, MUX10Sel,
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode, 
-        MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_MUX11Out, MEM1_ALU1Out, MEM1_GPR_RT, 
+        MEM1_isBD, MEM1_DMSel, MEM1_RD, MEM1_PC, MEM1_MUX11Out, MEM1_ALU1Out, MEM1_GPR_RT, 
         MEM1_CP0Addr, MEM1_CP0Rd, MEM1_dcache_en, MEM1_Overflow,
-		MEM1_ALU1Out_forEXC, MEM1_ALU1Out_forPaddr, MEM1_offset
+		MEM1_ALU1Out_forExPa, MEM1_MUX6Sel, MEM1_MUX2Sel, MEM1_MUX10Sel, MEM1_MUX6Sel_forEX
 	);
 	input clk, rst, EX_MEM1Wr,EX_Flush, DMWr, DMRd, RFWr;
 	input Overflow;
@@ -364,12 +367,13 @@ module EX_MEM1(
 	input Exception;
 	input [4:0] ExcCode;
 	input isBD;
-	input[2:0] DMSel, MUX2Sel;
+	input[2:0] DMSel;
 	input[4:0] RD;
 	input[31:0] EX_PC, MUX11Out,ALU1Out, GPR_RT;
 	input [7:0] CP0Addr;
 	input CP0Rd;
 	input EX_dcache_en;
+	input MUX6Sel, MUX2Sel, MUX10Sel;
 
 	output reg MEM1_DMWr, MEM1_DMRd, MEM1_RFWr;
 	output reg MEM1_eret_flush;
@@ -377,7 +381,7 @@ module EX_MEM1(
 	output reg MEM1_Exception;
 	output reg [4:0] MEM1_ExcCode;
 	output reg MEM1_isBD;
-	output reg[2:0] MEM1_DMSel, MEM1_MUX2Sel;
+	output reg[2:0] MEM1_DMSel;
 	output reg[4:0] MEM1_RD;
 	output reg[31:0] MEM1_ALU1Out;
 	output reg[31:0] MEM1_PC, MEM1_MUX11Out, MEM1_GPR_RT;
@@ -385,9 +389,8 @@ module EX_MEM1(
 	output reg MEM1_CP0Rd;
 	output reg MEM1_dcache_en;
 	output reg MEM1_Overflow;
-	output reg[31:0] MEM1_ALU1Out_forEXC;
-	output reg[31:0] MEM1_ALU1Out_forPaddr;
-	output reg[1:0] MEM1_offset;
+	output reg[31:0] MEM1_ALU1Out_forExPa;
+	output reg MEM1_MUX6Sel, MEM1_MUX2Sel, MEM1_MUX10Sel, MEM1_MUX6Sel_forEX;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -398,7 +401,6 @@ module EX_MEM1(
 			MEM1_CP0WrEn <= 1'b0;
 			MEM1_isBD <= 1'b0;
 			MEM1_DMSel <= 3'd0;
-			MEM1_MUX2Sel <= 3'd0;
 			MEM1_RD <= 5'd0;
 			MEM1_PC <= 32'd0;
 			MEM1_MUX11Out <= 32'd0;
@@ -410,9 +412,11 @@ module EX_MEM1(
 			MEM1_ExcCode <= 5'd0;
 			MEM1_Exception <= 1'b0;
 			MEM1_Overflow <= 1'b0;
-			MEM1_ALU1Out_forEXC <= 32'd0;
-			MEM1_ALU1Out_forPaddr <= 32'd0;
-			MEM1_offset <= 2'b00;
+			MEM1_ALU1Out_forExPa <= 32'd0;
+			MEM1_MUX6Sel <= 1'b0;
+			MEM1_MUX2Sel <= 1'b0;
+			MEM1_MUX10Sel <= 1'b0;
+			MEM1_MUX6Sel_forEX <= 1'b0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -422,7 +426,6 @@ module EX_MEM1(
 			MEM1_CP0WrEn <= CP0WrEn;
 			MEM1_isBD <= isBD;
 			MEM1_DMSel <= DMSel;
-			MEM1_MUX2Sel <= MUX2Sel;
 			MEM1_RD <= RD;
 			MEM1_PC <= EX_PC;
 			MEM1_MUX11Out <= MUX11Out;
@@ -434,21 +437,23 @@ module EX_MEM1(
 			MEM1_ExcCode <= ExcCode;
 			MEM1_Exception <= Exception;
 			MEM1_Overflow <= Overflow;
-			MEM1_ALU1Out_forEXC <= ALU1Out;
-			MEM1_ALU1Out_forPaddr <= ALU1Out;
-			MEM1_offset <= ALU1Out[1:0];
+			MEM1_ALU1Out_forExPa <= ALU1Out;
+			MEM1_MUX6Sel <= MUX6Sel;
+			MEM1_MUX2Sel <= MUX2Sel;
+			MEM1_MUX10Sel <= MUX10Sel;
+			MEM1_MUX6Sel_forEX <= MUX6Sel;
 		end
 
 endmodule
 
-module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD, 
-        MEM1_Flush, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWen, Exception,
-        eret_flush, uncache_valid, DMen, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd,
+module MEM1_MEM2(clk, rst, PC, RFWr, MUX2Sel, MUX6Out, RD, MEM1_Flush, 
+		MUX10Sel, CP0Out, MEM1_MEM2Wr, DMSel, cache_sel, DMWen, Exception,
+        eret_flush, uncache_valid, DMen, Paddr, MEM1_dCache_wstrb, GPR_RT, DMRd, MEM1_rstrb,
 
-		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_offset, MEM2_MUX6Out, MEM2_CP0Out,
+		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_MUX10Sel, MEM2_MUX6Out, MEM2_CP0Out,
         MEM2_DMSel, MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
-		MEM2_uncache_valid, MEM2_DMen,
-        MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, MEM2_DMRd
+		MEM2_uncache_valid, MEM2_DMen, MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT, 
+		MEM2_DMRd, MEM2_rstrb, MEM2_MUX2Sel_forEX
 		);
 	input clk;
 	input rst;
@@ -457,9 +462,7 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD,
 
 	input[31:0] PC;
 	input RFWr;
-	input[2:0] MUX2Sel;
 	input[31:0] MUX6Out;
-	input[1:0] offset;
 	input[4:0] RD;
 	input[31:0] CP0Out;
 	input[2:0] DMSel;
@@ -473,12 +476,12 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD,
 	input[3:0] MEM1_dCache_wstrb;
 	input[31:0] GPR_RT;
 	input DMRd;
+	input[3:0] MEM1_rstrb;
+	input MUX2Sel, MUX10Sel;
 
 	output reg[31:0] MEM2_PC;
 	output reg MEM2_RFWr;
-	output reg[2:0] MEM2_MUX2Sel;
-	output reg[31:0] MEM2_MUX6Out;
-	output reg[1:0] MEM2_offset;	
+	output reg[31:0] MEM2_MUX6Out;	
 	output reg[4:0] MEM2_RD;
 	output reg[31:0] MEM2_CP0Out;
 	output reg[2:0] MEM2_DMSel;
@@ -492,14 +495,14 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD,
 	output reg[3:0] MEM2_unCache_wstrb;
 	output reg[31:0] MEM2_GPR_RT;
 	output reg MEM2_DMRd;
+	output reg[3:0] MEM2_rstrb;
+	output reg MEM2_MUX2Sel, MEM2_MUX10Sel, MEM2_MUX2Sel_forEX;
 
 	always@(posedge clk)
 		if(!rst || MEM1_Flush) begin
 			MEM2_PC <= 32'd0;
 			MEM2_RFWr <= 1'b0;
-			MEM2_MUX2Sel <= 3'd0;
 			MEM2_MUX6Out <= 32'd0;
-			MEM2_offset <= 32'd0;
 			MEM2_RD <= 5'd0;
 			MEM2_CP0Out <= 32'd0;
 			MEM2_DMSel <= 3'd0;
@@ -513,13 +516,15 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD,
 			MEM2_unCache_wstrb <= 4'd0;
 			MEM2_GPR_RT <= 32'd0;
 			MEM2_DMRd <= 1'b0;
+			MEM2_rstrb <= 4'h0;
+			MEM2_MUX2Sel <= 1'b0;
+			MEM2_MUX10Sel <= 1'b0;
+			MEM2_MUX2Sel_forEX <= 1'b0;
 		end
 		else if(MEM1_MEM2Wr) begin
 			MEM2_PC <= PC;
 			MEM2_RFWr <= RFWr;
-			MEM2_MUX2Sel <= MUX2Sel;
 			MEM2_MUX6Out <= MUX6Out;
-			MEM2_offset <= offset;	
 			MEM2_RD <= RD;
 			MEM2_CP0Out <= CP0Out;
 			MEM2_DMSel <= DMSel;
@@ -533,15 +538,19 @@ module MEM1_MEM2(clk, rst, PC, RFWr,MUX2Sel, MUX6Out, offset, RD,
 			MEM2_unCache_wstrb <= MEM1_dCache_wstrb;
 			MEM2_GPR_RT <= GPR_RT;
 			MEM2_DMRd <= DMRd;
+			MEM2_rstrb <= MEM1_rstrb;
+			MEM2_MUX2Sel <= MUX2Sel;
+			MEM2_MUX10Sel <= MUX10Sel;
+			MEM2_MUX2Sel_forEX <= MUX2Sel;
 		end
 endmodule
 
 module MEM2_WB(
 	clk, rst,MEM2_WBWr, MEM2_Flush,
-	PC, MUX2Out, MUX2Sel, RD, RFWr, DMOut,
+	PC, MUX2Out, MUX10Sel, RD, RFWr, DMOut,
 
-	WB_PC, WB_MUX2Out, WB_MUX2Sel, WB_RD, WB_RFWr, WB_DMOut,
-	WB_MUX2Sel_forEX
+	WB_PC, WB_MUX2Out, WB_MUX10Sel, WB_RD, WB_RFWr, WB_DMOut,
+	WB_MUX10Sel_forEX
 	);
 	input clk;
 	input rst;
@@ -551,37 +560,37 @@ module MEM2_WB(
 
 	input[31:0] PC;
 	input[31:0] MUX2Out;
-	input[2:0] MUX2Sel;
+	input MUX10Sel;
 	input[4:0] RD;
 	input RFWr;
 	input[31:0] DMOut;
 
 	output reg[31:0] WB_PC;
 	output reg[31:0] WB_MUX2Out;
-	output reg[2:0] WB_MUX2Sel;
+	output reg WB_MUX10Sel;
 	output reg[4:0] WB_RD;
 	output reg WB_RFWr;
 	output reg[31:0] WB_DMOut;
-	output reg[2:0] WB_MUX2Sel_forEX;
+	output reg WB_MUX10Sel_forEX;
 
 	always@(posedge clk)
 		if(!rst || MEM2_Flush) begin
 			WB_PC <= 32'd0;
 			WB_MUX2Out <= 32'd0;
-			WB_MUX2Sel <= 3'd0;
+			WB_MUX10Sel <= 1'b0;
 			WB_RD <= 5'd0;
 			WB_RFWr <= 1'b0;
 			WB_DMOut <= 32'd0;
-			WB_MUX2Sel_forEX <= 3'd0;
+			WB_MUX10Sel_forEX <= 1'b0;
 		end
 		else if(MEM2_WBWr) begin
 			WB_PC <= PC;
 			WB_MUX2Out <= MUX2Out;
-			WB_MUX2Sel <= MUX2Sel;
+			WB_MUX10Sel <= MUX10Sel;
 			WB_RD <= RD;
 			WB_RFWr <= RFWr;
 			WB_DMOut <= DMOut;
-			WB_MUX2Sel_forEX <= MUX2Sel;
+			WB_MUX10Sel_forEX <= MUX10Sel;
 		end
 
 endmodule

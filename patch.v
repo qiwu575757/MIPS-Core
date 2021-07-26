@@ -80,8 +80,12 @@ module ex_prep(
     input [1:0] EX_NPCOp,
     input [25:0] EX_Imm26,
     input [31:0] ID_PC,
+    input [2:0] EX_MUX11Sel,
 
-    output reg [31:0] EX_address
+    output reg [31:0] EX_address,
+    output EX_MUX6Sel,
+    output EX_MUX2Sel,
+    output EX_MUX10Sel
 );
 
     always @(EX_NPCOp, EX_Imm26, ID_PC) begin
@@ -94,6 +98,11 @@ module ex_prep(
 				default:EX_address = ID_PC + 4;								
 			endcase
     end
+
+    assign EX_MUX6Sel = (EX_MUX11Sel == 3'b010);
+    assign EX_MUX2Sel = (EX_MUX11Sel == 3'b101);
+    assign EX_MUX10Sel = (EX_MUX11Sel == 3'b100);
+
 endmodule
 
 module mem1_cache_prep(
@@ -104,7 +113,7 @@ module mem1_cache_prep(
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid, 
     DMWen_dcache, MEM1_dCache_wstrb,
     MEM1_uncache_valid, MEM1_DMen,
-    MEM1_dcache_valid_except_icache
+    MEM1_dcache_valid_except_icache, MEM1_rstrb
     );
     input MEM1_dcache_en;
     input MEM1_eret_flush;
@@ -123,6 +132,7 @@ module mem1_cache_prep(
     output MEM1_uncache_valid;
     output MEM1_DMen;
     output MEM1_dcache_valid_except_icache;
+    output reg[3:0] MEM1_rstrb;
 
     //wire MEM1_dcache_valid_temp;  
     assign MEM1_Paddr =  {3'b000,MEM1_ALU1Out[28:0]};
@@ -151,6 +161,31 @@ module mem1_cache_prep(
 								  				4'b1100 ):
 		
 												4'b1111 ;//sw
+    
+    always@(*)
+        case(MEM1_DMSel)
+			3'b011: case(MEM1_ALU1Out[1:0])//LBU
+						2'b00:	MEM1_rstrb = 4'b0000;
+						2'b01:	MEM1_rstrb = 4'b0001;
+						2'b10:	MEM1_rstrb = 4'b0010;
+						default:MEM1_rstrb = 4'b0011;
+					endcase
+			3'b100: case(MEM1_ALU1Out[1:0])//LB
+						2'b00:	MEM1_rstrb = 4'b1000;
+						2'b01:	MEM1_rstrb = 4'b1001;
+						2'b10:	MEM1_rstrb = 4'b1010;
+						default:MEM1_rstrb = 4'b1011;
+					endcase
+			3'b101:	case(MEM1_ALU1Out[1])//LHU
+						1'b0:	MEM1_rstrb = 4'b0100;
+						default:MEM1_rstrb = 4'b0110;
+					endcase
+			3'b110: case(MEM1_ALU1Out[1])//LH
+						1'b0:	MEM1_rstrb = 4'b1100;
+						default:MEM1_rstrb = 4'b1110;
+					endcase
+			default: MEM1_rstrb = 4'b1111;//LW
+		endcase
 
 endmodule
 

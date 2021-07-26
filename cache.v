@@ -506,6 +506,7 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
     reg[31:0] conflict2_data;
     wire rdata_sel;
     reg[31:0] rdata_prior;
+    wire[5:0] addr_addr;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -835,24 +836,27 @@ module dcache(       clk, resetn, DMRd, stall_0, stall_1, last_stall, last_confl
 
     //block address control
     always@(C_STATE_WB, index_RB, index, addr_select, index_WB)
-        if(C_STATE_WB == WRITE) begin
-            D_addr = index_WB;
+        if(C_STATE_WB == WRITE)
             Data_addr = index_WB;
-        end
-        else if(addr_select) begin
-            D_addr = index_RB;
+        else if(addr_select)
             Data_addr = index_RB;
-        end
-        else begin
-            D_addr = index;
+        else 
             Data_addr = index;
-        end
 
-    always@(ok, index, index_RB)
-        if(~ok)
+    always@(C_STATE_WB, index_RB, index_WB)
+        if(C_STATE_WB == WRITE)
+            D_addr = index_WB;
+        else
+            D_addr = index_RB;
+
+
+    always@(data_ok, addr_addr, index_RB)
+        if(!data_ok)
             VT_addr = index_RB;
         else
-            VT_addr = index;
+            VT_addr = addr_addr;
+
+    assign addr_addr = addr_ok ? index : index_RB;
 
     //main FSM
     /*
@@ -1079,8 +1083,6 @@ module dirty_block(clk, rst, wen, addr, din, dout);
     always@(posedge clk)
         if(!rst)
             dout <= 1'b0;
-        else if(wen)    //write first
-            dout <= din;
         else
             dout <= dirty[addr];
 
@@ -1111,12 +1113,8 @@ always@(posedge clk)
     always@(posedge clk)
         if(!rst)
             dout <= 21'd0;
-        else if(en) begin
-            if(wen)
-                dout <= din;
-            else
-                dout <= validtag[addr];
-        end
+        else if(en) 
+            dout <= validtag[addr];
             
 
 endmodule

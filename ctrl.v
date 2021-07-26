@@ -4,7 +4,7 @@
 	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch,
  		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,
 
-		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
+		MUX1Sel, MUX11Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
 		CP0Rd, start, RHL_visit,dcache_en, BrType
 	);
@@ -22,7 +22,7 @@
 	input [4:0] Temp_ID_ExcCode;
 
 	output reg [1:0] MUX1Sel;
-	output reg [2:0] MUX2Sel;
+	output reg [2:0] MUX11Sel;
 	output reg MUX3Sel;
 	output reg RFWr;
 	output reg RHLWr;
@@ -532,33 +532,33 @@
 		endcase
 	end
 
-	always @(OP or Funct or rs) begin		/* the genenration of MUX2Sel */
+	always @(OP or Funct or rs) begin		/* the genenration of MUX11Sel */
 		 case (OP)
 			6'b000000: 
 			case (Funct)
-				6'b010000: MUX2Sel = 3'b000;	/* MFHI */
-				6'b010010: MUX2Sel = 3'b000;	/* MFLO */
-				6'b001001: MUX2Sel = 3'b011;	/* JALR */
-				6'b011001: MUX2Sel = 3'b000;	/* MULTU */
-				6'b011000: MUX2Sel = 3'b000;	/* MULT */
-				6'b011011: MUX2Sel = 3'b000;	/* DIVU */
-				6'b011010: MUX2Sel = 3'b000;	/* DIV */
-				default: MUX2Sel = 3'b010;
+				6'b010000: MUX11Sel = 3'b000;	/* MFHI */
+				6'b010010: MUX11Sel = 3'b000;	/* MFLO */
+				6'b001001: MUX11Sel = 3'b011;	/* JALR */
+				6'b011001: MUX11Sel = 3'b000;	/* MULTU */
+				6'b011000: MUX11Sel = 3'b000;	/* MULT */
+				6'b011011: MUX11Sel = 3'b000;	/* DIVU */
+				6'b011010: MUX11Sel = 3'b000;	/* DIV */
+				default: MUX11Sel = 3'b010;
 			endcase
-			6'b100000: MUX2Sel = 3'b100;		/* LB */
-			6'b100100: MUX2Sel = 3'b100;		/* LBU */
-			6'b100001: MUX2Sel = 3'b100;		/* LH */
-			6'b100101: MUX2Sel = 3'b100;		/* LHU */
-			6'b100011: MUX2Sel = 3'b100;		/* LW */
-			6'b000001: MUX2Sel = 3'b011;		/* BGEZAL or BLTZAL */
-			6'b001111: MUX2Sel = 3'b001;		/* LUI */
-			6'b000011: MUX2Sel = 3'b011;		/* JAL */
+			6'b100000: MUX11Sel = 3'b100;		/* LB */
+			6'b100100: MUX11Sel = 3'b100;		/* LBU */
+			6'b100001: MUX11Sel = 3'b100;		/* LH */
+			6'b100101: MUX11Sel = 3'b100;		/* LHU */
+			6'b100011: MUX11Sel = 3'b100;		/* LW */
+			6'b000001: MUX11Sel = 3'b011;		/* BGEZAL or BLTZAL */
+			6'b001111: MUX11Sel = 3'b001;		/* LUI */
+			6'b000011: MUX11Sel = 3'b011;		/* JAL */
 			`cop0:
 			if (rs == `mfc0)
-				MUX2Sel = 3'b101;
+				MUX11Sel = 3'b101;
 			else
-				MUX2Sel = 3'b010;
-			default: MUX2Sel = 3'b010;
+				MUX11Sel = 3'b010;
+			default: MUX11Sel = 3'b010;
 		endcase
 	end
 

@@ -1,17 +1,14 @@
 module alu1(
-	A, B, ALU1Op, ALU1Sel, Shamt,
+	A, B, ALU1Op,
 	
 	C,Overflow
 	);
 	input[31:0] A, B;
 	input[3:0] ALU1Op;
-	input[4:0] Shamt;
-	input ALU1Sel;
 	
 	output reg Overflow;
 	output reg[31:0] C;
 
-	wire[4:0] temp;
 	wire Less;
 	
 	wire[2:0] add_overflow;
@@ -34,13 +31,11 @@ module alu1(
 	assign and_result = A & B;
 	assign nor_result = ~(A | B);
 	assign xor_result = A ^ B;
-	assign sll_result = B << temp;
-	assign srl_result = B >> temp;
-	assign sra_result = $signed(B) >>> temp;
+	assign sll_result = B << A[4:0];
+	assign srl_result = B >> A[4:0];
+	assign sra_result = $signed(B) >>> A[4:0];
 	assign cmp_result = {31'd0,Less};
 
-
-	assign temp = ALU1Sel ? Shamt : A[4:0];
 	assign Less = (ALU1Op[0] && A[31]^B[31]) ? ~(A < B) : (A < B);
 	//		ALU1Op == 4'b1001 : signed compare
 	//		ALU1Op == 4'b1010 : unsigned compare
