@@ -141,6 +141,7 @@ module mips(
     wire branch;
     wire [31:0] target_addr;
     wire flush_signal_IF;
+    wire IF_stall;
     //--------------ID----------------//
     wire[31:0] ID_PC;
     wire[31:0] ID_Instr;
@@ -184,6 +185,7 @@ module mips(
     wire ID_Exception;
     wire[4:0] MUX1Out;
     wire [1:0] ID_BrType;
+    wire [1:0] ID_JType;
 	//--------------EX----------------//
     wire EX_isBranch;
     wire EX_isBusy;
@@ -235,6 +237,9 @@ module mips(
     wire EX_MUX6Sel;
     wire EX_MUX2Sel;
     wire EX_MUX10Sel;
+    wire [1:0] EX_JType;
+    wire EX_MUX7Sel;
+    wire EX_stall;
 	//-------------MEM1---------------//
     wire MEM1_eret_flush;
     wire MEM1_Exception;
@@ -500,7 +505,7 @@ PF_IF U_PF_IF(
 		//input signals and output signals are separate
 		//output
 		.PC(PC),.IF_Exception(IF_Exception), .IF_ExcCode(IF_ExcCode),
-        .IF_icache_valid(IF_icache_valid)
+        .IF_icache_valid(IF_icache_valid), .IF_stall(IF_stall)
 	);
 
 icache U_ICACHE(
@@ -528,6 +533,8 @@ branch_predictor U_BRANCH_PREDICTOR(
     .index(PC[9:2]),
     .EX_index(EX_PC[9:2]),
     .EX_taken(|EX_NPCOp),
+    .EX_valid(~EX_MUX7Sel && ~EX_stall),
+    .EX_JType(EX_JType),
 
     .branch(branch)
 );
@@ -535,13 +542,14 @@ branch_predictor U_BRANCH_PREDICTOR(
 branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
     .clk(clk),
     .resetn(rst),
+    .PF_PC(PF_PC),
     .index(PC[6:2]),
     .tag(PC[31:7]),
     .EX_index(EX_PC[6:2]),
     .EX_tag(EX_PC[31:7]),
     .EX_BrType(EX_BrType),                                  
     .EX_address(EX_address),     
-    .EX_taken(|EX_NPCOp),                          
+    .EX_taken(|EX_NPCOp && ~EX_stall && ~EX_MUX7Sel),                       
                                                           
     .target_address(target_addr)
 );
@@ -612,7 +620,7 @@ ctrl U_CTRL(
 		.NPCOp(NPCOp), .EXTOp(EXTOp), .ALU1Op(ALU1Op), .ALU1Sel(ALU1Sel), .ALU2Op(ALU2Op), .RHLSel_Rd(RHLSel_Rd),
 		.RHLSel_Wr(RHLSel_Wr), .DMSel(DMSel), .B_JOp(B_JOp), .eret_flush(eret_flush), .CP0WrEn(CP0WrEn),
 		.ID_Exception(ID_Exception), .ID_ExcCode(ID_ExcCode), .isBD(isBD), .isBranch(isBranch), .CP0Rd(CP0Rd), .start(start),
-		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en), .BrType(ID_BrType)
+		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en), .BrType(ID_BrType), .J_Type(ID_JType)
 	);
 
 mux1 U_MUX1(
@@ -631,6 +639,7 @@ ID_EX U_ID_EX(
 		.CP0Addr(CP0Addr), .CP0Rd(CP0Rd), .start(start & ~EX_isBusy),.ID_dcache_en(MUX7Out[3]),
         .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
         .ID_BrType(ID_BrType), .ID_Imm26(Imm26_forDFF), .ID_NPCOp(NPCOp),
+        .ID_JType(ID_JType), .MUX7Sel(MUX7Sel),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception),
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -642,7 +651,8 @@ ID_EX U_ID_EX(
 		.EX_CP0Rd(EX_CP0Rd), .EX_start(EX_start),.EX_dcache_en(EX_dcache_en),
         .EX_MUX4Sel(EX_MUX4Sel), .EX_MUX5Sel(EX_MUX5Sel),
         .EX_BrType(EX_BrType), .EX_Imm26(EX_Imm26), .EX_NPCOp(EX_NPCOp),
-        .EX_GPR_RS_forALU1(EX_GPR_RS_forALU1), .EX_GPR_RT_forALU1(EX_GPR_RT_forALU1)
+        .EX_GPR_RS_forALU1(EX_GPR_RS_forALU1), .EX_GPR_RT_forALU1(EX_GPR_RT_forALU1),
+        .EX_JType(EX_JType), .EX_MUX7Sel(EX_MUX7Sel), .EX_stall(EX_stall)
 	);
 
 
@@ -712,6 +722,7 @@ ex_prep U_EX_PREP(
     .EX_Imm26(EX_Imm26),
     .ID_PC(ID_PC),
     .EX_MUX11Sel(EX_MUX11Sel),
+    .return_addr(EX_GPR_RS),
 
     .EX_address(EX_address),
     .EX_MUX6Sel(EX_MUX6Sel),
@@ -887,6 +898,8 @@ npc U_NPC(
         .flush_condition_01(flush_condition_01_reg), .flush_condition_10(flush_condition_10_reg),
         .flush_condition_11(flush_condition_11_reg),.target_address_final(target_address_final_reg),
         .predict_final(predict_final_reg), .ee(ee_reg), .NPC_ee(NPC_ee_reg),
+        .EX_isBranch(EX_isBranch), .EX_stall(EX_stall), .EX_MUX7Sel(EX_MUX7Sel), 
+        .IF_stall(IF_stall), .clk(clk), .rst(rst),
 
 		.NPC(PF_PC), .flush_signal_PF(flush_signal_IF), .predict(PF_predict)
 	);

@@ -58,9 +58,8 @@ module mux4(
 
 	always@(GPR_RS, data_EX, data_MEM1, data_MEM2, MUX4Sel)
 		case(MUX4Sel)
-			2'b00:	out = GPR_RS;
+			2'b00, 2'b10:	out = GPR_RS;
 			2'b01:	out = data_EX;
-			2'b10:	out = data_MEM1;
 			default:out = data_MEM2;
 		endcase
 
@@ -78,9 +77,8 @@ module mux5(
 
 	always@(GPR_RT, data_EX, data_MEM1, data_MEM2, MUX5Sel)
 		case(MUX5Sel)
-			2'b00:	out = GPR_RT;
+			2'b00, 2'b10:	out = GPR_RT;
 			2'b01:	out = data_EX;
-			2'b10:	out = data_MEM1;
 			default:out = data_MEM2;
 		endcase
 

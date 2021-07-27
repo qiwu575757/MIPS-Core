@@ -3,7 +3,8 @@ module npc(
 	flush_condition_10, flush_condition_11, target_address_final, predict_final,
 	ee, NPC_ee,
 
-	flush_signal_PF, NPC, predict
+	flush_signal_PF, NPC, predict,
+	EX_isBranch, EX_stall, EX_MUX7Sel, IF_stall, clk, rst
 	);
 
 	input[31:0] ret_addr;
@@ -19,7 +20,7 @@ module npc(
     input predict_final;
     input ee;
     input[31:0] NPC_ee;
-
+	input EX_isBranch, EX_stall, EX_MUX7Sel, IF_stall, clk, rst;
 
 	output reg[31:0] NPC;
 	output flush_signal_PF;
@@ -61,6 +62,23 @@ module npc(
 		endcase
 
 	assign flush_signal_PF = flush_signal_temp| ee;
+
+	reg [31:0] total;
+	reg [31:0] fail;
+
+	always @(posedge clk) begin
+		if (!rst)
+			total <= 32'd0;
+		else if (EX_isBranch && ~EX_MUX7Sel && ~EX_stall)
+			total <= total + 1;
+	end
+
+	always @(posedge clk) begin
+		if (!rst)
+			fail <= 32'd0;
+		else if (flush_signal_temp && ~IF_stall)
+			fail <= fail + 1;
+	end	
 	
 endmodule
 

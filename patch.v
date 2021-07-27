@@ -81,6 +81,7 @@ module ex_prep(
     input [25:0] EX_Imm26,
     input [31:0] ID_PC,
     input [2:0] EX_MUX11Sel,
+    input [31:0] return_addr,
 
     output reg [31:0] EX_address,
     output EX_MUX6Sel,
@@ -95,6 +96,7 @@ module ex_prep(
 						else
 							EX_address = ID_PC + {14'h0000,EX_Imm26[15:0],2'b00};
 				2'b10:	EX_address = { ID_PC[31:28],EX_Imm26[25:0],2'b00};
+                2'b11: EX_address = return_addr;
 				default:EX_address = ID_PC + 4;								
 			endcase
     end

@@ -6,7 +6,7 @@
 
 		MUX1Sel, MUX11Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
 		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
-		CP0Rd, start, RHL_visit,dcache_en, BrType
+		CP0Rd, start, RHL_visit,dcache_en, BrType, J_Type
 	);
 	input clk;
 	input rst;
@@ -54,7 +54,7 @@
 
 	reg B_cmp;
 	reg[2:0] B_Type;
-	reg[1:0] J_Type;
+	output reg[1:0] J_Type;
 
 
 	always @(posedge clk) begin
@@ -396,7 +396,7 @@
 		endcase
 	end
 
-	always @(OP or rt or Funct) begin		/* the generation of BrType */
+	always @(OP or rt or Funct or rs) begin		/* the generation of BrType */
 		case (OP)
 			6'b000011: BrType = 2'b11;		//JAL
 			6'b000100,						//BEQ
@@ -414,7 +414,12 @@
 			6'b000111: BrType = 2'b10;		//BGTZ
 			6'b000000:
 			case (Funct)
-				6'b001000: BrType = 2'b01;	//JR
+				6'b001000: 
+				if (rs == 5'd31)
+					BrType = 2'b01;	//JR $31
+				else
+					BrType = 2'b10;	//JR 其它间接跳转
+				6'b001001: BrType = 2'b10;	//JALR 其它间接跳转
 				default: BrType = 2'b00;
 			endcase
 			default: BrType = 2'b00;

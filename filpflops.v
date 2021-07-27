@@ -75,7 +75,8 @@ module PF_IF(
 	clk, rst, wr, flush,
 	NPC,PF_Exception,PF_ExcCode, PF_icache_valid,
 
-	PC,IF_Exception,IF_ExcCode, IF_icache_valid
+	PC,IF_Exception,IF_ExcCode, IF_icache_valid,
+	IF_stall,
 );
 	input clk, rst, wr,flush;
 	input PF_Exception;
@@ -87,7 +88,7 @@ module PF_IF(
 	output reg IF_Exception;
 	output reg [4:0] IF_ExcCode;
 	output reg IF_icache_valid;
-
+	output reg IF_stall;
 
     always@(posedge clk)
 		if(!rst || flush)
@@ -96,6 +97,7 @@ module PF_IF(
 			IF_Exception <= 1'b0;
 			PC <= 32'hbfbf_fffc;
 			IF_icache_valid <= 1'b0;
+			IF_stall <= 1'b0;
 		end
 		else if(wr)
 		begin
@@ -103,7 +105,9 @@ module PF_IF(
 			IF_Exception <= PF_Exception;
 			PC <= NPC;
 			IF_icache_valid <= PF_icache_valid;
-		end
+			IF_stall <= 1'b0;
+		end else
+			IF_stall <= 1'b1;
 
 endmodule
 
@@ -205,13 +209,15 @@ module ID_EX(
 	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX11Sel, GPR_RS, GPR_RT, RS, RT, Imm32, shamt, 
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 	MUX4Sel, MUX5Sel,	ID_BrType, ID_Imm26, ID_NPCOp,
+	ID_JType, MUX7Sel,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_RD, EX_RHLSel_Wr,
 	EX_DMSel, EX_MUX11Sel, EX_ALU1Op, EX_RS, EX_RT, EX_shamt, EX_PC, EX_GPR_RS, EX_GPR_RT, 
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,
 	EX_MUX4Sel, EX_MUX5Sel, EX_BrType, EX_Imm26, EX_NPCOp,
-	EX_GPR_RS_forALU1, EX_GPR_RT_forALU1
+	EX_GPR_RS_forALU1, EX_GPR_RT_forALU1,
+	EX_JType, EX_MUX7Sel, EX_stall
 );
 	input clk, rst, ID_EXWr,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
@@ -233,6 +239,8 @@ module ID_EX(
 	input [1:0] ID_BrType;
 	input [25:0] ID_Imm26;
 	input [1:0] ID_NPCOp;
+	input [1:0] ID_JType;
+	input MUX7Sel;
 
 	output reg EX_eret_flush;
 	output reg EX_CP0WrEn;
@@ -267,6 +275,10 @@ module ID_EX(
 
 	output reg[31:0] EX_GPR_RS_forALU1;
 	output reg[31:0] EX_GPR_RT_forALU1;
+
+	output reg [1:0] EX_JType;
+	output reg EX_MUX7Sel;
+	output reg EX_stall;
 
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
@@ -307,6 +319,9 @@ module ID_EX(
 			EX_Imm26 <= 26'd0;
 			EX_GPR_RS_forALU1 <= 32'd0;
 			EX_GPR_RT_forALU1 <= 32'd0;
+			EX_JType <= 2'b00;
+			EX_MUX7Sel <= 1'b0;
+			EX_stall <= 1'b0;
 		end
 		else if(ID_EXWr) 
 		begin
@@ -347,7 +362,11 @@ module ID_EX(
 			EX_Imm26 <= ID_Imm26;
 			EX_GPR_RS_forALU1 <= GPR_RS;
 			EX_GPR_RT_forALU1 <= GPR_RT;
-		end
+			EX_JType <= ID_JType;
+			EX_MUX7Sel <= MUX7Sel;
+			EX_stall <= 1'b0;
+		end else
+			EX_stall <= 1'b1;
 endmodule
 
 module EX_MEM1(
