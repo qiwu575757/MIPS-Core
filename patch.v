@@ -151,7 +151,7 @@ module mem1_cache_prep(
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�?????
+// 1.设置写使能信�?????
     assign MEM1_dCache_wstrb=(~DMWen_dcache)?4'b0:
 							(MEM1_DMSel==3'b000)?
 								(MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
@@ -254,10 +254,10 @@ module cache_select_dm(
     MEM_uncache_rd_req, MEM_dcache_rd_req, MEM_uncache_wr_req, MEM_dcache_wr_req,
     MEM_uncache_rd_type, MEM_dcache_rd_type, MEM_uncache_wr_type, MEM_dcache_wr_type,
     MEM_uncache_rd_addr, MEM_dcache_rd_addr, MEM_uncache_wr_addr, MEM_dcache_wr_addr,
-    MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb, dcache_last_stall, uncache_last_stall,
+    MEM_uncache_wr_wstrb, MEM_dcache_wr_wstrb,
 
     MEM_data_ok, MEM_rd_req, MEM_wr_req, MEM_rd_type, MEM_wr_type, MEM_rd_addr,
-    MEM_wr_addr, MEM_wr_wstrb, MEM_last_stall
+    MEM_wr_addr, MEM_wr_wstrb
                 );
     input MEM_cache_sel;
     input MEM_unCache_data_ok;
@@ -276,8 +276,6 @@ module cache_select_dm(
     input[31:0] MEM_dcache_wr_addr;
     input[3:0] MEM_uncache_wr_wstrb;
     input[3:0] MEM_dcache_wr_wstrb;
-    input dcache_last_stall;
-    input uncache_last_stall;
 
     output MEM_data_ok;
     output MEM_rd_req;
@@ -287,7 +285,6 @@ module cache_select_dm(
     output[31:0] MEM_rd_addr;
     output[31:0] MEM_wr_addr;
     output[3:0] MEM_wr_wstrb;
-    output MEM_last_stall;
 
 	//assign cache_Out = MEM_cache_sel ? uncache_Out : dcache_Out;
 	assign MEM_data_ok = MEM_cache_sel ? MEM_unCache_data_ok : MEM_dCache_data_ok;
@@ -298,7 +295,6 @@ module cache_select_dm(
 	assign MEM_rd_addr = MEM_cache_sel ? MEM_uncache_rd_addr : MEM_dcache_rd_addr;
 	assign MEM_wr_addr = MEM_cache_sel ? MEM_uncache_wr_addr : MEM_dcache_wr_addr;
 	assign MEM_wr_wstrb = MEM_cache_sel ? MEM_uncache_wr_wstrb : MEM_dcache_wr_wstrb;
-    assign MEM_last_stall = MEM_cache_sel ? uncache_last_stall : dcache_last_stall;
     
 endmodule
 

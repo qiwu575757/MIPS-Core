@@ -64,10 +64,9 @@ module stall(
 	MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok, MEM2_dCache_en,MEM_dCache_addr_ok,
     MEM1_cache_sel,MEM1_dCache_en, MEM1_dcache_valid_except_icache,
-	MEM_last_stall,
 
 	PCWr, IF_IDWr, MUX7Sel,isStall, data_ok,
-	dcache_stall, icache_stall_0, icache_stall_1, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr, PF_IFWr
+	dcache_stall, icache_stall_1, ID_EXWr, EX_MEM1Wr, MEM1_MEM2Wr, MEM2_WBWr, PF_IFWr
 	);
 	input[4:0] EX_RT, MEM1_RT,MEM2_RT, ID_RS, ID_RT;
 	input EX_DMRd, MEM1_DMRd, MEM2_DMRd, BJOp, EX_RFWr, MEM1_RFWr, MEM2_RFWr;
@@ -80,11 +79,10 @@ module stall(
 	input MEM_dCache_addr_ok;
 	input MEM1_dCache_en;
 	input MEM1_dcache_valid_except_icache;
-	input MEM_last_stall;
 
 	output reg PCWr, IF_IDWr, MUX7Sel;
 	output isStall;
-	output dcache_stall, icache_stall_0, icache_stall_1;
+	output dcache_stall, icache_stall_1;
 	output reg ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr;
 	output reg PF_IFWr;
 	output data_ok;
@@ -105,8 +103,7 @@ module stall(
 	assign dcache_stall = ((~dCache_data_ok &MEM2_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
 	assign isStall=(~(MEM1_ex | MEM1_eret_flush))&(dcache_stall | (isbusy & RHL_visit) | data_stall);
 	//assign isStall = ~PCWr;
-	assign icache_stall_0 = 
-				(MEM_last_stall &MEM2_dCache_en) | (isbusy & RHL_visit) | data_stall ;
+
 	assign icache_stall_1 = 
 				(~dCache_data_ok &MEM2_dCache_en) | (isbusy & RHL_visit) | data_stall ;
 

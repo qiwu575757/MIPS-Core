@@ -1,5 +1,5 @@
-// BHT存放�?�?有PC值对应的两位饱和计数器的�?
-// BHT大小�?512B�? 从PC中取11位来寻址
+// BHT存放�?�?有PC值对应的两位饱和计数器的�?
+// BHT大小�?512B�? 从PC中取11位来寻址
 // 在流水线的执行阶段，当分支指令的方向被实际计算出来时，更新BHT
 
 
@@ -75,51 +75,51 @@ module branch_target_predictor (
     input clk,
     input resetn,
     input [31:0] PF_PC,
-    input [4:0] index,
-    input [24:0] tag,
-    input [4:0] EX_index,
-    input [24:0] EX_tag,
-    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
-    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
+    input [7:0] index,
+    input [21:0] tag,
+    input [7:0] EX_index,
+    input [21:0] EX_tag,
+    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
+    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
     input EX_taken,
 
-                                                            //BrType�?01时表示该指令为return指令(JR 31)
+                                                            //BrType�?01时表示该指令为return指令(JR 31)
     output reg [31:0] target_address                        
                                                             
-                                                            //BrType�?00时表示该指令不是分支指令
+                                                            //BrType�?00时表示该指令不是分支指令
 );
 
-    reg validBuffer[31:0];
-    reg [24:0] tagBuffer[31:0];
-    reg [31:0] addressBuffer[31:0];
-    reg [1:0] BrTypeBuffer[31:0];
-    reg [31:0] RAS[15:0];                                     //return address stack;
-    reg [3:0] stackPointer;
+    reg validBuffer[255:0];
+    wire [21:0] tag_out;
+    wire [31:0] addr_out;
+    reg [1:0] BrTypeBuffer[255:0];
+    reg [31:0] RAS[31:0];                                     //return address stack;
+    reg [4:0] stackPointer;
     reg BTBWr;
     reg RASWr;
 
     reg validBuffer_temp;
-    reg [24:0] tagBuffer_temp;
+    reg [21:0] tagBuffer_temp;
     reg [31:0] addressBuffer_temp;
     reg [1:0] BrTypeBuffer_temp;
     reg [31:0] RAS_temp;                        
-    reg [3:0] stackPointer_temp;
+    reg [4:0] stackPointer_temp;
 
     wire valid;
     wire [1:0] BrType;
     wire [31:0] EX_PC_add_8;
-    wire [3:0] stackPointer_sub1 = stackPointer - 1;
+    wire [4:0] stackPointer_sub1 = stackPointer - 1;
 
     //read from BTB
     assign valid = validBuffer[index];
-    assign hit = valid && (tagBuffer[index] == tag);
+    assign hit = valid && (tag_out == tag);
     assign BrType = BrTypeBuffer[index];
     assign EX_PC_add_8 = {EX_tag, EX_index, 2'b00} + 8;
 
     always @(*) begin
         case (BrType)
             2'b11, 2'b10:   if (hit)
-                                target_address = addressBuffer[index];
+                                target_address = addr_out;
                             else
                                 target_address =  PF_PC + 4;
             2'b01:  if (hit)
@@ -132,9 +132,9 @@ module branch_target_predictor (
 
     //write to BTB_temp and RAS_temp
     //只有EX级的指令为直接跳转指令或JR（return指令）时才更新BTB
-    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
+    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
     //EX级指令为return时，将栈指针-1
-    //栈满时，�?先进栈的指令离开
+    //栈满时，�?先进栈的指令离开
     always @(*) begin
         if (EX_taken) begin
             case (EX_BrType)
@@ -172,11 +172,11 @@ module branch_target_predictor (
                     BTBWr = 1'b0;
                     RASWr = 1'b0;
                     validBuffer_temp = 1'b0;
-                    tagBuffer_temp = 25'd0;
+                    tagBuffer_temp = 22'd0;
                     addressBuffer_temp = 32'd0;
                     BrTypeBuffer_temp = 2'b00;
                     RAS_temp = 32'd0;
-                    stackPointer_temp = 4'd0;
+                    stackPointer_temp = 5'd0;
                 end
             endcase
         end
@@ -184,29 +184,33 @@ module branch_target_predictor (
             BTBWr = 1'b0;
             RASWr = 1'b0;
             validBuffer_temp = 1'b0;
-            tagBuffer_temp = 25'd0;
+            tagBuffer_temp = 22'd0;
             addressBuffer_temp = 32'd0;
             BrTypeBuffer_temp = 2'b00;
             RAS_temp = 32'd0;
-            stackPointer_temp = 4'd0;
+            stackPointer_temp = 5'd0;
         end
 
     end
     
     //write to BTB
+
+    tag_LUT tagBuffer(
+            EX_index, tagBuffer_temp, index, clk, BTBWr, tag_out
+        );
+    address_LUT addressBuffer(
+            EX_index, addressBuffer_temp, index, clk, BTBWr, addr_out
+        );
+
     integer k;
     always @(posedge clk) begin
         if (!resetn)
-            for (k = 0; k < 32; k = k + 1) begin
+            for (k = 0; k < 256; k = k + 1) begin
                 validBuffer[k] <= 1'b0;
-                tagBuffer[k] <= 25'd0;
-                addressBuffer[k] <= 32'd0;
                 BrTypeBuffer[k] <= 2'b00;
             end
         else if (BTBWr) begin
             validBuffer[EX_index] <= validBuffer_temp;
-            tagBuffer[EX_index] <= tagBuffer_temp;
-            addressBuffer[EX_index] <= addressBuffer_temp;
             BrTypeBuffer[EX_index] <= BrTypeBuffer_temp;
         end
     end
@@ -215,9 +219,9 @@ module branch_target_predictor (
     integer i;
     always @(posedge clk) begin
         if (!resetn) begin
-            for (i = 0; i < 16; i = i + 1)
+            for (i = 0; i < 32; i = i + 1)
                 RAS[i] <= 32'd0;
-            stackPointer <= 4'd0;
+            stackPointer <= 5'd0;
         end
         else if (RASWr) begin
             RAS[stackPointer] <= RAS_temp;
@@ -237,14 +241,14 @@ module branch_target_predictor (
     input [24:0] tag,
     input [4:0] EX_index,
     input [24:0] EX_tag,
-    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
-    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
+    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
+    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
     input EX_taken,
 
-                                                            //BrType�?01时表示该指令为return指令(JR 31)
+                                                            //BrType�?01时表示该指令为return指令(JR 31)
     output reg [31:0] target_address                        
                                                             
-                                                            //BrType�?00时表示该指令不是分支指令
+                                                            //BrType�?00时表示该指令不是分支指令
 );
 
     reg validBuffer[31:0];
@@ -278,9 +282,9 @@ module branch_target_predictor (
 
     //write to BTB_temp and RAS_temp
     //只有EX级的指令为直接跳转指令或JR（return指令）时才更新BTB
-    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
+    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
     //EX级指令为return时，将栈指针-1
-    //栈满时，�?先进栈的指令离开
+    //栈满时，�?先进栈的指令离开
     always @(*) begin
         if (EX_taken) begin
             case (EX_BrType)

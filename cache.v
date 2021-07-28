@@ -1,4 +1,4 @@
-module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
+module icache(       clk, resetn, exception, stall_1,
         //CPU_Pipeline side
         /*input*/   valid, tag, index, offset,
         /*output*/  addr_ok, data_ok, rdata,
@@ -11,9 +11,7 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
     input clk;
     input resetn;
     input exception;
-    input stall_0;
     input stall_1;
-    output last_stall;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -81,11 +79,9 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
     reg replace_way_MB;        //the way to be replaced and refilled
     reg[19:0] replace_tag_new_MB;   //tag requested from cpu(to be refilled)
     reg[5:0] replace_index_MB;
-    reg[511:0] replace_data_MB;
     reg[3:0] ret_number_MB;         //how many data returned from AXI-Bus during REFILL state
 
     //replace select
-    reg[511:0] replace_data;
     reg counter;
     reg age[63:0];
 
@@ -155,13 +151,7 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
                 counter = 1'd1;
             else
                 counter = 1'd0;
-    always@(*)
-        case(counter)
-            1'b0:  //choose way0
-                    replace_data = Data_Way0_out;
-            default://choose way1
-                    replace_data = Data_Way1_out;
-        endcase
+    
 
     //Request Buffer
     always@(posedge clk)
@@ -180,13 +170,11 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
     always@(posedge clk)
         if(!resetn) begin
             replace_way_MB <= 1'b0;
-            replace_data_MB <= 512'd0;
             replace_index_MB <= 6'd0;
             replace_tag_new_MB <= 20'd0;
         end
         else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
-            replace_data_MB <= replace_data;
             replace_index_MB <= index_RB;
             replace_tag_new_MB <= tag_RB;
         end
@@ -349,13 +337,12 @@ module icache(       clk, resetn, exception, stall_0, stall_1, last_stall,
     assign rd_req = ((C_STATE == MISS) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
-    assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
     assign RBWr = valid ;
     assign VTen = ~stall_1 | (C_STATE == REFILL);
 
 endmodule
 
-module dcache(       clk, resetn, DMen, stall_0, stall_1, last_stall,
+module dcache(       clk, resetn, DMen, stall_1,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -369,9 +356,7 @@ module dcache(       clk, resetn, DMen, stall_0, stall_1, last_stall,
     input clk;
     input resetn;
     input DMen;
-    input stall_0;
     input stall_1;
-    output last_stall;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -927,12 +912,11 @@ module dcache(       clk, resetn, DMen, stall_0, stall_1, last_stall,
                     | ((C_STATE == REPLACE) & ~wr_valid);*/
     assign wr_req =  (C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy;
 
-    assign last_stall = (C_STATE == REFILL) & ret_valid & ret_last;
 
 endmodule
 
 module uncache_dm(
-        clk, resetn, DMSel, last_stall,
+        clk, resetn, DMSel,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
@@ -944,7 +928,6 @@ module uncache_dm(
     input clk;
     input resetn;
     input[2:0] DMSel;
-    output last_stall;
 
     input valid;
     input op;
@@ -1018,7 +1001,6 @@ module uncache_dm(
     assign data_ok = ~valid | (C_STATE == FINISH);
     assign rdata = data_reg;
 
-    assign last_stall = ((C_STATE == LOAD) & ret_valid & ret_last) | (C_STATE == STORE);
 
     always@(posedge clk)
         if(!resetn)
