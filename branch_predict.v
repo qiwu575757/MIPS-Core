@@ -75,10 +75,10 @@ module branch_target_predictor (
     input clk,
     input resetn,
     input [31:0] PF_PC,
-    input [7:0] index,
-    input [21:0] tag,
-    input [7:0] EX_index,
-    input [21:0] EX_tag,
+    input [6:0] index,
+    input [22:0] tag,
+    input [6:0] EX_index,
+    input [22:0] EX_tag,
     input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
     input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
     input EX_taken,
@@ -89,17 +89,17 @@ module branch_target_predictor (
                                                             //BrType�?00时表示该指令不是分支指令
 );
 
-    reg validBuffer[255:0];
-    wire [21:0] tag_out;
+    reg validBuffer[127:0];
+    wire [22:0] tag_out;
     wire [31:0] addr_out;
-    reg [1:0] BrTypeBuffer[255:0];
+    reg [1:0] BrTypeBuffer[127:0];
     reg [31:0] RAS[31:0];                                     //return address stack;
     reg [4:0] stackPointer;
     reg BTBWr;
     reg RASWr;
 
     reg validBuffer_temp;
-    reg [21:0] tagBuffer_temp;
+    reg [22:0] tagBuffer_temp;
     reg [31:0] addressBuffer_temp;
     reg [1:0] BrTypeBuffer_temp;
     reg [31:0] RAS_temp;                        
@@ -172,7 +172,7 @@ module branch_target_predictor (
                     BTBWr = 1'b0;
                     RASWr = 1'b0;
                     validBuffer_temp = 1'b0;
-                    tagBuffer_temp = 22'd0;
+                    tagBuffer_temp = 23'd0;
                     addressBuffer_temp = 32'd0;
                     BrTypeBuffer_temp = 2'b00;
                     RAS_temp = 32'd0;
@@ -184,7 +184,7 @@ module branch_target_predictor (
             BTBWr = 1'b0;
             RASWr = 1'b0;
             validBuffer_temp = 1'b0;
-            tagBuffer_temp = 22'd0;
+            tagBuffer_temp = 23'd0;
             addressBuffer_temp = 32'd0;
             BrTypeBuffer_temp = 2'b00;
             RAS_temp = 32'd0;
@@ -205,7 +205,7 @@ module branch_target_predictor (
     integer k;
     always @(posedge clk) begin
         if (!resetn)
-            for (k = 0; k < 256; k = k + 1) begin
+            for (k = 0; k < 128; k = k + 1) begin
                 validBuffer[k] <= 1'b0;
                 BrTypeBuffer[k] <= 2'b00;
             end
@@ -231,106 +231,3 @@ module branch_target_predictor (
 
 
 endmodule
-
-/*
-module branch_target_predictor (
-    input clk,
-    input resetn,
-    input [31:0] PF_PC,
-    input [4:0] index,
-    input [24:0] tag,
-    input [4:0] EX_index,
-    input [24:0] EX_tag,
-    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
-    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
-    input EX_taken,
-
-                                                            //BrType�?01时表示该指令为return指令(JR 31)
-    output reg [31:0] target_address                        
-                                                            
-                                                            //BrType�?00时表示该指令不是分支指令
-);
-
-    reg validBuffer[31:0];
-    reg [24:0] tagBuffer[31:0];
-    reg [31:0] addressBuffer[31:0];
-    reg [1:0] BrTypeBuffer[31:0];
-    reg BTBWr;
-
-    reg validBuffer_temp;
-    reg [24:0] tagBuffer_temp;
-    reg [31:0] addressBuffer_temp;
-    reg [1:0] BrTypeBuffer_temp;
-
-    wire valid;
-    wire [1:0] BrType;
-
-    //read from BTB
-    assign valid = validBuffer[index];
-    assign hit = valid && (tagBuffer[index] == tag);
-    assign BrType = BrTypeBuffer[index];
-
-    always @(*) begin
-        case (BrType)
-            2'b11, 2'b10, 2'b01:   if (hit)
-                                target_address = addressBuffer[index];
-                            else
-                                target_address =  PF_PC + 4;
-            default: target_address = PF_PC + 4;
-        endcase
-    end
-
-    //write to BTB_temp and RAS_temp
-    //只有EX级的指令为直接跳转指令或JR（return指令）时才更新BTB
-    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
-    //EX级指令为return时，将栈指针-1
-    //栈满时，�?先进栈的指令离开
-    always @(*) begin
-        if (EX_taken) begin
-            case (EX_BrType)
-                2'b11, 2'b10, 2'b01:  begin
-                    BTBWr = 1'b1;
-                    validBuffer_temp = 1'b1;
-                    tagBuffer_temp = EX_tag;
-                    addressBuffer_temp = EX_address;
-                    BrTypeBuffer_temp = EX_BrType;
-                end
-                default: begin
-                    BTBWr = 1'b0;
-                    validBuffer_temp = 1'b0;
-                    tagBuffer_temp = 25'd0;
-                    addressBuffer_temp = 32'd0;
-                    BrTypeBuffer_temp = 2'b00;
-                end
-            endcase
-        end
-        else begin
-            BTBWr = 1'b0;
-            validBuffer_temp = 1'b0;
-            tagBuffer_temp = 25'd0;
-            addressBuffer_temp = 32'd0;
-            BrTypeBuffer_temp = 2'b00;
-        end
-
-    end
-    
-    //write to BTB
-    integer k;
-    always @(posedge clk) begin
-        if (!resetn)
-            for (k = 0; k < 32; k = k + 1) begin
-                validBuffer[k] <= 1'b0;
-                tagBuffer[k] <= 25'd0;
-                addressBuffer[k] <= 32'd0;
-                BrTypeBuffer[k] <= 2'b00;
-            end
-        else if (BTBWr) begin
-            validBuffer[EX_index] <= validBuffer_temp;
-            tagBuffer[EX_index] <= tagBuffer_temp;
-            addressBuffer[EX_index] <= addressBuffer_temp;
-            BrTypeBuffer[EX_index] <= BrTypeBuffer_temp;
-        end
-    end
-
-endmodule
-*/

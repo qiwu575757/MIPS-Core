@@ -52,13 +52,12 @@ module icache(       clk, resetn, exception, stall_1,
     wire[5:0] Data_addr_rd;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
-    wire[20:0] VT_in;
-    wire[20:0] VT_Way0_out;
-    wire[20:0] VT_Way1_out;
-    wire Way0_Valid = VT_Way0_out[20];
-    wire Way1_Valid = VT_Way1_out[20];
-    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
-    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire V_in;
+    wire[19:0] T_in;
+    wire Way0_Valid;
+    wire Way1_Valid;
+    wire[19:0] Way0_Tag;
+    wire[19:0] Way1_Tag;
     reg[15:0] Data_Way0_wen;
     reg[15:0] Data_Way1_wen;
     reg[31:0] Data_in;
@@ -109,9 +108,9 @@ module icache(       clk, resetn, exception, stall_1,
         clk, 1, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out
     );*/
     validtag_block VT_Way0(
-        clk, resetn, VTen, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+        clk, resetn, VTen, VT_Way0_wen, VT_addr, VT_addr, V_in, T_in, Way0_Valid, Way0_Tag);
     validtag_block VT_Way1(
-        clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
+        clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_addr, V_in, T_in, Way1_Valid, Way1_Tag);
     /*Data_Block Data_Way0(
         clk, VTen, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
     );
@@ -281,7 +280,8 @@ module icache(       clk, resetn, exception, stall_1,
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
-    assign VT_in = {1'b1,replace_tag_new_MB};
+    assign V_in = 1'b1;
+    assign T_in = replace_tag_new_MB;
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
@@ -400,19 +400,19 @@ module dcache(       clk, resetn, DMen, stall_1,
         Total memory: 64KB
     */
 
-    reg[5:0] VT_addr;
+    reg[5:0] VT_addr_wr;
+    reg[5:0] VT_addr_rd;
     reg[5:0] D_addr;
     reg[5:0] Data_addr_wr;
     reg[5:0] Data_addr_rd;
     wire VT_Way0_wen;
     wire VT_Way1_wen;
-    wire[20:0] VT_in;
-    wire[20:0] VT_Way0_out;
-    wire[20:0] VT_Way1_out;
-    wire Way0_Valid = VT_Way0_out[20];
-    wire Way1_Valid = VT_Way1_out[20];
-    wire[19:0] Way0_Tag = VT_Way0_out[19:0];
-    wire[19:0] Way1_Tag = VT_Way1_out[19:0];
+    wire V_in;
+    wire[19:0] T_in;
+    wire Way0_Valid;
+    wire Way1_Valid;
+    wire[19:0] Way0_Tag;
+    wire[19:0] Way1_Tag;
     wire D_Way0_wen;
     wire D_Way1_wen;
     wire D_in;
@@ -508,9 +508,9 @@ module dcache(       clk, resetn, DMen, stall_1,
         clk, 1, D_Way1_wen, D_addr, D_in, Way1_Dirty
     );*/
     validtag_block VT_Way0(
-        clk, resetn, VTen, VT_Way0_wen, VT_addr, VT_in, VT_Way0_out);
+        clk, resetn, VTen, VT_Way0_wen, VT_addr_rd, VT_addr_wr, V_in, T_in, Way0_Valid, Way0_Tag);
     validtag_block VT_Way1(
-        clk, resetn, VTen, VT_Way1_wen, VT_addr, VT_in, VT_Way1_out);
+        clk, resetn, VTen, VT_Way1_wen, VT_addr_rd, VT_addr_wr, V_in, T_in, Way1_Valid, Way1_Tag);
     dirty_block D_Way0(
         clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
     dirty_block D_Way1(
@@ -806,7 +806,8 @@ module dcache(       clk, resetn, DMen, stall_1,
     //refill from mem to cache (read memory)
     assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
     assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
-    assign VT_in = {1'b1,replace_tag_new_MB};
+    assign V_in = 1'b1;
+    assign T_in = replace_tag_new_MB;
     assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
     assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
     assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
@@ -834,9 +835,12 @@ module dcache(       clk, resetn, DMen, stall_1,
 
     always@(data_ok, index, index_RB)
         if(data_ok)
-            VT_addr = index;
+            VT_addr_rd = index;
         else
-            VT_addr = index_RB;
+            VT_addr_rd = index_RB;
+
+    always@(index_RB)
+            VT_addr_wr = index_RB;
 
 
     //main FSM
@@ -1059,33 +1063,45 @@ module dirty_block(clk, rst, wen, addr, din, dout);
 
 endmodule
 
-module validtag_block(clk, rst, en, wen, addr, din, dout);
+module validtag_block(clk, rst, en, wen, rd_addr, wr_addr, vin, tin, vout, tout);
     input clk;
     input rst;
     input en;
     input wen;
-    input[5:0] addr;
-    input[20:0] din;
+    input[5:0] rd_addr;
+    input[5:0] wr_addr;
+    input vin;
+    input[19:0] tin;
 
-    output reg[20:0] dout;
-    
-    reg[20:0] validtag[63:0];
+    output reg vout;
+    output reg[19:0] tout;
 
-    integer i;
+    wire vout_temp;
+    wire[19:0] tout_temp;
 
-always@(posedge clk)
-        if(!rst)
-            for(i=0;i<64;i=i+1)
-            validtag[i] <= 21'd0;
-        else if(wen)
-            validtag[addr] <= din;
+    reg[63:0] valid;
 
-    
+Tag_Distributed U_ValidTag(
+        wr_addr, tin, rd_addr, clk, wen, tout_temp
+    );
+
     always@(posedge clk)
         if(!rst)
-            dout <= 21'd0;
-        else if(en) 
-            dout <= validtag[addr];
+            valid <= 64'd0;
+        else if(wen)
+            valid[wr_addr] <= vin;
+
+    assign vout_temp = valid[rd_addr];
+
+    always@(posedge clk)
+        if(!rst) begin
+            vout <= 1'd0;
+            tout <= 20'd0;
+        end
+        else if(en) begin
+            vout <= vout_temp;
+            tout <= tout_temp;
+        end
             
 
 endmodule
