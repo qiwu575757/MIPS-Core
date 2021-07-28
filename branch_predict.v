@@ -1,5 +1,5 @@
-// BHT存放着所有PC值对应的两位饱和计数器的值
-// BHT大小为512B， 从PC中取11位来寻址
+// BHT存放�?�?有PC值对应的两位饱和计数器的�?
+// BHT大小�?512B�? 从PC中取11位来寻址
 // 在流水线的执行阶段，当分支指令的方向被实际计算出来时，更新BHT
 
 
@@ -10,7 +10,7 @@ module branch_predictor(
     input [7:0] EX_index,
     input EX_taken,
     input EX_valid,
-    input EX_JType,
+    input[1:0] EX_JType,
 
     output branch
 );
@@ -79,14 +79,14 @@ module branch_target_predictor (
     input [24:0] tag,
     input [4:0] EX_index,
     input [24:0] EX_tag,
-    input [1:0] EX_BrType,                                  //BrType为11时表示该指令为call指令（JAL）
-    input [31:0] EX_address,                                //BrType为10时表示该指令为其他直接跳转或间接跳转指令
+    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
+    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
     input EX_taken,
 
-                                                            //BrType为01时表示该指令为return指令(JR 31)
+                                                            //BrType�?01时表示该指令为return指令(JR 31)
     output reg [31:0] target_address                        
                                                             
-                                                            //BrType为00时表示该指令不是分支指令
+                                                            //BrType�?00时表示该指令不是分支指令
 );
 
     reg validBuffer[31:0];
@@ -132,9 +132,9 @@ module branch_target_predictor (
 
     //write to BTB_temp and RAS_temp
     //只有EX级的指令为直接跳转指令或JR（return指令）时才更新BTB
-    //EX级指令为call时，将该指令的PC值+8存到RAS，且将栈指针+1
+    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
     //EX级指令为return时，将栈指针-1
-    //栈满时，最先进栈的指令离开
+    //栈满时，�?先进栈的指令离开
     always @(*) begin
         if (EX_taken) begin
             case (EX_BrType)
@@ -237,14 +237,14 @@ module branch_target_predictor (
     input [24:0] tag,
     input [4:0] EX_index,
     input [24:0] EX_tag,
-    input [1:0] EX_BrType,                                  //BrType为11时表示该指令为call指令（JAL）
-    input [31:0] EX_address,                                //BrType为10时表示该指令为其他直接跳转或间接跳转指令
+    input [1:0] EX_BrType,                                  //BrType�?11时表示该指令为call指令（JAL�?
+    input [31:0] EX_address,                                //BrType�?10时表示该指令为其他直接跳转或间接跳转指令
     input EX_taken,
 
-                                                            //BrType为01时表示该指令为return指令(JR 31)
+                                                            //BrType�?01时表示该指令为return指令(JR 31)
     output reg [31:0] target_address                        
                                                             
-                                                            //BrType为00时表示该指令不是分支指令
+                                                            //BrType�?00时表示该指令不是分支指令
 );
 
     reg validBuffer[31:0];
@@ -278,9 +278,9 @@ module branch_target_predictor (
 
     //write to BTB_temp and RAS_temp
     //只有EX级的指令为直接跳转指令或JR（return指令）时才更新BTB
-    //EX级指令为call时，将该指令的PC值+8存到RAS，且将栈指针+1
+    //EX级指令为call时，将该指令的PC�?+8存到RAS，且将栈指针+1
     //EX级指令为return时，将栈指针-1
-    //栈满时，最先进栈的指令离开
+    //栈满时，�?先进栈的指令离开
     always @(*) begin
         if (EX_taken) begin
             case (EX_BrType)

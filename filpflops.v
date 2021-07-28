@@ -76,7 +76,7 @@ module PF_IF(
 	NPC,PF_Exception,PF_ExcCode, PF_icache_valid,
 
 	PC,IF_Exception,IF_ExcCode, IF_icache_valid,
-	IF_stall,
+	IF_stall
 );
 	input clk, rst, wr,flush;
 	input PF_Exception;

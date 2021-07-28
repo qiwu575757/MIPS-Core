@@ -89,7 +89,7 @@ module ex_prep(
     output EX_MUX10Sel
 );
 
-    always @(EX_NPCOp, EX_Imm26, ID_PC) begin
+    always @(EX_NPCOp, EX_Imm26, ID_PC, return_addr) begin
         case(EX_NPCOp)				
 				2'b01:	if(EX_Imm26[15])								
 							EX_address = ID_PC + {14'h3fff,EX_Imm26[15:0],2'b00};
@@ -151,7 +151,7 @@ module mem1_cache_prep(
     assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush;
 
 // 以下这些东西可以封装成翻译模块，或�?�直接用控制器生成对应信号�??
-// 1.设置写使能信�????
+// 1.设置写使能信�?????
     assign MEM1_dCache_wstrb=(~DMWen_dcache)?4'b0:
 							(MEM1_DMSel==3'b000)?
 								(MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
