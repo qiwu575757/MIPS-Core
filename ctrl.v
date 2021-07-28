@@ -77,6 +77,7 @@
 	reg 			rst_sign;
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
+	reg 			Cache_OP;
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -87,8 +88,8 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op ||
-		icache_valid_CI || dcache_valid_CI;
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op
+		|| Cache_OP;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -991,5 +992,22 @@
 		end
 		else
 			dcache_op_CI = 2'b00;
+
+	always @(OP or rt) begin
+		if(OP == 6'b101111) begin
+			case (rt)
+				5'b00000:	Cache_OP = 1'b1;
+				5'b01000:	Cache_OP = 1'b1;
+				5'b10000:	Cache_OP = 1'b1;
+				5'b00001:	Cache_OP = 1'b1;
+				5'b01001:	Cache_OP = 1'b1;
+				5'b10001:	Cache_OP = 1'b1;
+				5'b10101:	Cache_OP = 1'b1;
+				default:	Cache_OP = 1'b0;
+			endcase
+		end
+		else
+			Cache_OP = 1'b0;
+	end
 
 endmodule
