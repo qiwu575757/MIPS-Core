@@ -379,6 +379,9 @@ module mips(
 	wire            MEM1_icache_op_CI;
 	wire            MEM1_dcache_valid_CI;
 	wire [1:0]      MEM1_dcache_op_CI;
+    wire            Status_BEV;
+    wire            Status_EXL;
+    wire            Cause_IV;
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -758,7 +761,8 @@ CP0 U_CP0(
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
 		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),
-        .Random_out(Random_out),.Config_K0_out(Config_K0_out)
+        .Random_out(Random_out),.Config_K0_out(Config_K0_out),.Status_BEV(Status_BEV),
+        .Status_EXL(Status_EXL),.Cause_IV(Cause_IV)
 	);
 
 mux11 U_MUX11(
@@ -807,7 +811,7 @@ dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(~(IF_data_ok&M
     .ret_data(MEM_dcache_ret_data), .wr_valid(bvalid), .wr_req(MEM_dcache_wr_req),
     .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), .wr_wstrb(MEM_dcache_wr_wstrb),
     .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy),
-    .valid_CI(MEM1_dcache_valid_CI), .op_CI(MEM1_dcache_op_CI), .index_CI(MEM1_ALU1Out[11:6]), 
+    .valid_CI(MEM1_dcache_valid_CI), .op_CI(MEM1_dcache_op_CI), .index_CI(MEM1_ALU1Out[11:6]),
     .way_CI(MEM1_ALU1Out[12]), .tag_CI(MEM2_Paddr[31:12])
 	);
 	//-------------MEM2---------------//
@@ -881,7 +885,7 @@ MEM2_WB U_MEM2_WB(
 
 		.WB_PC(WB_PC),.WB_MUX2Out(WB_MUX2Out),.WB_MUX2Sel(WB_MUX2Sel),
         .WB_RD(WB_RD),.WB_RFWr(WB_RFWr),.WB_DMOut(WB_DMOut),.WB_TLB_flush(WB_TLB_flush),
-        .WB_TLB_writeen(WB_TLB_writeen),.WB_TLB_readen(WB_TLB_readen), 
+        .WB_TLB_writeen(WB_TLB_writeen),.WB_TLB_readen(WB_TLB_readen),
         .WB_icache_valid_CI(WB_icache_valid_CI)
         );
 
@@ -955,7 +959,8 @@ npc U_NPC(
 		.IF_PC(IF_PC),.Imm(ID_Instr[25:0]),.ret_addr(MUX8Out),.NPCOp(NPCOp),
 		.EPC(EPCOut),.MEM1_eret_flush(MEM1_eret_flush),.MEM1_Exception(MEM1_Exception),
         .MEM1_TLBRill_Exc(MEM1_TLBRill_Exc),.WB_TLB_flush(WB_TLB_flush),.MEM2_PC(MEM2_PC),
-        .PF_PC(PF_PC), .WB_icache_valid_CI(WB_icache_valid_CI),
+        .PF_PC(PF_PC), .WB_icache_valid_CI(WB_icache_valid_CI),.Status_BEV(Status_BEV),
+        .Status_EXL(Status_EXL),.Cause_IV(Cause_IV),.Interrupt(Interrupt),
 
 		.NPC(NPC)
 	);

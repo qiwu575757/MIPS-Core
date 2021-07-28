@@ -157,9 +157,9 @@ module mem1_cache_prep(
     reg  LLbit;
     reg [31:0] LL_addr;
 
-    assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30])) 
-                        & (MEM1_dcache_en | MEM1_icache_valid_CI&~MEM1_icache_op_CI 
-                        | MEM1_dcache_valid_CI&MEM1_dcache_op_CI[0]);//load or store or CACHE 
+    assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30]))
+                        & (MEM1_dcache_en | MEM1_icache_valid_CI&~MEM1_icache_op_CI
+                        | MEM1_dcache_valid_CI&MEM1_dcache_op_CI[0]);//load or store or CACHE
     assign MEM1_Paddr =
 		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} :
                 {s1_pfn,MEM1_ALU1Out[11:0]} ;

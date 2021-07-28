@@ -87,7 +87,8 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op;
+		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op ||
+		icache_valid_CI || dcache_valid_CI;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -792,7 +793,7 @@
 	endcase
 	end
 
-	always @(OP or Funct) begin		/* the genenration of MUX11Sel and MUX12Sel*/
+	always @(OP or Funct) begin		/* the genenration of MUX11Sel */
 		if ( OP == `tlb && Funct == `tlbp)
 		begin
 			ID_tlb_searchen = 1'b1;
@@ -955,14 +956,14 @@
 			case(rt)
 				5'b00000: icache_valid_CI = 1'b1;	/* Index Invalid */
 				5'b10000: icache_valid_CI = 1'b1;	/* Hit Invalid */
-				default:  icache_valid_CI = 1'b0; 
+				default:  icache_valid_CI = 1'b0;
 			endcase
 		end
 		else
 			icache_valid_CI = 1'b0;
 
 	always@(OP or rt)		//generation of icache_op_CI
-		if(OP == 6'b101111 && rt == 5'b00000) 
+		if(OP == 6'b101111 && rt == 5'b00000)
 			icache_op_CI = 1'b1;	/* Index Invalid */
 		else
 			icache_op_CI = 1'b0;	/* Hit Invalid */
@@ -973,7 +974,7 @@
 				5'b00001: dcache_valid_CI = 1'b1;	/* Index Writeback Invalid */
 				5'b10001: dcache_valid_CI = 1'b1;	/* Hit Invalid */
 				5'b10101: dcache_valid_CI = 1'b1;	/* Hit Writeback Invalid */
-				default:  dcache_valid_CI = 1'b0; 
+				default:  dcache_valid_CI = 1'b0;
 			endcase
 		end
 		else
@@ -985,7 +986,7 @@
 				5'b00001: dcache_op_CI = 2'b10;	/* Index Writeback Invalid */
 				5'b10001: dcache_op_CI = 2'b01;	/* Hit Invalid */
 				5'b10101: dcache_op_CI = 2'b11;	/* Hit Writeback Invalid */
-				default:  dcache_op_CI = 2'b00; 
+				default:  dcache_op_CI = 2'b00;
 			endcase
 		end
 		else

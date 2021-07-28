@@ -23,12 +23,17 @@
 `define TagHi_index         8'b11101_010
 
 
+`define status_cu0          Status[28]
 `define status_bev          Status[22]
 `define status_im           Status[15:8]
+`define status_um           Status[4]
 `define status_exl          Status[1]      //例外级
 `define status_ie           Status[0]      //全局中断使能位
+
 `define cause_bd            Cause[31]      //是否处于分支延迟槽
 `define cause_ti            Cause[30]      //计时器中断提示
+`define cause_ce            Cause[29:28]
+`define cause_iv            Cause[23]
 `define cause_ip1           Cause[15:10]    //待处理硬件中断，每一位对应一个中断线
 `define cause_ip2           Cause[9:8]      //待处理软件中断标识
 `define cause_excode        Cause[6:2]     //例外编码
@@ -41,7 +46,8 @@ module CP0(
     EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
-    EntryLo1_out, Random_out, Config_K0_out
+    EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
+    Cause_IV
 );
     input           clk;
     input           rst;
@@ -75,6 +81,9 @@ module CP0(
     output [31:0]   EntryHi_out;
     output [31:0]   Random_out;
     output [2:0]    Config_K0_out;
+    output          Status_BEV;
+    output          Status_EXL;
+    output          Cause_IV;
 
     reg [31:0]      Index;
     reg [31:0]      Random;
@@ -104,13 +113,26 @@ assign count_eq_compare = (Compare == Count);
 assign Interrupt =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
 assign EPC_out = EPC;
-    //used for TLB
 assign EntryLo1_out = EntryLo1;
 assign EntryLo0_out = EntryLo0;
 assign Index_out = Index;
 assign EntryHi_out = EntryHi;
 assign Random_out = Random;
 assign Config_K0_out = Config[2:0];
+assign Status_BEV = `status_bev;
+assign Status_EXL = `status_exl;
+assign Cause_IV   = `cause_iv;
+
+/*
+reg [31:0] count_exc;
+
+always @(posedge clk) begin
+    if ( !rst )
+        count_exc <= 32'b0;
+    else if (MEM1_Exception)
+        count_exc <= count_exc + 32'b1;
+end
+*/
 
     //MFC0 read CP0
 assign data_out =
@@ -201,8 +223,6 @@ assign data_out =
             Wired <= 32'b0;
         else if (CP0WrEn && addr == `Wired_index && data_in[3:0] != 4'b1111)//wired's value must be less than 4'b1111
             Wired[3:0] <= data_in[3:0];
-        else if (CP0WrEn && addr == `Wired_index && data_in[3:0] == 4'b1111)
-            Wired[3:0] <= 4'bxxxx;
     end
 
     //Random generarion
@@ -241,10 +261,10 @@ assign data_out =
             Config1[30:25]  <= 6'h15;
             Config1[24:22]  <= 3'h0;
             Config1[21:19]  <= 3'h5;
-            Config1[18:16]  <= 3'h3;
+            Config1[18:16]  <= 3'h1;
             Config1[15:13]  <= 3'h0;
             Config1[12:10]  <= 3'h5;
-            Config1[9:7]    <= 3'h3;
+            Config1[9:7]    <= 3'h1;
             Config1[6:0]    <= 7'b0;//the Config1[3] = 0 indicates that don't implement the Watch reg
         end
     end
@@ -301,6 +321,14 @@ assign data_out =
     //Status
     always @(posedge clk) begin
         if (!rst)
+            `status_cu0 <= 1'b0;
+        else if (CP0WrEn && addr == `Status_index)
+            `status_cu0 <= data_in[28];
+    end
+
+    //Status
+    always @(posedge clk) begin
+        if (!rst)
             `status_bev <= 1'b1;
     end
 
@@ -308,6 +336,14 @@ assign data_out =
     always @(posedge clk) begin
         if (CP0WrEn && addr == `Status_index)
             `status_im <= data_in[15:8];
+    end
+
+    //Status
+    always @(posedge clk) begin
+        if (!rst)
+            `status_um <= 1'b0;
+        else if (CP0WrEn && addr == `Status_index)
+            `status_um <= data_in[4];
     end
 
     //Status
@@ -333,13 +369,15 @@ assign data_out =
     //Status
     always @(posedge clk) begin
         if (!rst) begin
-            Status[31:23] <= 9'b0;
+            Status[31:29] <= 3'b0;
+            Status[27:23] <= 5'b0;
             Status[21:16] <= 6'b0;
-            Status[7:2] <= 6'b0;
+            Status[7:5] <= 3'b0;
+            Status[3:2] <= 2'b0;
         end
     end
 
-    //Cause
+    //Cause------> 31
     always @(posedge clk) begin
         if (!rst)
             `cause_bd <= 1'b0;
@@ -347,7 +385,7 @@ assign data_out =
             `cause_bd <= MEM1_isBD;
     end
 
-    //Cause
+    //Cause-------> 30
     always @(posedge clk) begin
         if (!rst)
             `cause_ti <= 1'b0;
@@ -358,6 +396,23 @@ assign data_out =
     end
 
     //Cause
+    //---------> 29:28似乎可以不用实现
+    always @(posedge clk) begin
+        if (!rst)
+            `cause_ce <= 2'b0;
+        // else if (MEM1_Exception)
+        //     `cause_ce <= data_in[9:8];
+    end
+
+    //Cause-------> 23
+    always @(posedge clk) begin
+        if (!rst)
+            `cause_iv <= 1'b0;
+        else if (CP0WrEn && addr == `Cause_index)
+            `cause_iv <= data_in[23];
+    end
+
+    //Cause-------> 15:10
     always @(posedge clk) begin
         if (!rst)
             `cause_ip1 <= 6'b0;
@@ -367,7 +422,7 @@ assign data_out =
         end
     end
 
-    //Cause
+    //Cause--------> 9:8
     always @(posedge clk) begin
         if (!rst)
             `cause_ip2 <= 2'b0;
@@ -375,7 +430,7 @@ assign data_out =
             `cause_ip2 <= data_in[9:8];
     end
 
-    //Cause
+    //Cause--------> 6:2
     always @(posedge clk) begin
         if (!rst)
             `cause_excode <= 5'b0;
@@ -386,7 +441,8 @@ assign data_out =
     //Cause
     always @(posedge clk) begin
         if (!rst) begin
-            Cause[29:16] <= 14'b0;
+            Cause[27:24] <= 4'b0;
+            Cause[22:16] <= 7'b0;
             Cause[7] <= 1'b0;
             Cause[1:0] <= 2'b0;
         end

@@ -2,7 +2,8 @@ module npc(
 	IF_PC, Imm, EPC, ret_addr, NPCOp,
 	MEM1_eret_flush, MEM1_Exception,
 	MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC,
-	PF_PC, WB_icache_valid_CI,
+	PF_PC, WB_icache_valid_CI,Status_BEV,
+	Status_EXL,Cause_IV,Interrupt,
 
 	NPC
 	);
@@ -19,20 +20,47 @@ module npc(
 	input 			WB_TLB_flush;
 	input [31:0] 	MEM2_PC;
 	input			WB_icache_valid_CI;
+	input 			Status_BEV;
+	input 			Status_EXL;
+	input 			Cause_IV;
+	input 			Interrupt;
 
 	output reg [31:0] NPC;
 
 	always@(*) begin
 		if (MEM1_eret_flush)
 			NPC = EPC;
-		else if (MEM1_Exception)		//TLB Rill and normal exception
-			NPC = !MEM1_TLBRill_Exc ? 32'hBFC0_0380 : 32'hBFC0_0200;
+		else if (MEM1_Exception)	//use the standard mips structure
+		begin
+			if ( Interrupt )
+				case ({Status_BEV,Status_EXL,Cause_IV})
+					3'b000:		NPC = 32'h8000_0180;
+					3'b001:		NPC = 32'h8000_2000;
+					3'b100:		NPC = 32'hBFC0_0380;
+					3'b101:		NPC = 32'hBFC0_0400;
+					3'b010,3'b011:
+								NPC = 32'h8000_0180;
+					default:	NPC = 32'hBFC0_0380;
+				endcase
+			else if ( MEM1_TLBRill_Exc )
+				case ({Status_BEV,Status_EXL})
+					2'b00:		NPC = 32'h8000_0000;
+					2'b01:		NPC = 32'h8000_0180;
+					2'b10:		NPC = 32'hBFC0_0200;
+					2'b11:		NPC = 32'hBFC0_0380;
+				endcase
+			else
+				if ( ~Status_BEV )
+						NPC = 32'h8000_0180;
+				else
+						NPC = 32'hBFC0_0380;
+		end
 		else if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
 			NPC = MEM2_PC;
 		else begin
 			case(NPCOp)
 				2'b00:	NPC = PF_PC + 4;								//sequential execution
-				2'b01:	if(Imm[15])				//branch,use the delay slot PC 
+				2'b01:	if(Imm[15])				//branch,use the delay slot PC
 							NPC = IF_PC + {14'h3fff,Imm[15:0],2'b00};
 						else
 							NPC = IF_PC + {14'h0000,Imm[15:0],2'b00};
