@@ -433,10 +433,10 @@ module axi_sram_bridge(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信号
+// 时钟与复位信�?
     input clk      ;
     input rst      ;   //low active
-// 读请求通道
+// 读请求�?�道
     output [ 3:0]   arid      ;
     output [31:0]   araddr    ;
     output [ 3:0]   arlen     ;
@@ -447,14 +447,14 @@ module axi_sram_bridge(
     output [ 2:0]   arprot    ;
     output          arvalid   ;
     input           arready   ;
-//读相应通道
+//读相应�?�道
     input [ 3:0]    rid       ;
     input [31:0]    rdata     ;
     input [ 1:0]    rresp     ;
     input           rlast     ;
     input           rvalid    ;
     output          rready    ;
-//写请求通道
+//写请求�?�道
     output [ 3:0]   awid      ;
     output [31:0]   awaddr    ;
     output [ 3:0]   awlen     ;
@@ -465,14 +465,14 @@ module axi_sram_bridge(
     output [ 2:0]   awprot    ;
     output          awvalid   ;
     input           awready   ;
-// 写数据通道
+// 写数据�?�道
     output [ 3:0]   wid       ;
     output [31:0]   wdata     ;
     output [ 3:0]   wstrb     ;
     output          wlast     ;
     output          wvalid    ;
     input           wready    ;
-// 写相应通道
+// 写相应�?�道
     input [3:0]     bid       ;
     input [1:0]     bresp     ;
     input           bvalid    ;
@@ -509,7 +509,7 @@ module axi_sram_bridge(
 	input [31:0]MEM_uncache_wr_data;
 
 reg [3:0] count_wr16;
-//暂时用不到的信号初始化
+//暂时用不到的信号初始�?
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
@@ -523,7 +523,7 @@ reg [3:0] count_wr16;
 
     // assign wlast    =   1;
 
-//状态定义
+//状�?�定�?
 /*FSM_R*/
 parameter state_rd_free = 2'b00;
 parameter state_rd_req = 2'b01;
@@ -550,11 +550,32 @@ reg arid_reg;// 寄存事务id
 reg conf_wr;// write event argument
 reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
+reg is_writing;
+reg [31:0] writing_addr;
 initial begin
 	count_wr16 = 0;
 	conf_wr=0;
 	dram_wr=0;
 	uncache_wr_data_reg=0;
+	is_writing =0;
+end
+
+always @(posedge clk) begin
+	if(!rst)
+		is_writing=0;
+	else if(MEM_dcache_wr_req)
+		is_writing=1;
+	else if(next_wr_state == state_wr_finish)
+		is_writing=0;
+
+end
+
+always @(posedge clk) begin
+	if(!rst)
+		writing_addr=0;
+	else if(MEM_dcache_wr_req)
+		writing_addr=MEM_dcache_wr_addr;
+
 end
 
 always @(posedge clk) begin
@@ -588,13 +609,13 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[511:32]}};//需要与 wdata 保持一致
+		temp_data={32'b0,{temp_data[511:32]}};//�?要与 wdata 保持�?�?
 	end
 end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		uncache_wr_data_reg=0;
+		uncache_wr_data_reg<=0;
 	end
 	else if(current_wr_state==state_wr_req)
 	begin
@@ -668,7 +689,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		arid_reg=0;
+		arid_reg<=0;
 	end
 	else if(current_rd_state==state_rd_free
 	||current_rd_state==state_rd_finish)
@@ -696,7 +717,7 @@ always @(*) begin
 	case(current_rd_state)
 		state_rd_free,state_rd_finish:
 		begin
-			if (MEM_dcache_rd_req|IF_icache_rd_req)
+			if ((MEM_dcache_rd_req|IF_icache_rd_req) & (~is_writing | (araddr[31:6] != writing_addr[31:6])))
 			begin
 				next_rd_state = state_rd_req;
 			end
@@ -724,34 +745,34 @@ always @(*) begin
 	endcase
 end
 //
-assign MEM_dcache_rd_rdy =(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
-assign MEM_dcache_ret_valid = (rvalid & rid[0]);
+assign MEM_dcache_rd_rdy =(~is_writing)&(~IF_icache_rd_req)& arready & (current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
-assign IF_icache_rd_rdy = arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
+assign MEM_dcache_wr_rdy = ((~is_writing)|(IF_icache_rd_addr!=writing_addr))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);
 assign IF_icache_ret_data = rdata;
 assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
-assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
 assign arid = IF_icache_rd_req ? 0: 1;
+assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
 assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
-assign arburst = IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
+assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 
-assign awaddr = MEM_dcache_wr_addr;
+assign awaddr =writing_addr;
 assign awsize = MEM_dcache_wr_type;
 assign awlen = conf_wr ? 4'b0:4'b1111;
 assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
 assign awburst = conf_wr ? 2'b0 : 2'b1;
 
 assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
-assign wstrb = MEM_dcache_wr_wstrb; //可能有问题
+assign wstrb = MEM_dcache_wr_wstrb; //可能有问�?
 assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );
 assign wlast = conf_wr ? 1: dram_wr ? count_wr16==4'hf : 0;
 assign bready = 1;

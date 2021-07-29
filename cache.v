@@ -342,7 +342,7 @@ module icache(       clk, resetn, exception, stall,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, valid_CI, ret_valid, ret_last, exception)
+    always@(C_STATE, valid, cache_hit, valid_CI, ret_valid, ret_last, exception, rd_rdy)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
@@ -360,7 +360,10 @@ module icache(       clk, resetn, exception, stall,
                         N_STATE = INSTR;
                     else
                         N_STATE = IDLE;
-            MISS:       N_STATE = REFILL;
+            MISS:   if(rd_rdy)
+                        N_STATE = REFILL;
+                    else
+                        N_STATE = MISS;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
                     else
@@ -373,7 +376,7 @@ module icache(       clk, resetn, exception, stall,
     assign addr_ok = 1'b1;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) || (C_STATE == INSTR);
     //assign rd_req = (N_STATE == REFILL) ;
-    assign rd_req = ((C_STATE == MISS) /*& rd_rdy*/) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
+    assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
     assign RBWr = (valid | valid_CI)& data_ok;
@@ -468,7 +471,7 @@ module dcache(       clk, resetn, DMRd, stall,
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010,
+    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010, HOLD = 3'b111,
               MISS = 3'b011, REPLACE = 3'b100, REFILL = 3'b101, INSTR = 3'b110;
 
     reg C_STATE_WB;
@@ -520,6 +523,7 @@ module dcache(       clk, resetn, DMRd, stall,
     wire cache_hit;
     wire[1:0] hit_code;
     wire hit_write;
+    wire write_conflict1;
     wire write_conflict2;
     wire write_bypass1;
     reg[31:0] wdata_bypass1;
@@ -587,8 +591,7 @@ module dcache(       clk, resetn, DMRd, stall,
     assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI);
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI ;
 
-    /*assign write_conflict1 = hit_write && DMRd
-                            && ({tag,index,offset}!={tag_RB,index_RB,offset_RB});*/
+    assign write_conflict1 = (hit_write | (C_STATE_WB == WRITE)) && valid_CI;
     assign write_conflict2 = (C_STATE_WB == WRITE) && DMRd
                             && |(index^index_WB);
     assign write_bypass1 = (C_STATE_WB == WRITE) && ~op_RB
@@ -597,8 +600,8 @@ module dcache(       clk, resetn, DMRd, stall,
                             && ({tag,index,offset}=={tag_WB,index_WB,offset_WB});*/
 
     assign addr_select = stall | ~ok;
-    //assign ok =  addr_ok & data_ok;
-    assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
+    assign ok =  addr_ok & data_ok;
+    //assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
     assign VTen = ~stall | (C_STATE == REFILL);
 
     always@(posedge clk)
@@ -930,9 +933,11 @@ module dcache(       clk, resetn, DMRd, stall,
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, wr_rdy, ret_valid, ret_last,
             replace_Valid_MB, replace_Dirty_MB, write_conflict2, valid_CI,
-            C_STATE_WB, ok_CI, valid_CI_RB)
+            C_STATE_WB, ok_CI, valid_CI_RB, rd_rdy, wr_valid, addr_ok)
         case(C_STATE)
-            IDLE:   if(valid)
+            IDLE:   if(~addr_ok)
+                        N_STATE = IDLE;
+                    else if(valid)
                         N_STATE = LOOKUP;
                     else if(valid_CI)
                         N_STATE = INSTR;
@@ -944,7 +949,7 @@ module dcache(       clk, resetn, DMRd, stall,
                         else
                             N_STATE = SELECT;
                     end
-                    else if(write_conflict2)
+                    else if(~addr_ok)
                         N_STATE = IDLE;
                     else if(valid)
                         N_STATE = LOOKUP;
@@ -953,16 +958,27 @@ module dcache(       clk, resetn, DMRd, stall,
                     else
                         N_STATE = IDLE;
             SELECT: N_STATE = MISS;
-            MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
-                        N_STATE = REFILL;
+            MISS:   if(!replace_Valid_MB || !replace_Dirty_MB) begin           //data is not dirty
+                        N_STATE = HOLD;
+                    end
                     else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;
                     else
                         N_STATE = REPLACE;
-            REPLACE:if(valid_CI_RB)
-                        N_STATE = INSTR;
+            REPLACE:if(valid_CI_RB) begin
+                        if(wr_valid)
+                            N_STATE = INSTR;
+                        else
+                            N_STATE = REPLACE;
+                    end
+                    else if(wr_valid)
+                        N_STATE = HOLD;
                     else
+                        N_STATE = REPLACE;
+            HOLD:   if(rd_rdy)
                         N_STATE = REFILL;
+                    else
+                        N_STATE = HOLD;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
                     else
@@ -987,13 +1003,10 @@ module dcache(       clk, resetn, DMRd, stall,
             N_STATE_WB = IDLE_WB;
 
     //output signals
-    assign addr_ok = ~ write_conflict2;
+    assign addr_ok = ~ (write_conflict2 | write_conflict1);
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
-    assign rd_req = ((C_STATE == MISS) & ~(replace_Valid_MB &replace_Dirty_MB)) |
-                    ((C_STATE == REPLACE) & wr_valid) |
-                    ((C_STATE == REFILL) & ~(ret_valid&ret_last));
-    assign wr_req =  ((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy)
-                    | ((C_STATE == INSTR) & ~ok_CI);
+    assign rd_req = (N_STATE == REFILL);
+    assign wr_req = (N_STATE == REPLACE) && (C_STATE != INSTR);
 
     always@(*)
         case(op_CI_RB)

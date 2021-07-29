@@ -190,7 +190,8 @@ module mem1_cache_prep(
     //dcache sel
     assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
     assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
-    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)));
+    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
+                            & ~MEM1_dcache_valid_CI;
     //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
 
@@ -248,7 +249,8 @@ module mem1_cache_prep(
             !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception &
             !MEM1_eret_flush&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
-    assign MEM1_DMen = MEM1_dcache_en&!MEM1_Exception&!MEM1_eret_flush&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_Exception&!MEM1_eret_flush
+                        &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
 
     /* LL SC Instr */
     always @(posedge clk) begin
