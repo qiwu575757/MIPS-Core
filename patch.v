@@ -76,6 +76,31 @@ module branch_predict_prep(
 
 endmodule
 
+module pre_decode (
+    input [5:0] IF_OP,
+    input [5:0] IF_Funct,
+
+    output reg IF_BJOp
+);
+
+    always @(IF_OP or IF_Funct) begin		
+		 case (IF_OP)
+			6'b000100: IF_BJOp = 1;		/* BEQ */
+			6'b000101: IF_BJOp = 1;		/* BNE */
+			6'b000001: IF_BJOp = 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
+			6'b000111: IF_BJOp = 1;		/* BGTZ */
+			6'b000110: IF_BJOp = 1;		/* BLEZ */
+			6'b000000:
+			if (IF_Funct == 6'b001000 || IF_Funct == 6'b001001)	/* JR, JALR */
+				IF_BJOp = 1;
+			else
+				IF_BJOp = 0;
+			default:   IF_BJOp = 0;
+		endcase
+	end
+
+endmodule
+
 module ex_prep(
     input [1:0] EX_NPCOp,
     input [25:0] EX_Imm26,

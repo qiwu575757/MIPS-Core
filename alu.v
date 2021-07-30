@@ -25,6 +25,10 @@ module alu1(
 	wire[31:0] sra_result;
 	wire[31:0] cmp_result;
 
+	reg[31:0] simple_result;
+	reg[1:0] sel1;
+	reg[2:0] sel2;
+
 	assign add_result = A + B;
 	assign sub_result = A - B;
 	assign _or_result = A | B;
@@ -40,18 +44,43 @@ module alu1(
 	//		ALU1Op == 4'b1001 : signed compare
 	//		ALU1Op == 4'b1010 : unsigned compare
 
-	always@(ALU1Op, add_result, sub_result, _or_result, and_result, nor_result, xor_result,
-			sll_result, srl_result, sra_result, cmp_result)
+	always@(*)
 		case(ALU1Op)
-			4'b0000, 4'b1011:	C = add_result;		//add/addu
-			4'b0001, 4'b1100:	C = sub_result;		//sub/subu
-			4'b0010:			C = _or_result;		//or
-			4'b0011:			C = and_result;		//and
-			4'b0100:			C = nor_result;		//nor
-			4'b0101:			C = xor_result;		//xor
-			4'b0110:			C = sll_result;		//logical left shift
-			4'b0111:			C = srl_result;		//logical right shift
-			4'b1000:			C = sra_result;		//arithmetical right shift
+			4'b0010:			sel1 = 2'b00;		//or
+			4'b0011:			sel1 = 2'b01;		//and
+			4'b0100:			sel1 = 2'b10;		//nor
+			default:			sel1 = 2'b11;		//xor
+		endcase
+
+	always@(*)
+		case(sel1)
+			2'b00:			simple_result = _or_result;		//or
+			2'b01:			simple_result = and_result;		//and
+			2'b10:			simple_result = nor_result;		//nor
+			default:		simple_result = xor_result;		//xor
+		endcase
+
+	always@(*)
+		case(ALU1Op)
+			4'b0000, 4'b1011:	sel2 = 3'b000;		//add/addu
+			4'b0001, 4'b1100:	sel2 = 3'b001;		//sub/subu
+			4'b0010, 4'b0011, 
+			4'b0100, 4'b0101:	sel2 = 3'b010;		//or/and/nor/xor
+			4'b0110:			sel2 = 3'b011;		//logical left shift
+			4'b0111:			sel2 = 3'b100;		//logical right shift
+			4'b1000:			sel2 = 3'b101;		//arithmetical right shift
+			default:			sel2 = 3'b110;		//signed/unsigned compare
+		endcase
+		
+
+	always@(*)
+		case(sel2)
+			3'b000:				C = add_result;		//add/addu
+			3'b001:				C = sub_result;		//sub/subu
+			3'b010:				C = simple_result;	//or/and/nor/xor
+			3'b011:				C = sll_result;		//logical left shift
+			3'b100:				C = srl_result;		//logical right shift
+			3'b101:				C = sra_result;		//arithmetical right shift
 			default:			C = cmp_result;		//signed/unsigned compare
 		endcase
 	

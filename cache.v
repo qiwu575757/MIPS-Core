@@ -442,7 +442,7 @@ module dcache(       clk, resetn, DMen, stall_1,
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
-
+    reg[5:0] index_RB_forDA;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
@@ -594,6 +594,7 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
             write_bypass1_delay <= 1'b0;
+            index_RB_forDA <= 6'd0;
         end
         else if(valid && data_ok) begin
             op_RB <= op;
@@ -603,6 +604,7 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
             write_bypass1_delay <= write_bypass1;
+            index_RB_forDA <= index;
         end
         else if(~addr_ok && data_ok)
             op_RB <= 1'b0;
@@ -821,11 +823,11 @@ module dcache(       clk, resetn, DMen, stall_1,
         else
             Data_addr_wr = index_RB;
 
-    always@(index_RB, index, data_ok)
+    always@(index_RB_forDA, index, data_ok)
         if(data_ok)
             Data_addr_rd = index;
         else 
-            Data_addr_rd = index_RB; 
+            Data_addr_rd = index_RB_forDA; 
 
     always@(C_STATE_WB, index_RB, index_WB)
         if(C_STATE_WB == WRITE)
@@ -961,7 +963,7 @@ module uncache_dm(
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
 
-    parameter DEFAULT = 2'b00;
+    parameter IDLE = 2'b00;
     parameter LOAD    = 2'b01;
     parameter STORE   = 2'b10;
     parameter FINISH  = 2'b11;
@@ -975,18 +977,18 @@ module uncache_dm(
 
     always@(posedge clk)
         if(!resetn)
-            C_STATE <= DEFAULT;
+            C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
 
     always@(C_STATE, load, store, /*rd_rdy,*/ wr_rdy, ret_valid, ret_last/* wr_valid*/)
         case(C_STATE)
-            DEFAULT:    if(load /*&& rd_rdy*/)
+            IDLE:       if(load /*&& rd_rdy*/)
                             N_STATE = LOAD;
                         else if(store && wr_rdy)
                             N_STATE = STORE;
                         else
-                            N_STATE = DEFAULT;
+                            N_STATE = IDLE;
             LOAD:       if(ret_valid && ret_last)
                             N_STATE = FINISH;
                         else
@@ -995,8 +997,8 @@ module uncache_dm(
                             N_STATE = FINISH;
                         //else
                         //    N_STATE = STORE;
-            FINISH:     N_STATE = DEFAULT;
-            default:    N_STATE = DEFAULT;
+            FINISH:     N_STATE = IDLE;
+            default:    N_STATE = IDLE;
         endcase
 
     /*assign data_ok = ~valid |
@@ -1014,8 +1016,8 @@ module uncache_dm(
 
     //assign rd_req = (N_STATE == LOAD);
     //assign wr_req = (N_STATE == STORE);
-    assign rd_req = ((C_STATE == DEFAULT) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
-    assign wr_req = ((C_STATE == DEFAULT) & store & wr_rdy) ;
+    assign rd_req = ((C_STATE == IDLE) & load /*& rd_rdy*/) | ((C_STATE == LOAD) & ~(ret_valid & ret_last));
+    assign wr_req = ((C_STATE == IDLE) & store & wr_rdy) ;
     assign rd_type =
         ((DMSel==3'b011) || (DMSel==3'b100)) ?  3'd0 :
         ((DMSel==3'b101) || (DMSel==3'b110)) ?  3'd1 :
@@ -1117,6 +1119,7 @@ module data_block(clk, rst, en, wen, wr_addr, din, rd_addr, dout);
     output reg[511:0] dout;
 
     wire[511:0] dram_out;
+    wire[511:0] dout_temp;
 
 Data_Distributed U_0(
         wr_addr, din, rd_addr, clk, wen[ 0], dram_out[ 31:  0]
@@ -1167,26 +1170,28 @@ Data_Distributed U_f(
         wr_addr, din, rd_addr, clk, wen[15], dram_out[511:480]
     );
 
+    assign dout_temp[ 31:  0] = wen[ 0]&(rd_addr == wr_addr) ? din : dram_out[ 31:  0];
+    assign dout_temp[ 63: 32] = wen[ 1]&(rd_addr == wr_addr) ? din : dram_out[ 63: 32];
+    assign dout_temp[ 95: 64] = wen[ 2]&(rd_addr == wr_addr) ? din : dram_out[ 95: 64];
+    assign dout_temp[127: 96] = wen[ 3]&(rd_addr == wr_addr) ? din : dram_out[127: 96];
+    assign dout_temp[159:128] = wen[ 4]&(rd_addr == wr_addr) ? din : dram_out[159:128];
+    assign dout_temp[191:160] = wen[ 5]&(rd_addr == wr_addr) ? din : dram_out[191:160];
+    assign dout_temp[223:192] = wen[ 6]&(rd_addr == wr_addr) ? din : dram_out[223:192];
+    assign dout_temp[255:224] = wen[ 7]&(rd_addr == wr_addr) ? din : dram_out[255:224];
+    assign dout_temp[287:256] = wen[ 8]&(rd_addr == wr_addr) ? din : dram_out[287:256];
+    assign dout_temp[319:288] = wen[ 9]&(rd_addr == wr_addr) ? din : dram_out[319:288];
+    assign dout_temp[351:320] = wen[10]&(rd_addr == wr_addr) ? din : dram_out[351:320];
+    assign dout_temp[383:352] = wen[11]&(rd_addr == wr_addr) ? din : dram_out[383:352];
+    assign dout_temp[415:384] = wen[12]&(rd_addr == wr_addr) ? din : dram_out[415:384];
+    assign dout_temp[447:416] = wen[13]&(rd_addr == wr_addr) ? din : dram_out[447:416];
+    assign dout_temp[479:448] = wen[14]&(rd_addr == wr_addr) ? din : dram_out[479:448];
+    assign dout_temp[511:480] = wen[15]&(rd_addr == wr_addr) ? din : dram_out[511:480];
+
     always@(posedge clk)
         if(!rst)
             dout <= 512'd0;
         else if(en) begin
-            dout[ 31:  0] <= wen[ 0]&(rd_addr == wr_addr) ? din : dram_out[ 31:  0];
-            dout[ 63: 32] <= wen[ 1]&(rd_addr == wr_addr) ? din : dram_out[ 63: 32];
-            dout[ 95: 64] <= wen[ 2]&(rd_addr == wr_addr) ? din : dram_out[ 95: 64];
-            dout[127: 96] <= wen[ 3]&(rd_addr == wr_addr) ? din : dram_out[127: 96];
-            dout[159:128] <= wen[ 4]&(rd_addr == wr_addr) ? din : dram_out[159:128];
-            dout[191:160] <= wen[ 5]&(rd_addr == wr_addr) ? din : dram_out[191:160];
-            dout[223:192] <= wen[ 6]&(rd_addr == wr_addr) ? din : dram_out[223:192];
-            dout[255:224] <= wen[ 7]&(rd_addr == wr_addr) ? din : dram_out[255:224];
-            dout[287:256] <= wen[ 8]&(rd_addr == wr_addr) ? din : dram_out[287:256];
-            dout[319:288] <= wen[ 9]&(rd_addr == wr_addr) ? din : dram_out[319:288];
-            dout[351:320] <= wen[10]&(rd_addr == wr_addr) ? din : dram_out[351:320];
-            dout[383:352] <= wen[11]&(rd_addr == wr_addr) ? din : dram_out[383:352];
-            dout[415:384] <= wen[12]&(rd_addr == wr_addr) ? din : dram_out[415:384];
-            dout[447:416] <= wen[13]&(rd_addr == wr_addr) ? din : dram_out[447:416];
-            dout[479:448] <= wen[14]&(rd_addr == wr_addr) ? din : dram_out[479:448];
-            dout[511:480] <= wen[15]&(rd_addr == wr_addr) ? din : dram_out[511:480];
+            dout <= dout_temp;
         end
  
 endmodule

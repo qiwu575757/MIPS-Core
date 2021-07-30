@@ -5,7 +5,7 @@
  		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,
 
 		MUX1Sel, MUX11Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op, ALU1Sel, ALU2Op, 
-		RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
+		RHLSel_Rd, RHLSel_Wr, DMSel, eret_flush, CP0WrEn, ID_ExcCode, ID_Exception, isBD, isBranch,
 		CP0Rd, start, RHL_visit,dcache_en, BrType, J_Type
 	);
 	input clk;
@@ -29,7 +29,6 @@
 	output reg DMWr;
 	output reg DMRd;
 	output reg RHLSel_Rd;
-	output reg B_JOp;
 	output reg [1:0] NPCOp;
 	output reg [1:0] EXTOp;
 	output reg [3:0] ALU1Op;
@@ -67,7 +66,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal);
+		(OP == `cop0) || isBranch;
 
 	
 
@@ -129,21 +128,22 @@
 
 	assign isBD = EXE_isBranch;		/* the generation of isBD */
 
-	always @(OP or Funct) begin		/* the genenration of B_JOp */
-		 case (OP)
-			6'b000100: B_JOp = 1;		/* BEQ */
-			6'b000101: B_JOp = 1;		/* BNE */
-			6'b000001: B_JOp = 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
-			6'b000111: B_JOp = 1;		/* BGTZ */
-			6'b000110: B_JOp = 1;		/* BLEZ */
-			6'b000000:
-			if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
-				B_JOp = 1;
-			else
-				B_JOp = 0;
-			default:   B_JOp = 0;
-		endcase
-	end
+
+//	always @(OP or Funct) begin		/* the genenration of B_JOp */
+		// case (OP)
+		//	6'b000100: B_JOp = 1;		/* BEQ */
+		//	6'b000101: B_JOp = 1;		/* BNE */
+		//	6'b000001: B_JOp = 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
+		//	6'b000111: B_JOp = 1;		/* BGTZ */
+		//	6'b000110: B_JOp = 1;		/* BLEZ */
+		//	6'b000000:
+		//	if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
+		//		B_JOp = 1;
+		//	else
+		//		B_JOp = 0;
+		//	default:   B_JOp = 0;
+	//	endcase
+//	end 
 
 
 	always @(OP or Funct or rt or rs) begin			/* the generation of RFWr */ 
