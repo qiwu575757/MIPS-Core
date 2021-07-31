@@ -241,6 +241,7 @@ module mips(
     wire            SC_signal;
     wire            movz_movn;
     wire            Jump;
+    wire            ID_WAIT_OP;
     wire            icache_valid_CI;
 	wire            icache_op_CI;
 	wire            dcache_valid_CI;
@@ -306,6 +307,7 @@ module mips(
 	wire            EX_icache_op_CI;
 	wire            EX_dcache_valid_CI;
 	wire [1:0]      EX_dcache_op_CI;
+    wire            EX_WAIT_OP;
 	//-------------MEM1---------------//
     wire            MEM1_eret_flush;
     wire            MEM1_Exception;
@@ -382,6 +384,7 @@ module mips(
     wire            Status_BEV;
     wire            Status_EXL;
     wire            Cause_IV;
+    wire            MEM1_WAIT_OP;
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -647,7 +650,7 @@ ctrl U_CTRL(
         .ID_MUX12Sel(ID_MUX12Sel),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),.TLB_readen(TLB_readen),
         .LoadOp(LoadOp),.StoreOp(StoreOp),.movz_movn(movz_movn),.Branch_flush(Branch_flush),.LL_signal(LL_signal),
         .SC_signal(SC_signal),.Jump(Jump), .icache_valid_CI(icache_valid_CI), .icache_op_CI(icache_op_CI),
-        .dcache_valid_CI(dcache_valid_CI), .dcache_op_CI(dcache_op_CI)
+        .dcache_valid_CI(dcache_valid_CI), .dcache_op_CI(dcache_op_CI),.ID_WAIT_OP(ID_WAIT_OP)
 	);
 
 	//--------------EX----------------//
@@ -663,6 +666,7 @@ ID_EX U_ID_EX(
 		.ID_TLB_Exc(ID_TLB_Exc),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),.TLB_readen(TLB_readen),.LoadOp(LoadOp),
         .StoreOp(StoreOp),.LL_signal(LL_signal),.SC_signal(SC_signal), .icache_valid_CI(icache_valid_CI),
         .icache_op_CI(icache_op_CI),.dcache_valid_CI(dcache_valid_CI), .dcache_op_CI(dcache_op_CI),
+        .ID_WAIT_OP(ID_WAIT_OP),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception),
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -676,7 +680,7 @@ ID_EX U_ID_EX(
 		.EX_TLB_Exc(EX_TLB_Exc),.EX_TLB_flush(EX_TLB_flush),.EX_TLB_writeen(EX_TLB_writeen),.EX_TLB_readen(EX_TLB_readen),
         .EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp),.EX_LL_signal(EX_LL_signal),.EX_SC_signal(EX_SC_signal),
         .EX_icache_valid_CI(EX_icache_valid_CI), .EX_icache_op_CI(EX_icache_op_CI),
-        .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI)
+        .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),.EX_WAIT_OP(EX_WAIT_OP)
 	);
 
 mux1 U_MUX1(
@@ -733,7 +737,7 @@ EX_MEM1 U_EX_MEM1(
         .EX_TLB_readen(EX_TLB_readen),.EX_LoadOp(EX_LoadOp),.EX_StoreOp(EX_StoreOp),.MULOut(MULOut),
         .EX_start(EX_start),.Trap(Trap),.EX_LL_signal(EX_LL_signal),.EX_SC_signal(EX_SC_signal),
         .EX_icache_valid_CI(EX_icache_valid_CI), .EX_icache_op_CI(EX_icache_op_CI),
-        .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),
+        .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),.EX_WAIT_OP(EX_WAIT_OP),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode),
@@ -746,7 +750,7 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp),.MEM1_MULOut(MEM1_MULOut),
         .MEM1_start(MEM1_start),.MEM1_Trap(MEM1_Trap),.MEM1_LL_signal(MEM1_LL_signal),.MEM1_SC_signal(MEM1_SC_signal),
         .MEM1_icache_valid_CI(MEM1_icache_valid_CI), .MEM1_icache_op_CI(MEM1_icache_op_CI),
-        .MEM1_dcache_valid_CI(MEM1_dcache_valid_CI), .MEM1_dcache_op_CI(MEM1_dcache_op_CI)
+        .MEM1_dcache_valid_CI(MEM1_dcache_valid_CI), .MEM1_dcache_op_CI(MEM1_dcache_op_CI),.MEM1_WAIT_OP(MEM1_WAIT_OP)
 	);
 
 CP0 U_CP0(
@@ -994,6 +998,7 @@ stall U_STALL(
         .MEM_dCache_en(MEM2_DMen),.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
         .MEM1_dCache_en(MEM1_dcache_valid | MEM1_dcache_valid_CI),.ID_tlb_searchen(ID_tlb_searchen),.EX_CP0WrEn(EX_CP0WrEn),
         .MUL_sign(MUL_sign),.ALU2Op(EX_ALU2Op),.EX_SC_signal(EX_SC_signal),.MEM1_SC_signal(MEM1_SC_signal),
+        .MEM1_WAIT_OP(MEM1_WAIT_OP),.Interrupt(Interrupt),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.inst_sram_en(IF_iCache_read_en),.isStall(isStall),
 		.dcache_stall(dcache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),

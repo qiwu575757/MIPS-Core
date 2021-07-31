@@ -128,7 +128,7 @@
 `define tlbr    6'b000001
 `define tlbwi   6'b000010
 `define tlbwr   6'b000110
-`define walt    6'b100000
+`define WAIT    6'b100000
 //-------------special2----------------//
 `define special2    6'b011100
 

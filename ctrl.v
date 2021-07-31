@@ -9,7 +9,7 @@
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
 		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump,
-		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI
+		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,ID_WAIT_OP
 	);
 	input 			clk;
 	input 			rst;
@@ -67,6 +67,7 @@
 	output 			LL_signal;
 	output 			SC_signal;
 	output 			Jump;
+	output 			ID_WAIT_OP;
 
 	output reg 		icache_valid_CI;
 	output reg 		icache_op_CI;
@@ -818,6 +819,8 @@
 
 	//MUX12 for select w_index from the Index[3:0] and Random[3:0]
 	assign ID_MUX12Sel = (OP == `tlb) && (Funct == `tlbwi);
+
+	assign ID_WAIT_OP	= (OP == `tlb) && (Funct == `WAIT);
 
 	always @( OP ) begin
 		case (OP)

@@ -61,7 +61,7 @@ module stall(
 	MEM1_ex, MEM1_RFWr, MEM2_RFWr,MEM1_eret_flush,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok,MEM_dCache_en,MEM_dCache_addr_ok,
     MEM1_cache_sel,MEM1_dCache_en,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
-	ALU2Op,EX_SC_signal,MEM1_SC_signal,
+	ALU2Op,EX_SC_signal,MEM1_SC_signal,MEM1_WAIT_OP,Interrupt,
 
 	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,data_ok,
 	dcache_stall,ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr,PF_IFWr
@@ -103,6 +103,8 @@ module stall(
 	input [3:0] 	ALU2Op;
 	input 			EX_SC_signal;
 	input 			MEM1_SC_signal;
+	input 			MEM1_WAIT_OP;
+	input 			Interrupt;
 
 	output reg 		PCWr;
 	output reg 		IF_IDWr;
@@ -123,6 +125,7 @@ module stall(
 	wire 			stall_2;
 	wire 			stall_3;
 	wire 			data_stall;
+	wire 			WAIT;
 
 	assign addr_ok = MEM1_cache_sel | MEM_dCache_addr_ok;
 	assign dcache_stall = ((~dCache_data_ok &MEM_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
@@ -134,6 +137,7 @@ module stall(
 	assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) );
 	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ;
 	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3;
+	assign WAIT = MEM1_WAIT_OP & ~Interrupt;
 
 	always@( * )
 		if(MEM1_ex || MEM1_eret_flush) begin
@@ -147,7 +151,7 @@ module stall(
 			MEM2_WBWr = data_ok;
 			MUX7Sel = 1'b0;
 		end
-		else if(dcache_stall) begin
+		else if(dcache_stall || WAIT) begin
 			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
