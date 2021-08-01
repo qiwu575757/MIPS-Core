@@ -634,7 +634,7 @@ module dcache(       clk, resetn, DMen, stall_1,
             ret_number_MB <= 4'b0000;
         else if(C_STATE == MISS)
             ret_number_MB <= 4'b0000;
-        else if(ret_valid)
+        else if(ret_valid & ~cache_sel)
             ret_number_MB <= ret_number_MB + 1;
 
     //Write Buffer
@@ -806,13 +806,15 @@ module dcache(       clk, resetn, DMen, stall_1,
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
-    assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
-    assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
+    assign VT_Way0_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b0) && (ret_number_MB == 4'h8);
+    assign VT_Way1_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8);
     assign V_in = 1'b1;
     assign T_in = replace_tag_new_MB;
-    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd0)) || (ret_valid && (replace_way_MB == 0));
-    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'd1)) || (ret_valid && (replace_way_MB == 1));
-    assign D_in = ret_valid ? 0 : (C_STATE_WB ==WRITE);
+    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'b0)) || 
+                        ((C_STATE == REFILL) && (replace_way_MB == 1'b0) && (ret_number_MB == 4'h8));
+    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'b1)) || 
+                        ((C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8));
+    assign D_in = (C_STATE_WB == WRITE) ? 1'b1 : 1'b0;
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
@@ -1060,7 +1062,9 @@ module dirty_block(clk, rst, wen, addr, din, dout);
     always@(posedge clk)
         if(!rst)
             dout <= 1'b0;
-        else
+        else if(wen)//write first
+            dout <= din;
+        else 
             dout <= dirty[addr];
 
 endmodule

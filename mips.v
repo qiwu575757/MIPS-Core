@@ -441,6 +441,7 @@ module mips(
 /**************DATA PATH***************/
     //--------------PF----------------//
 
+
 PC U_PC(
         .clk(clk), .rst(rst), .wr(PCWr), .flush(PC_Flush),
 		.ret_addr(MUX8Out),.NPCOp(NPCOp), .NPC_op00(NPC_op00), .NPC_op01(NPC_op01), .NPC_op10(NPC_op10),

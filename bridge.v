@@ -643,7 +643,7 @@ always @(*) begin
 	case(current_rd_state)
 		state_rd_free,state_rd_finish:
 		begin
-			if ((MEM_dcache_rd_req|IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
+			if ((MEM_dcache_rd_req|IF_icache_rd_req) & ~is_writing)
 			begin
 				next_rd_state = state_rd_req;
 			end
