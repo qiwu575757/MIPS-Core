@@ -811,7 +811,7 @@ dcache U_DCACHE(.clk(clk), .resetn(rst), .DMRd(MEM1_DMRd), .stall(~(IF_data_ok&M
     .addr_ok(MEM_dCache_addr_ok), .data_ok(MEM_dCache_data_ok), .rdata(dcache_Out),
 	//cache && axi
   	.rd_req(MEM_dcache_rd_req), .rd_type(MEM_dcache_rd_type), .rd_addr(MEM_dcache_rd_addr),
-    .rd_rdy(MEM_dcache_rd_rdy), .ret_valid(MEM_dcache_ret_valid), .ret_last(MEM_dcache_ret_last),
+    .rd_rdy(MEM_dcache_rd_rdy), .ret_valid(MEM_dcache_ret_valid & ~MEM2_cache_sel), .ret_last(MEM_dcache_ret_last),
     .ret_data(MEM_dcache_ret_data), .wr_valid(bvalid), .wr_req(MEM_dcache_wr_req),
     .wr_type(MEM_dcache_wr_type), .wr_addr(MEM_dcache_wr_addr), .wr_wstrb(MEM_dcache_wr_wstrb),
     .wr_data(MEM_dcache_wr_data), .wr_rdy(MEM_dcache_wr_rdy),
