@@ -278,8 +278,8 @@ module icache(       clk, resetn, exception, stall_1,
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
-    assign VT_Way0_wen = ret_valid && (replace_way_MB == 0) && (ret_number_MB == 4'h8);
-    assign VT_Way1_wen = ret_valid && (replace_way_MB == 1) && (ret_number_MB == 4'h8);
+    assign VT_Way0_wen = (C_STATE == REFILL) && (replace_way_MB == 0);
+    assign VT_Way1_wen = (C_STATE == REFILL) && (replace_way_MB == 1);
     assign V_in = 1'b1;
     assign T_in = replace_tag_new_MB;
     assign rd_type = 3'b010;
@@ -459,7 +459,6 @@ module dcache(       clk, resetn, DMen, stall_1,
     reg[3:0] wstrb_WB;
     reg[5:0] offset_WB;
     reg[5:0] index_WB;
-    reg[19:0] tag_WB;
     reg[31:0] rdata_WB;
 
     //replace select
@@ -640,7 +639,6 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_WB <= 4'd0;
             offset_WB <= 6'd0;
             index_WB <= 6'd0;
-            tag_WB <= 20'd0;
             rdata_WB <= 32'd0;
         end
         else if(hit_write) begin
@@ -649,7 +647,6 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_WB <= wstrb_RB;
             offset_WB <= offset_RB;
             index_WB <= index_RB;
-            tag_WB <= tag_RB;
             rdata_WB <= write_bypass1_delay? wdata_final : (way0_hit ? rdata_way0 : rdata_way1);
         end
 
@@ -801,14 +798,12 @@ module dcache(       clk, resetn, DMen, stall_1,
     assign wr_wstrb = 4'b1111;
 
     //refill from mem to cache (read memory)
-    assign VT_Way0_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b0) && (ret_number_MB == 4'h8);
-    assign VT_Way1_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8);
+    assign VT_Way0_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b0);
+    assign VT_Way1_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b1);
     assign V_in = 1'b1;
     assign T_in = replace_tag_new_MB;
-    assign D_Way0_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b0)) || 
-                        ((C_STATE == REFILL) && (replace_way_MB == 1'b0) && (ret_number_MB == 4'h8));
-    assign D_Way1_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b1)) || 
-                        ((C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8));
+    assign D_Way0_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b0)) || ((C_STATE == REFILL) && (replace_way_MB == 1'b0));
+    assign D_Way1_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b1)) || ((C_STATE == REFILL) && (replace_way_MB == 1'b1));
     assign D_in = (C_STATE_WB == WRITE) ? 1'b1 : 1'b0;
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};

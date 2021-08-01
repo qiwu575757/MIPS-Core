@@ -2,14 +2,17 @@ module bypass(
 	EX_RS, EX_RT, ID_RS, ID_RT, 
 	MEM1_RD, MEM2_RD, EX_RD, WB_RD,
 	MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr,
+	ALU1Sel, MUX3Sel,
 	
-	MUX4Sel, MUX5Sel,
+	MUX4Sel, MUX5Sel, MUX4Sel_forALU1, MUX5Sel_forALU1,
 	MUX8Sel, MUX9Sel
 	);
 	input MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr;
 	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, EX_RD, WB_RD;
+	input ALU1Sel, MUX3Sel;
 
 	output reg[1:0] MUX4Sel, MUX5Sel;
+	output[1:0] MUX4Sel_forALU1, MUX5Sel_forALU1;
 	output reg[1:0] MUX8Sel, MUX9Sel;
 
 
@@ -52,6 +55,9 @@ module bypass(
 			MUX9Sel = 2'b01;		//WB->ID for RT
 		else
 			MUX9Sel = 2'b00;		//NO bypass for RT
+
+	assign MUX4Sel_forALU1 = MUX4Sel & {2{~ALU1Sel}};
+	assign MUX5Sel_forALU1 = MUX5Sel & {2{~MUX3Sel}};
 
 
 endmodule
@@ -96,13 +102,14 @@ module stall(
 	assign stall_2 = (BJOp & MEM2_DMRd) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
 
 	assign data_stall = stall_0|stall_1|stall_2;
-	assign data_ok = dCache_data_ok | MEM2_dCache_en;
+	assign data_ok = dCache_data_ok ;
 
-	assign dcache_stall = ((~dCache_data_ok & MEM2_dCache_en)  |~iCache_data_ok);
+	assign dcache_stall = ( ~dCache_data_ok | ~iCache_data_ok);
 	assign isStall=(~(MEM1_ex | MEM1_eret_flush))&(dcache_stall | (isbusy & RHL_visit) | data_stall);
 	//assign isStall = ~PCWr;
 
-	assign icache_stall_1 = (~dCache_data_ok & MEM2_dCache_en) | (isbusy & RHL_visit) | data_stall ;
+	assign icache_stall_1 = ~dCache_data_ok | (isbusy & RHL_visit) | data_stall ;
+
 
 	always@(data_stall,MEM1_ex, MEM1_eret_flush, isbusy, RHL_visit, dcache_stall,data_ok)
 	    if(MEM1_ex | MEM1_eret_flush) begin

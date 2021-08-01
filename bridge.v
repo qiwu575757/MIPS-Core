@@ -218,7 +218,7 @@ end
 
 wire divider_sign_valid=start && ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
-Divider divider (
+divider_signed U_Divider_Signed (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
   .s_axis_divisor_tvalid(divider_sign_valid),    // input wire s_axis_divisor_tvalid
@@ -230,7 +230,7 @@ Divider divider (
 );
 wire divider_unsign_valid = start && ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
-Divider_Unsighed divider_unsign (
+divider_unsigned U_Divider_Unsigned (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
   .s_axis_divisor_tvalid(divider_unsign_valid),    // input wire s_axis_divisor_tvalid
@@ -242,7 +242,7 @@ Divider_Unsighed divider_unsign (
 );
 
 assign multiplier_signed_valid = start && !ALU2Op[1] && ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
-multiplier_signed multiplier_signed(
+multiplier_signed U_Multiplier_Signed(
 	.CLK(aclk),
 	.A(A),
 	.B(B),
@@ -250,7 +250,7 @@ multiplier_signed multiplier_signed(
 	.P(multi_sign_out)
 );
 assign multiplier_unsigned_valid = start && !ALU2Op[1] && !ALU2Op[0] && !MEM_Exception && !MEM_eret_flush;
-multiplier_unsigned multiplier_unsigned(
+multiplier_unsigned U_Multiplier_Unsigned(
 	.CLK(aclk),
 	.A(A),
 	.B(B),
@@ -472,7 +472,6 @@ reg [2:0] current_wr_state;
 reg [2:0] next_wr_state;
 reg [511:0] temp_data;//write buffer
 
-reg arid_reg;// 寄存事务id
 reg conf_wr;// write event argument
 reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
@@ -612,18 +611,7 @@ end
 // assign arid = MEM_dcache_rd_req ? 1:
 // 			 IF_icache_rd_req  ? 0 : 0;
 
-always @(posedge clk) begin
-	if(!rst)
-	begin
-		arid_reg<=0;
-	end
-	else if(current_rd_state==state_rd_free
-	||current_rd_state==state_rd_finish)
-	begin
-		arid_reg <=IF_icache_rd_req? 0:
-			   MEM_dcache_rd_req ? 1 : 0;
-	end
-end
+
 
 
 

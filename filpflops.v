@@ -215,7 +215,7 @@ module ID_EX(
 	DMRd, RFWr, RHLWr, RHLSel_Wr, MUX11Sel, GPR_RS, GPR_RT, RS, RT, Imm32, shamt, 
 	eret_flush, CP0WrEn, Exception, ExcCode, isBD, isBranch, CP0Addr, CP0Rd, start,ID_dcache_en,
 	MUX4Sel, MUX5Sel,	ID_BrType, ID_Imm26, ID_NPCOp,
-	ID_JType, MUX7Sel,
+	ID_JType, MUX7Sel, MUX4Sel_forALU1, MUX5Sel_forALU1,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_RD, EX_RHLSel_Wr,
@@ -223,7 +223,7 @@ module ID_EX(
 	EX_Imm32, EX_CP0Addr, EX_CP0Rd, EX_start,EX_dcache_en,
 	EX_MUX4Sel, EX_MUX5Sel, EX_BrType, EX_Imm26, EX_NPCOp,
 	EX_GPR_RS_forALU1, EX_GPR_RT_forALU1,
-	EX_JType, EX_MUX7Sel, EX_stall
+	EX_JType, EX_MUX7Sel, EX_stall, EX_MUX4Sel_forALU1, EX_MUX5Sel_forALU1
 );
 	input clk, rst, ID_EXWr,ID_Flush, DMWr, DMRd, MUX3Sel, ALU1Sel, RFWr, RHLWr,RHLSel_Rd;
 	input eret_flush;
@@ -247,6 +247,7 @@ module ID_EX(
 	input [1:0] ID_NPCOp;
 	input [1:0] ID_JType;
 	input MUX7Sel;
+	input[1:0] MUX4Sel_forALU1, MUX5Sel_forALU1;
 
 	output reg EX_eret_flush;
 	output reg EX_CP0WrEn;
@@ -285,6 +286,7 @@ module ID_EX(
 	output reg [1:0] EX_JType;
 	output reg EX_MUX7Sel;
 	output reg EX_stall;
+	output reg[1:0] EX_MUX4Sel_forALU1, EX_MUX5Sel_forALU1;
 
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
@@ -328,6 +330,8 @@ module ID_EX(
 			EX_JType <= 2'b00;
 			EX_MUX7Sel <= 1'b0;
 			EX_stall <= 1'b0;
+			EX_MUX4Sel_forALU1 <= 2'b00;
+			EX_MUX5Sel_forALU1 <= 2'b00;
 		end
 		else if(ID_EXWr) 
 		begin
@@ -371,6 +375,8 @@ module ID_EX(
 			EX_JType <= ID_JType;
 			EX_MUX7Sel <= MUX7Sel;
 			EX_stall <= 1'b0;
+			EX_MUX4Sel_forALU1 <= MUX4Sel_forALU1;
+			EX_MUX5Sel_forALU1 <= MUX5Sel_forALU1;
 		end else
 			EX_stall <= 1'b1;
 endmodule
