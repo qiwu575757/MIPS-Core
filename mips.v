@@ -53,7 +53,7 @@ module mips(
 );
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
-// 时钟与复位信�????
+// 时钟与复位信�?????
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道
@@ -987,7 +987,7 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bvalid    ,
     bready    ,
 // icache
-	IF_icache_rd_req,// icache �???? dcache 同时缺失怎么�????
+	IF_icache_rd_req,// icache �????? dcache 同时缺失怎么�?????
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,

@@ -402,7 +402,8 @@ module dcache(       clk, resetn, DMen, stall_1,
 
     reg[5:0] VT_addr_wr;
     reg[5:0] VT_addr_rd;
-    reg[5:0] D_addr;
+    reg[5:0] D_addr_wr;
+    reg[5:0] D_addr_rd;
     reg[5:0] Data_addr_wr;
     reg[5:0] Data_addr_rd;
     wire VT_Way0_wen;
@@ -427,8 +428,7 @@ module dcache(       clk, resetn, DMen, stall_1,
     //FINITE STATE MACHINE
     reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010,
-              MISS = 3'b011, REPLACE = 3'b100, REFILL = 3'b101;
+    parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REPLACE = 3'b011, REFILL = 3'b100;
 
     reg C_STATE_WB;
     reg N_STATE_WB;
@@ -442,7 +442,6 @@ module dcache(       clk, resetn, DMen, stall_1,
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
-    reg[5:0] index_RB_forDA;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
@@ -512,9 +511,9 @@ module dcache(       clk, resetn, DMen, stall_1,
     validtag_block VT_Way1(
         clk, resetn, VTen, VT_Way1_wen, VT_addr_rd, VT_addr_wr, V_in, T_in, Way1_Valid, Way1_Tag);
     dirty_block D_Way0(
-        clk, resetn, D_Way0_wen, D_addr, D_in, Way0_Dirty);
+        clk, resetn, D_Way0_wen, D_addr_rd, D_addr_wr, D_in, Way0_Dirty);
     dirty_block D_Way1(
-        clk, resetn, D_Way1_wen, D_addr, D_in, Way1_Dirty);
+        clk, resetn, D_Way1_wen, D_addr_rd, D_addr_wr, D_in, Way1_Dirty);
 
     /*Data_Block Data_Way0(
         clk, 1, Data_Way0_wen, Data_addr, Data_in, Data_Way0_out
@@ -594,7 +593,6 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
             write_bypass1_delay <= 1'b0;
-            index_RB_forDA <= 6'd0;
         end
         else if(valid && data_ok) begin
             op_RB <= op;
@@ -604,10 +602,7 @@ module dcache(       clk, resetn, DMen, stall_1,
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
             write_bypass1_delay <= write_bypass1;
-            index_RB_forDA <= index;
         end
-        else if(~addr_ok && data_ok)
-            op_RB <= 1'b0;
 
     //Miss Buffer
     always@(posedge clk)
@@ -620,7 +615,7 @@ module dcache(       clk, resetn, DMen, stall_1,
             replace_tag_old_MB <= 20'd0;
             replace_tag_new_MB <= 20'd0;
         end
-        else if(C_STATE == SELECT) begin
+        else if(C_STATE == LOOKUP) begin
             replace_way_MB <= counter;
             replace_data_MB <= replace_data;
             replace_Valid_MB <= replace_Valid;
@@ -810,41 +805,45 @@ module dcache(       clk, resetn, DMen, stall_1,
     assign VT_Way1_wen = (C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8);
     assign V_in = 1'b1;
     assign T_in = replace_tag_new_MB;
-    assign D_Way0_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'b0)) || 
+    assign D_Way0_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b0)) || 
                         ((C_STATE == REFILL) && (replace_way_MB == 1'b0) && (ret_number_MB == 4'h8));
-    assign D_Way1_wen = ((C_STATE_WB ==WRITE) && (way_WB == 1'b1)) || 
+    assign D_Way1_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b1)) || 
                         ((C_STATE == REFILL) && (replace_way_MB == 1'b1) && (ret_number_MB == 4'h8));
     assign D_in = (C_STATE_WB == WRITE) ? 1'b1 : 1'b0;
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(C_STATE_WB, index_RB, index_WB)
+    always@(index_RB, index, C_STATE)
+        if(C_STATE == REFILL)
+            Data_addr_rd = index_RB;
+        else 
+            Data_addr_rd = index; 
+
+    always@(C_STATE_WB, replace_index_MB, index_WB)
         if(C_STATE_WB == WRITE)
             Data_addr_wr = index_WB;
         else
-            Data_addr_wr = index_RB;
+            Data_addr_wr = replace_index_MB;
 
-    always@(index_RB_forDA, index, data_ok)
-        if(data_ok)
-            Data_addr_rd = index;
-        else 
-            Data_addr_rd = index_RB_forDA; 
+    always@(index)
+        D_addr_rd = index;
 
     always@(C_STATE_WB, index_RB, index_WB)
         if(C_STATE_WB == WRITE)
-            D_addr = index_WB;
+            D_addr_wr = index_WB;
         else
-            D_addr = index_RB;
+            D_addr_wr = index_RB;
 
-    always@(data_ok, index, index_RB)
-        if(data_ok)
-            VT_addr_rd = index;
+
+    always@(C_STATE, index, replace_index_MB)
+        if(C_STATE == REFILL)
+            VT_addr_rd = replace_index_MB;
         else
-            VT_addr_rd = index_RB;
+            VT_addr_rd = index;
 
     always@(index_RB)
-            VT_addr_wr = index_RB;
+        VT_addr_wr = index_RB;
 
 
     //main FSM
@@ -860,23 +859,18 @@ module dcache(       clk, resetn, DMen, stall_1,
         else
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, wr_rdy, ret_valid, ret_last,
-            replace_Valid_MB, replace_Dirty_MB,C_STATE_WB)
+            replace_Valid_MB, replace_Dirty_MB)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            LOOKUP: if(!cache_hit) begin
-                        if(C_STATE_WB == WRITE)
-                            N_STATE = LOOKUP;
-                        else
-                            N_STATE = SELECT;
-                    end
+            LOOKUP: if(!cache_hit) 
+                        N_STATE = MISS;
                     else if(valid)
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            SELECT: N_STATE = MISS;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB)            //data is not dirty
                         N_STATE = REFILL;
                     else if(!wr_rdy)                                    //data is dirty
@@ -1043,11 +1037,12 @@ module uncache_dm(
         endcase
 endmodule
 
-module dirty_block(clk, rst, wen, addr, din, dout);
+module dirty_block(clk, rst, wen, rd_addr, wr_addr, din, dout);
     input clk;
     input rst;
     input wen;
-    input[5:0] addr;
+    input[5:0] rd_addr;
+    input[5:0] wr_addr;
     input din;
 
     output reg dout;
@@ -1057,15 +1052,15 @@ module dirty_block(clk, rst, wen, addr, din, dout);
         if(!rst)
             dirty <= 64'd0;
         else if(wen)
-            dirty[addr] <= din;
+            dirty[wr_addr] <= din;
     
     always@(posedge clk)
         if(!rst)
             dout <= 1'b0;
-        else if(wen)//write first
+        else if(wen & (rd_addr == wr_addr))//write first
             dout <= din;
         else 
-            dout <= dirty[addr];
+            dout <= dirty[rd_addr];
 
 endmodule
 
