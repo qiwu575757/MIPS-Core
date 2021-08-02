@@ -255,7 +255,7 @@ module icache(       clk, resetn, exception, stall_1,
     always@(ret_valid, C_STATE, replace_way_MB, byte_write)
         if(ret_valid &&(C_STATE == REFILL)) begin
             case(replace_way_MB)
-                2'b00:  begin
+                1'b0:  begin
                             Data_Way0_wen = byte_write;
                             Data_Way1_wen = 16'd0;
                         end
@@ -803,7 +803,7 @@ module dcache(       clk, resetn, DMen, stall_1,
     assign T_in = replace_tag_new_MB;
     assign D_Way0_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b0)) || ((C_STATE == REFILL) && (replace_way_MB == 1'b0));
     assign D_Way1_wen = ((C_STATE_WB == WRITE) && (way_WB == 1'b1)) || ((C_STATE == REFILL) && (replace_way_MB == 1'b1));
-    assign D_in = (C_STATE_WB == WRITE) ? 1'b1 : 1'b0;
+    assign D_in = (C_STATE_WB == WRITE);
     assign rd_type = 3'b010;
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
