@@ -121,7 +121,7 @@ module IF_ID(
 	Imm26_forBP, Imm16_forEXT, Imm26_forDFF, op, func, shamt, CP0Addr, rs_forRF, 
 	rs_forCtrl, rs_forDFF, rs_forBypass, rs_forStall, rt_forRF, rt_forCtrl, 
 	rt_forDFF, rt_forBypass, rt_forStall, rt_forMUX1, rd_forMUX1,
-	ID_BJOp
+	ID_BJOp, rs_forBypass_forCMP, rt_forBypass_forCMP
 );
 	input clk, rst,IF_IDWr, IF_Flush, IF_Exception;
 	input[31:0] PC, Instr;
@@ -153,6 +153,8 @@ module IF_ID(
 	output reg[4:0] rt_forMUX1;
 	output reg[4:0] rd_forMUX1;
 	output reg ID_BJOp;
+	output reg[4:0] rs_forBypass_forCMP;
+	output reg[4:0] rt_forBypass_forCMP;
 
 	always@(posedge clk)
 		if(!rst || IF_Flush) begin
@@ -180,6 +182,8 @@ module IF_ID(
 			rt_forMUX1 <= 5'd0;
 			rd_forMUX1 <= 5'd0;
 			ID_BJOp <= 1'b0;
+			rs_forBypass_forCMP <= 5'd0;
+			rt_forBypass_forCMP <= 5'd0;
 		end
 		else if(IF_IDWr) begin
 			ID_PC <= PC;
@@ -206,6 +210,8 @@ module IF_ID(
 			rt_forMUX1 <= Instr[20:16];
 			rd_forMUX1 <= Instr[15:11];
 			ID_BJOp <= IF_BJOp;
+			rs_forBypass_forCMP <= Instr[25:21];
+			rt_forBypass_forCMP <= Instr[20:16];
 		end
 
 endmodule

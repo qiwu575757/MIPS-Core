@@ -53,7 +53,7 @@ module mips(
 );
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
-// 时钟与复位信�??????
+// 时钟与复位信�????????
     input clk      ;
     input rst      ;   //low active
 // 读请求信号�?�道
@@ -441,7 +441,13 @@ module mips(
     wire[1:0] MUX5Sel_forALU1;
     wire[1:0] EX_MUX4Sel_forALU1;
     wire[1:0] EX_MUX5Sel_forALU1;
-
+    wire[4:0] rs_forBypass_forCMP;
+    wire[1:0] MUX8Sel_forCMP;
+    wire[31:0] MUX8Out_forCMP;
+    wire[4:0] rt_forBypass_forCMP;
+    wire[1:0] MUX9Sel_forCMP;
+    wire[31:0] MUX9Out_forCMP;
+    
 /**************DATA PATH***************/
     //--------------PF----------------//
 
@@ -574,8 +580,8 @@ IF_ID U_IF_ID(
         .op(op), .func(func), .shamt(shamt), .CP0Addr(CP0Addr), .rs_forRF(rs_forRF), .rs_forCtrl(rs_forCtrl),
         .rs_forDFF(rs_forDFF), .rs_forBypass(rs_forBypass), .rs_forStall(rs_forStall), .rt_forRF(rt_forRF),
         .rt_forCtrl(rt_forCtrl), .rt_forDFF(rt_forDFF), .rt_forBypass(rt_forBypass), .rt_forStall(rt_forStall),
-        .rt_forMUX1(rt_forMUX1), .rd_forMUX1(rd_forMUX1),
-        .ID_BJOp(ID_BJOp)
+        .rt_forMUX1(rt_forMUX1), .rd_forMUX1(rd_forMUX1),.ID_BJOp(ID_BJOp), 
+        .rs_forBypass_forCMP(rs_forBypass_forCMP), .rt_forBypass_forCMP(rt_forBypass_forCMP)
 	);
 
 rf U_RF(
@@ -592,7 +598,7 @@ ext U_EXT(
     );
 
 cmp U_CMP(
-		.GPR_RS(MUX8Out), .GPR_RT(MUX9Out),
+		.GPR_RS(MUX8Out_forCMP), .GPR_RT(MUX9Out_forCMP),
 
 		.CMPOut1(CMPOut1), .CMPOut2(CMPOut2)
 	);
@@ -610,13 +616,25 @@ mux8 U_MUX8(
 		.out(MUX8Out)
 	);
 
+mux8 U_MUX8_forCMP(
+		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+        .MUX8Sel(MUX8Sel_forCMP), .WD(MUX10Out),
 
+		.out(MUX8Out_forCMP)
+	);
 
 mux9 U_MUX9(
 		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
         .MUX9Sel(MUX9Sel), .WD(MUX10Out),
 
 		.out(MUX9Out)
+	);
+
+mux9 U_MUX9_forCMP(
+		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+        .MUX9Sel(MUX9Sel_forCMP), .WD(MUX10Out),
+
+		.out(MUX9Out_forCMP)
 	);
 
 ctrl U_CTRL(
@@ -924,11 +942,13 @@ bypass U_BYPASS(
 		.EX_RS(EX_RS), .EX_RT(EX_RT), .ID_RS(rs_forBypass), .ID_RT(rt_forBypass),
         .MEM1_RD(MEM1_RD), .MEM2_RD(MEM2_RD), .EX_RD(EX_RD), .WB_RD(WB_RD),
 		.MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr), .EX_RFWr(EX_RFWr), .WB_RFWr(WB_RFWr),
-        .ALU1Sel(ALU1Sel), .MUX3Sel(MUX3Sel),
+        .ALU1Sel(ALU1Sel), .MUX3Sel(MUX3Sel), 
+        .ID_RS_forCMP(rs_forBypass_forCMP), .ID_RT_forCMP(rt_forBypass_forCMP),
 
         .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel), 
         .MUX4Sel_forALU1(MUX4Sel_forALU1), .MUX5Sel_forALU1(MUX5Sel_forALU1),
-		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel)
+		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel),
+        .MUX8Sel_forCMP(MUX8Sel_forCMP), .MUX9Sel_forCMP(MUX9Sel_forCMP)
 	);
 
 stall U_STALL(
@@ -995,7 +1015,7 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bvalid    ,
     bready    ,
 // icache
-	IF_icache_rd_req,// icache �?????? dcache 同时缺失怎么�??????
+	IF_icache_rd_req,// icache �???????? dcache 同时缺失怎么�????????
 	IF_icache_rd_type,
 	IF_icache_rd_addr,
 	IF_icache_rd_rdy,

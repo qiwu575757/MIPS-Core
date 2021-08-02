@@ -631,7 +631,7 @@ always @(*) begin
 	case(current_rd_state)
 		state_rd_free,state_rd_finish:
 		begin
-			if ((MEM_dcache_rd_req|IF_icache_rd_req) & ~is_writing)
+			if ((MEM_dcache_rd_req|IF_icache_rd_req) & (~is_writing | (araddr[31:6] != writing_addr[31:6])))
 			begin
 				next_rd_state = state_rd_req;
 			end
@@ -664,7 +664,7 @@ assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & 
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = ((~is_writing)|(IF_icache_rd_addr!=writing_addr))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign MEM_dcache_wr_rdy = (~is_writing)&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
 assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);

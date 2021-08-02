@@ -2,18 +2,20 @@ module bypass(
 	EX_RS, EX_RT, ID_RS, ID_RT, 
 	MEM1_RD, MEM2_RD, EX_RD, WB_RD,
 	MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr,
-	ALU1Sel, MUX3Sel,
+	ALU1Sel, MUX3Sel, ID_RS_forCMP, ID_RT_forCMP,
 	
 	MUX4Sel, MUX5Sel, MUX4Sel_forALU1, MUX5Sel_forALU1,
-	MUX8Sel, MUX9Sel
+	MUX8Sel, MUX9Sel, MUX8Sel_forCMP, MUX9Sel_forCMP
 	);
 	input MEM1_RFWr, MEM2_RFWr, EX_RFWr, WB_RFWr;
 	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, EX_RD, WB_RD;
 	input ALU1Sel, MUX3Sel;
+	input[4:0] ID_RS_forCMP, ID_RT_forCMP;
 
 	output reg[1:0] MUX4Sel, MUX5Sel;
 	output[1:0] MUX4Sel_forALU1, MUX5Sel_forALU1;
 	output reg[1:0] MUX8Sel, MUX9Sel;
+	output reg[1:0] MUX8Sel_forCMP, MUX9Sel_forCMP;
 
 
 	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, EX_RD)
@@ -58,6 +60,26 @@ module bypass(
 
 	assign MUX4Sel_forALU1 = MUX4Sel & {2{~ALU1Sel}};
 	assign MUX5Sel_forALU1 = MUX5Sel & {2{~MUX3Sel}};
+
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS_forCMP, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b10;		//MEM1->ID for RS
+		else if(MEM2_RFWr && (MEM2_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b11;		//MEM2->ID for RS
+		else if(WB_RFWr && (WB_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b01;		//WB->ID for RS
+		else
+			MUX8Sel_forCMP = 2'b00;		//NO bypass for RS
+
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT_forCMP, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b10;		//MEM1->ID for RT
+		else if(MEM2_RFWr && (MEM2_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b11;		//MEM2->ID for RT
+		else if(WB_RFWr && (WB_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b01;		//WB->ID for RT
+		else
+			MUX9Sel_forCMP = 2'b00;		//NO bypass for RT
 
 
 endmodule
