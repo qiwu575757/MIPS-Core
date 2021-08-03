@@ -134,8 +134,8 @@ module stall(
 
 	assign stall_0 = (EX_DMRd || EX_CP0Rd || EX_SC_signal) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
 	assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd || MEM1_SC_signal) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
-	assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT) );
-	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) ;
+	assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT)  && (MEM2_RT != 5'b0));
+	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (EX_RT != 5'b0);
 	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3;
 	assign WAIT = MEM1_WAIT_OP & ~Interrupt;
 

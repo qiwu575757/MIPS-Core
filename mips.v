@@ -321,7 +321,7 @@ module mips(
     wire [1:0]      EX_BrType;
     wire [1:0]      EX_JType;
     wire [25:0]     EX_Imm26;
-    wire [31:0]     EX_address;    
+    wire [31:0]     EX_address;
 	//-------------MEM1---------------//
     wire            MEM1_eret_flush;
     wire            MEM1_Exception;
@@ -624,15 +624,15 @@ branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
     .tag(IF_PC[31:9]),
     .EX_index(EX_PC[8:2]),
     .EX_tag(EX_PC[31:9]),
-    .EX_BrType(EX_BrType),                                  
-    .EX_address(EX_address),     
-    .EX_taken(|EX_NPCOp && ~EX_stall && ~EX_MUX7Sel),                       
-                                                          
+    .EX_BrType(EX_BrType),
+    .EX_address(EX_address),
+    .EX_taken(|EX_NPCOp && ~EX_stall && ~EX_MUX7Sel),
+
     .target_address(target_addr)
 );
     //--------------ID----------------//
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC),
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(Invalidate_signal ? PF_PC :IF_PC),
         .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~PF_Instr_Flush)),
 		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~PF_Instr_Flush)),
         .IF_TLB_Exc(IF_TLB_Exc&(~PF_Instr_Flush)),

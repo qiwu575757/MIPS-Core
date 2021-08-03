@@ -140,7 +140,7 @@ module icache(       clk, resetn, exception, stall,
         if(!resetn)
             for(i=0;i<64;i=i+1)
                 age[i] <= 1'b0;
-        else 
+        else
             case(hit_code)
                 2'b01: begin
                         age[index_RB] <= 1'b1;
@@ -555,10 +555,10 @@ module dcache(       clk, resetn, DMen, stall,
     assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI);
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI ;
 
-    
+
     assign write_bypass1 = (C_STATE_WB == WRITE) && DMen
                             && ~|({tag,index_RB,offset_RB[5:2]}^{tag_WB,index_WB,offset_WB[5:2]});
-   
+
 
 
     //assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
@@ -568,7 +568,7 @@ module dcache(       clk, resetn, DMen, stall,
         if(!resetn)
             for(i=0;i<64;i=i+1)
                 age[i] <= 1'b0;
-        else 
+        else
             case(hit_code)
                 2'b01: begin
                         age[index_RB] <= 1'b1;
@@ -727,7 +727,7 @@ module dcache(       clk, resetn, DMen, stall,
     always@(way0_hit, rdata_way0, rdata_way1, write_bypass1,wdata_final)
         if(write_bypass1)
             rdata = wdata_final;
-        else 
+        else
             case(way0_hit)
                 1'b0:   rdata = rdata_way1;
                 default:rdata = rdata_way0;
@@ -814,6 +814,8 @@ module dcache(       clk, resetn, DMen, stall,
             4'b1000:wdata_final = {wdata_WB[7:0],rdata_WB[23:0]};
             4'b0011:wdata_final = {rdata_WB[31:16],wdata_WB[15:0]};
             4'b1100:wdata_final = {wdata_WB[15:0],rdata_WB[15:0]};
+            4'b0111:wdata_final = {rdata_WB[31:24],wdata_WB[23:0]};
+            4'b1110:wdata_final = {wdata_WB[31:8], rdata_WB[7:0]};
             default:wdata_final = wdata_WB;
         endcase
 
@@ -842,8 +844,8 @@ module dcache(       clk, resetn, DMen, stall,
             Data_addr_rd = index_RB;
         else if(valid_CI)
             Data_addr_rd = index_CI;
-        else 
-            Data_addr_rd = index; 
+        else
+            Data_addr_rd = index;
 
     always@(*)
         if(C_STATE_WB == WRITE)
@@ -897,7 +899,7 @@ module dcache(       clk, resetn, DMen, stall,
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            LOOKUP: if(!cache_hit) 
+            LOOKUP: if(!cache_hit)
                         N_STATE = MISS;
                     else if(valid_CI)
                         N_STATE = INSTR;
@@ -1003,12 +1005,12 @@ module dcache(       clk, resetn, DMen, stall,
                         else
                             ok_CI = 1'b0;
                     end
-                    else    
+                    else
                         ok_CI = 1'b1;
             default:ok_CI = 1'b1;
         endcase
 
-    assign way_CI_sel = op_CI_RB[0] ? way1_hit_CI : way_CI_RB; 
+    assign way_CI_sel = op_CI_RB[0] ? way1_hit_CI : way_CI_RB;
 
 
     always@(posedge clk)
@@ -1018,7 +1020,7 @@ module dcache(       clk, resetn, DMen, stall,
             already_writeback <= 1'b1;
         else
             already_writeback <= 1'b0;
-    
+
 
 
 endmodule
@@ -1028,7 +1030,7 @@ module uncache_im(
         //CPU_Pipeline side
         /*input*/   valid, addr,
         /*output*/  data_ok, rdata,
-        //AXI-Bus side 
+        //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
@@ -1118,7 +1120,7 @@ module uncache_dm(
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
-        //AXI-Bus side 
+        //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
 );
@@ -1214,11 +1216,11 @@ module uncache_dm(
 
     assign rd_req = (N_STATE == LOAD);
     assign wr_req = (N_STATE == STORE);
-    assign rd_type = 
+    assign rd_type =
             ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
             ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
                                     3'd2;
-    assign wr_type =   
+    assign wr_type =
             (MEM2_DMSel==3'b000)  ?  3'd0 :
             (MEM2_DMSel==3'b001)  ?  3'd1 :
                                     3'd2;
@@ -1253,13 +1255,13 @@ module dirty_block(clk, rst, wen, rd_addr, wr_addr, din, dout);
             dirty <= 64'd0;
         else if(wen)
             dirty[wr_addr] <= din;
-    
+
     always@(posedge clk)
         if(!rst)
             dout <= 1'b0;
         else if(wen & (rd_addr == wr_addr))//write first
             dout <= din;
-        else 
+        else
             dout <= dirty[rd_addr];
 
 endmodule
@@ -1303,7 +1305,7 @@ Tag_Distributed U_ValidTag(
             vout <= vout_temp;
             tout <= tout_temp;
         end
-            
+
 
 endmodule
 
@@ -1343,7 +1345,7 @@ Data_Distributed U_6(
     );
 Data_Distributed U_7(
         wr_addr, din, rd_addr, clk, wen[ 7], dram_out[255:224]
-    );   
+    );
 Data_Distributed U_8(
         wr_addr, din, rd_addr, clk, wen[ 8], dram_out[287:256]
     );
@@ -1392,5 +1394,5 @@ Data_Distributed U_f(
         else if(en) begin
             dout <= dout_temp;
         end
- 
+
 endmodule
