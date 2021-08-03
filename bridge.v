@@ -351,7 +351,8 @@ endmodule
 //  4.如果icache和dcache同时缺失，优先响应read dcache
 module axi_sram_bridge(
 
-	conf_sel,
+	dcache_sel,
+	icache_sel,
     ext_int_in   ,   //high active
 
     clk      ,
@@ -428,7 +429,8 @@ module axi_sram_bridge(
 	MEM_uncache_wr_data
 
 );
-	input conf_sel;
+	input dcache_sel;
+	input icache_sel;
 // 中断信号
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
@@ -581,7 +583,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		conf_wr=0;
-	if(MEM_dcache_wr_req & conf_sel)
+	if(MEM_dcache_wr_req & dcache_sel)
 	 	conf_wr=1;
 	else if (next_wr_state==state_wr_finish)
 		conf_wr=0;
@@ -591,7 +593,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		dram_wr=0;
-	if(MEM_dcache_wr_req & ~conf_sel)
+	if(MEM_dcache_wr_req & ~dcache_sel)
 	 	dram_wr=1;
 	else if (next_wr_state==state_wr_finish)
 		dram_wr=0;
@@ -760,8 +762,8 @@ assign IF_icache_wr_rdy=1;
 assign arid = IF_icache_rd_req ? 0: 1;
 assign arsize =  IF_icache_rd_req? IF_icache_rd_type : MEM_dcache_rd_type;
 assign araddr =  IF_icache_rd_req? IF_icache_rd_addr : MEM_dcache_rd_addr;
-assign arlen =  IF_icache_rd_req? 4'b1111 : MEM_dcache_rd_req&conf_sel ? 4'b0:4'b1111;
-assign arburst = IF_icache_rd_req ? 2'b1 : MEM_dcache_rd_req&conf_sel ? 2'b0 :2'b1;
+assign arlen =  IF_icache_rd_req? (icache_sel ? 4'b0 : 4'b1111) : (dcache_sel ? 4'b0:4'b1111);
+assign arburst = IF_icache_rd_req ? (icache_sel ? 2'b0 : 2'b1) : (dcache_sel ? 2'b0 :2'b1);
 
 assign arvalid = (current_rd_state==state_rd_req) ;
 

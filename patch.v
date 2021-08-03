@@ -5,7 +5,7 @@ module instr_fetch_pre(
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
     Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
-    MEM2_icache_valid_CI, WB_icache_valid_CI,
+    MEM2_icache_valid_CI, WB_icache_valid_CI, IF_Exception,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
@@ -32,6 +32,7 @@ module instr_fetch_pre(
     input           MEM1_icache_valid_CI;
     input           MEM2_icache_valid_CI;
     input           WB_icache_valid_CI;
+    input           IF_Exception;
 
     output          PF_AdEL;
     output          PF_TLB_Exc;
@@ -65,8 +66,8 @@ module instr_fetch_pre(
     assign kseg0 = (PF_PC[31:29] == 3'b100);
     assign kseg1 = (PF_PC[31:29] == 3'b101);
     //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
-    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
-
+    //assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
+    assign PF_icache_sel = 1'b1;
     /* dcache control signal*/
     assign PF_valid = !isStall&!PF_Exception
             &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush
@@ -74,10 +75,9 @@ module instr_fetch_pre(
             &!WB_icache_valid_CI;
     assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
     assign PF_uncache_valid = PF_valid & PF_icache_sel;
-    assign Invalidate_signal =
-        Branch_flush | TLB_flush | EX_TLB_flush | MEM1_TLB_flush |
-        MEM2_TLB_flush | WB_TLB_flush | PF_Instr_Flush | icache_valid_CI | EX_icache_valid_CI |
-        MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
+    assign Invalidate_signal = Branch_flush | PF_Instr_Flush | IF_Exception |
+    TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
+    icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
 endmodule
 
@@ -262,7 +262,7 @@ module mem1_cache_prep(
 		else begin
 		    MEM1_ExcCode <= Temp_M1_ExcCode;
 		    MEM1_Exception <= Temp_M1_Exception;
-		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地址有关的例外其出错地址一定为其PC
+		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
 		end
 
     /* dcache control signal*/

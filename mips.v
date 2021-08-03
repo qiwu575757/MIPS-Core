@@ -541,7 +541,7 @@ instr_fetch_pre U_INSTR_FETCH(
     isStall,TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,
     WB_TLB_flush,Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
-    MEM2_icache_valid_CI, WB_icache_valid_CI,
+    MEM2_icache_valid_CI, WB_icache_valid_CI, IF_Exception,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
@@ -581,7 +581,7 @@ PF_IF U_PF_IF(
         .IF_uncache_valid(IF_uncache_valid), .IF_PPC(IF_PPC)
 	);
 uncache_im U_UNCACHE_IM(
-        .clk(clk), .resetn(rst),
+        .clk(clk), .resetn(rst), .wr(PF_IFWr),
         //CPU_Pipeline side
         /*input*/   .valid(IF_uncache_valid), .addr(IF_PPC),
         /*output*/  .data_ok(IF_uncache_data_ok), .rdata(IF_uncache_rdata),
@@ -906,9 +906,10 @@ mux2 U_MUX2(
 	);
 
 uncache_dm U_UNCACHE_DM(
-        .clk(clk),.resetn(rst),.valid(MEM2_uncache_valid),.op(DMWen_uncache),.addr(MEM2_Paddr),
+        .clk(clk),.resetn(rst), .MEM2_DMSel(MEM2_DMSel), .wr(MEM1_MEM2Wr),
+        .valid(MEM2_uncache_valid),.op(DMWen_uncache),.addr(MEM2_Paddr),
         .wstrb(MEM2_unCache_wstrb),.wdata(MEM2_wdata),.data_ok(MEM_unCache_data_ok),.rdata(uncache_Out),
-        .MEM2_DMSel(MEM2_DMSel),.rd_rdy(MEM_dcache_rd_rdy),.wr_rdy(MEM_dcache_wr_rdy),
+        .rd_rdy(MEM_dcache_rd_rdy),.wr_rdy(MEM_dcache_wr_rdy),
         .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),.wr_valid(bvalid),
         .rd_req(MEM_uncache_rd_req),.wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
 		.wr_type(MEM_uncache_wr_type), .rd_addr(MEM_uncache_rd_addr), .wr_addr(MEM_uncache_wr_addr),
@@ -1064,6 +1065,7 @@ stall U_STALL(
 
 axi_sram_bridge U_AXI_SRAM_BRIDGE(
 	MEM2_cache_sel,
+    IF_icache_sel,
     ext_int_in   ,   //high active
 
     clk      ,
