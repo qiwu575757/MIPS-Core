@@ -5,7 +5,7 @@ module instr_fetch_pre(
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
     Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
-    MEM2_icache_valid_CI, WB_icache_valid_CI, IF_Exception,
+    MEM2_icache_valid_CI, WB_icache_valid_CI,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
@@ -32,7 +32,6 @@ module instr_fetch_pre(
     input           MEM1_icache_valid_CI;
     input           MEM2_icache_valid_CI;
     input           WB_icache_valid_CI;
-    input           IF_Exception;
 
     output          PF_AdEL;
     output          PF_TLB_Exc;
@@ -66,8 +65,8 @@ module instr_fetch_pre(
     assign kseg0 = (PF_PC[31:29] == 3'b100);
     assign kseg1 = (PF_PC[31:29] == 3'b101);
     //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
-    //assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
-    assign PF_icache_sel = 1'b1;
+    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
+    //assign PF_icache_sel = 1'b1;
     /* dcache control signal*/
     assign PF_valid = !isStall&!PF_Exception
             &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush
@@ -75,7 +74,7 @@ module instr_fetch_pre(
             &!WB_icache_valid_CI;
     assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
     assign PF_uncache_valid = PF_valid & PF_icache_sel;
-    assign Invalidate_signal = Branch_flush | PF_Instr_Flush | IF_Exception |
+    assign Invalidate_signal = Branch_flush | PF_Instr_Flush |
     TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
@@ -91,17 +90,17 @@ module ex_prep(
 );
 
     always @(EX_NPCOp, EX_Imm26, ID_PC, return_addr) begin
-        case(EX_NPCOp)				
-				2'b01:	if(EX_Imm26[15])								
+        case(EX_NPCOp)
+				2'b01:	if(EX_Imm26[15])
 							EX_address = ID_PC + {14'h3fff,EX_Imm26[15:0],2'b00};
 						else
 							EX_address = ID_PC + {14'h0000,EX_Imm26[15:0],2'b00};
 				2'b10:	EX_address = { ID_PC[31:28],EX_Imm26[25:0],2'b00};
                 2'b11: EX_address = return_addr;
-				default:EX_address = ID_PC + 4;								
+				default:EX_address = ID_PC + 4;
 			endcase
     end
-    
+
 endmodule
 
 

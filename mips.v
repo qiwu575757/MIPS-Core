@@ -541,7 +541,7 @@ instr_fetch_pre U_INSTR_FETCH(
     isStall,TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,
     WB_TLB_flush,Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
-    MEM2_icache_valid_CI, WB_icache_valid_CI, IF_Exception,
+    MEM2_icache_valid_CI, WB_icache_valid_CI,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
@@ -756,8 +756,8 @@ mux5 U_MUX5(
 	);
 
 bridge_RHL U_ALU2(
-		.aclk(clk),.aresetn(rst),.A(MUX4Out),.B(MUX5Out),.ALU2Op(EX_ALU2Op),.start(EX_start),
-		.EX_RHLWr(EX_RHLWr), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
+		.aclk(clk),.aresetn(rst),.A(MUX4Out),.B(MUX5Out),.ALU2Op(EX_ALU2Op),.start(EX_start&~EX_Exception),
+		.EX_RHLWr(EX_RHLWr&~EX_Exception), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
 		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),
         .dcache_stall(dcache_stall),
 
