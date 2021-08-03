@@ -185,6 +185,7 @@ module mips(
 
     wire            branch;
     wire [31:0]     target_addr;
+    wire            IF_PC_invalid;
     //--------------ID----------------//
     wire [31:0]     ID_PC;
     wire [31:0]     ID_Instr;
@@ -545,7 +546,7 @@ instr_fetch_pre U_INSTR_FETCH(
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
-    PF_uncache_valid
+    PF_uncache_valid,IF_PC_invalid
     );
 
 icache U_ICACHE(
@@ -632,7 +633,7 @@ branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
 );
     //--------------ID----------------//
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(Invalidate_signal ? PF_PC :IF_PC),
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC_invalid ? PF_PC :IF_PC),
         .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~PF_Instr_Flush)),
 		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~PF_Instr_Flush)),
         .IF_TLB_Exc(IF_TLB_Exc&(~PF_Instr_Flush)),

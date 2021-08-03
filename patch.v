@@ -9,7 +9,7 @@ module instr_fetch_pre(
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
-    PF_uncache_valid
+    PF_uncache_valid,IF_PC_invalid
     );
     input [31:0]    PF_PC;
     input           PCWr;
@@ -44,6 +44,7 @@ module instr_fetch_pre(
     output          PF_icache_sel;
     output          PF_icache_valid;
     output          PF_uncache_valid;
+    output          IF_PC_invalid;
 
     wire mapped;
     wire kseg0, kseg1;
@@ -77,6 +78,7 @@ module instr_fetch_pre(
     assign Invalidate_signal = Branch_flush | PF_Instr_Flush |
     TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
+    assign IF_PC_invalid = Branch_flush | PF_Instr_Flush;
 
 endmodule
 
