@@ -81,6 +81,29 @@ module instr_fetch_pre(
 
 endmodule
 
+module ex_prep(
+    input [1:0]     EX_NPCOp,
+    input [25:0]    EX_Imm26,
+    input [31:0]    ID_PC,
+    input [31:0]    return_addr,
+
+    output reg [31:0] EX_address
+);
+
+    always @(EX_NPCOp, EX_Imm26, ID_PC, return_addr) begin
+        case(EX_NPCOp)				
+				2'b01:	if(EX_Imm26[15])								
+							EX_address = ID_PC + {14'h3fff,EX_Imm26[15:0],2'b00};
+						else
+							EX_address = ID_PC + {14'h0000,EX_Imm26[15:0],2'b00};
+				2'b10:	EX_address = { ID_PC[31:28],EX_Imm26[25:0],2'b00};
+                2'b11: EX_address = return_addr;
+				default:EX_address = ID_PC + 4;								
+			endcase
+    end
+    
+endmodule
+
 
 module mem1_cache_prep(
     clk,rst,MEM1_dcache_en,MEM1_eret_flush,MEM1_ALU1Out,MEM1_DMWr,

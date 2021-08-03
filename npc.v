@@ -4,8 +4,9 @@ module npc(
 	MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC,
 	PF_PC, WB_icache_valid_CI,Status_BEV,
 	Status_EXL,Cause_IV,Interrupt,
+	branch, target_addr, PF_Instr_Flush,
 
-	NPC
+	NPC, Instr_Flush
 	);
 
 	input [31:0] 	IF_PC;
@@ -24,8 +25,15 @@ module npc(
 	input 			Status_EXL;
 	input 			Cause_IV;
 	input 			Interrupt;
+	input			branch;
+	input [31:0]	target_addr;
+	input			PF_Instr_Flush;
 
-	output reg [31:0] NPC;
+	output reg [31:0] 	NPC;
+	output				Instr_Flush;	
+	wire  branch_error;
+
+	reg [31:0] NPC_temp;
 
 	always@(*) begin
 		if (MEM1_eret_flush)
@@ -57,18 +65,25 @@ module npc(
 		end
 		else if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
 			NPC = MEM2_PC;
-		else begin
-			case(NPCOp)
-				2'b00:	NPC = PF_PC + 4;								//sequential execution
-				2'b01:	if(Imm[15])				//branch,use the delay slot PC
-							NPC = IF_PC + {14'h3fff,Imm[15:0],2'b00};
-						else
-							NPC = IF_PC + {14'h0000,Imm[15:0],2'b00};
-				2'b10:	NPC = { IF_PC[31:28],Imm[25:0],2'b00};			//jump
-				default:NPC = ret_addr;								//jump return
-			endcase
-		end
+		else if (branch_error)
+			NPC = NPC_temp;
+		else if (branch && !PF_Instr_Flush)
+			NPC = target_addr;
+		else
+			NPC = PF_PC + 4;
 	end
+
+	always @(*) begin
+		case (NPCOp)
+			2'b00:	NPC_temp = IF_PC + 4;
+			2'b01:	NPC_temp = IF_PC + {{14{Imm[15]}},Imm[15:0],2'b00};
+			2'b10:	NPC_temp = { IF_PC[31:28],Imm[25:0],2'b00};
+			default: NPC_temp = ret_addr;
+		endcase
+	end
+
+	assign branch_error = (NPC_temp != PF_PC) && !PF_Instr_Flush;
+	assign Instr_Flush = branch_error | MEM1_Exception | MEM1_eret_flush | WB_TLB_flush;
 
 endmodule
 

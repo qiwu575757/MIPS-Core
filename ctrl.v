@@ -9,7 +9,8 @@
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
 		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump,
-		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,ID_WAIT_OP
+		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,ID_WAIT_OP,
+		ID_BrType, ID_JType
 	);
 	input 			clk;
 	input 			rst;
@@ -73,6 +74,8 @@
 	output reg 		icache_op_CI;
 	output reg 		dcache_valid_CI;
 	output reg [1:0]dcache_op_CI;
+	output reg [1:0]ID_BrType;
+	output reg [1:0]ID_JType;
 
 	wire 			ri;			//reserved instr
 	reg 			rst_sign;
@@ -232,6 +235,51 @@
 			default:   B_JOp <= 0;
 		endcase
 	end
+
+	always @(OP or Funct) begin								/* the generation of ID_JType */
+		case (OP)
+			6'b000010: ID_JType = 2'b01;				/* J */
+			6'b000011: ID_JType = 2'b01;				/* JAL */
+			6'b000000: 
+			case (Funct)
+				6'b001000: ID_JType = 2'b10;			/* JR */
+				6'b001001: ID_JType = 2'b10;			/* JALR */
+			default: ID_JType = 2'b00;
+			endcase
+			default: ID_JType = 2'b00;
+		endcase
+	end
+
+	always @(OP or rt or Funct or rs) begin		/* the generation of ID_BrType */
+		case (OP)
+			6'b000011: ID_BrType = 2'b11;		//JAL
+			6'b000100,						//BEQ
+			6'b000101: ID_BrType = 2'b10;		//BNE
+			6'b000001: 
+			case (rt)
+				5'b00001,					//BGEZ
+				5'b00000: ID_BrType = 2'b10;	//BLTZ
+				5'b10001,					//BGEZAL
+				5'b10000: ID_BrType = 2'b11;	//BLTZAL
+				default: ID_BrType = 2'b00;
+			endcase
+			6'b000010,						//J
+			6'b000110,						//BLEZ
+			6'b000111: ID_BrType = 2'b10;		//BGTZ
+			6'b000000:
+			case (Funct)
+				6'b001000: 
+				if (rs == 5'd31)
+					ID_BrType = 2'b01;	//JR $31
+				else
+					ID_BrType = 2'b10;	//JR 其它间接跳转
+				6'b001001: ID_BrType = 2'b10;	//JALR 其它间接跳转
+				default: ID_BrType = 2'b00;
+			endcase
+			default: ID_BrType = 2'b00;
+		endcase
+	end
+
 
 	always @(OP or Funct or rt or rs) begin			/* the generation of RFWr */
 		case (OP)

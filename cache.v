@@ -365,7 +365,7 @@ module icache(       clk, resetn, exception, stall,
 
 endmodule
 
-module dcache(       clk, resetn, DMRd, stall,
+module dcache(       clk, resetn, DMen, stall,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -379,7 +379,7 @@ module dcache(       clk, resetn, DMRd, stall,
     //clock and reset
     input clk;
     input resetn;
-    input DMRd;
+    input DMen;
     input stall;
 
     // Cache && CPU-Pipeline
@@ -556,7 +556,7 @@ module dcache(       clk, resetn, DMRd, stall,
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI ;
 
     
-    assign write_bypass1 = (C_STATE_WB == WRITE) && ~op_RB
+    assign write_bypass1 = (C_STATE_WB == WRITE) && DMen
                             && ~|({tag,index_RB,offset_RB[5:2]}^{tag_WB,index_WB,offset_WB[5:2]});
    
 
@@ -609,7 +609,6 @@ module dcache(       clk, resetn, DMRd, stall,
             offset_RB <= 6'd0;
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
-            wdata_bypass1 <= 32'd0;
             valid_CI_RB <= 1'b0;
             op_CI_RB <= 2'b00;
             index_CI_RB <= 6'd0;
@@ -622,7 +621,6 @@ module dcache(       clk, resetn, DMRd, stall,
             offset_RB <= offset;
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
-            wdata_bypass1 <= wdata_RB;
             valid_CI_RB <= valid_CI;
             op_CI_RB <= op_CI;
             index_CI_RB <= index_CI;

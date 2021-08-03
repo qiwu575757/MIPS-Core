@@ -288,7 +288,7 @@ end
 
 wire divider_sign_valid=start && (ALU2Op == 4'b0011) && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
-Divider divider (
+divider_signed divider_signed (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
   .s_axis_divisor_tvalid(divider_sign_valid),    // input wire s_axis_divisor_tvalid
@@ -301,7 +301,7 @@ Divider divider (
 
 wire divider_unsign_valid = start && (ALU2Op == 4'b0010) && !MEM_Exception && !MEM_eret_flush
 			&& isBusy && !present_state_div;
-Divider_Unsighed divider_unsign (
+divider_unsigned divider_unsigned (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
   .s_axis_divisor_tvalid(divider_unsign_valid),    // input wire s_axis_divisor_tvalid
@@ -750,7 +750,7 @@ assign MEM_dcache_ret_valid = ((current_rd_state==state_rd_res)&rready&rvalid & 
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = ((~is_writing))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
+assign MEM_dcache_wr_rdy = ((~is_writing)|(IF_icache_rd_addr!=writing_addr))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish);
 assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free || current_rd_state==state_rd_finish);
 assign IF_icache_ret_valid = (current_rd_state==state_rd_res)&rready&rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);
