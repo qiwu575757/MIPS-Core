@@ -365,7 +365,7 @@ module icache(       clk, resetn, exception, stall,
 
 endmodule
 
-module dcache(       clk, resetn, DMen, stall,
+module dcache(       clk, resetn, DMen, stall, exception,
         //CPU_Pipeline side
         /*input*/   valid, op, tag, index, offset, wstrb, wdata,
         /*output*/  addr_ok, data_ok, rdata,
@@ -381,6 +381,7 @@ module dcache(       clk, resetn, DMen, stall,
     input resetn;
     input DMen;
     input stall;
+    input exception;
 
     // Cache && CPU-Pipeline
     input valid;                    //CPU request signal
@@ -548,7 +549,7 @@ module dcache(       clk, resetn, DMen, stall,
     assign way0_hit = Way0_Valid && (Way0_Tag == tag);
     assign way1_hit = Way1_Valid && (Way1_Tag == tag);
     assign cache_hit = way0_hit || way1_hit ;
-    assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit;
+    assign hit_write = (C_STATE == LOOKUP) && op_RB && cache_hit && !exception;
     assign hit_code = {way1_hit,way0_hit};
 
     assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI);
@@ -899,7 +900,9 @@ module dcache(       clk, resetn, DMen, stall,
                         N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
-            LOOKUP: if(!cache_hit)
+            LOOKUP: if(exception)
+                        N_STATE = IDLE;
+                    else if(!cache_hit)
                         N_STATE = MISS;
                     else if(valid_CI)
                         N_STATE = INSTR;
@@ -953,7 +956,7 @@ module dcache(       clk, resetn, DMen, stall,
 
     //output signals
     assign addr_ok = 1'b1;
-    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) ;
+    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && (cache_hit | exception));
     assign rd_req = (N_STATE == REFILL);
     assign wr_req = (N_STATE == REPLACE) && (C_STATE != INSTR);
 

@@ -114,14 +114,14 @@
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= Temp_ID_ExcCode;
 		end
-		else if (!ri && !rst_sign && !IF_Flush) begin
-			ID_Exception <= 1'b1;
-			ID_ExcCode <= `RI;
-		end
 		else if (Cpu_Op && !IF_Flush) begin
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= `Cpu;//对于Cpu异常的理解不够深刻，可能存在其他问题
 		end
+		else if (!ri && !rst_sign && !IF_Flush) begin
+			ID_Exception <= 1'b1;
+			ID_ExcCode <= `RI;
+		end	
 		else if (OP == `R_type && Funct == `break) begin
 			ID_Exception <= 1'b1;
 			ID_ExcCode <= `Bp;

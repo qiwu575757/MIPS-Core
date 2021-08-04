@@ -67,7 +67,7 @@ module stall(
     MEM1_cache_sel,MEM1_dCache_en,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
 	ALU2Op,EX_SC_signal,MEM1_SC_signal,MEM1_WAIT_OP,Interrupt,
 
-	PCWr, IF_IDWr, MUX7Sel,inst_sram_en,isStall,data_ok,
+	PCWr, IF_IDWr, MUX7Sel,icache_stall,isStall,data_ok,
 	dcache_stall,ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr,PF_IFWr
 );
 	input 			clk;
@@ -113,7 +113,7 @@ module stall(
 	output reg 		PCWr;
 	output reg 		IF_IDWr;
 	output reg 		MUX7Sel;
-	output reg 		inst_sram_en;
+	output	 		icache_stall;
 	output 			isStall;
 	output 			dcache_stall;
 	output reg 		ID_EXWr;
@@ -131,9 +131,11 @@ module stall(
 	wire 			WAIT;
 
 	assign addr_ok = MEM1_cache_sel | MEM_dCache_addr_ok;
-	assign dcache_stall = ((~dCache_data_ok &MEM_dCache_en) | (~addr_ok &MEM1_dCache_en) |~iCache_data_ok);
+	assign dcache_stall = (~dCache_data_ok |~iCache_data_ok);
 	assign isStall=~PCWr;
-	assign data_ok = dCache_data_ok | ~MEM_dCache_en;
+	assign data_ok = dCache_data_ok;
+	assign icache_stall = ~dCache_data_ok | WAIT | (isbusy && RHL_visit) | MUL_sign | (ALU2Op==4'b1000 & isbusy)
+							| (ID_tlb_searchen && EX_CP0WrEn) | data_stall;
 
 	//assign stall_0 = (EX_DMRd || EX_CP0Rd || EX_SC_signal || BJOp || ALU2Op==5'b01011) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
 	//assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd || MEM1_SC_signal) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
@@ -149,7 +151,6 @@ module stall(
 
 	always@( * )
 		if(MEM1_ex || MEM1_eret_flush) begin
-			inst_sram_en = 1'b1;
 			PF_IFWr = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;
@@ -160,7 +161,6 @@ module stall(
 			MUX7Sel = 1'b0;
 		end
 		else if(dcache_stall || WAIT) begin
-			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -171,7 +171,6 @@ module stall(
 			MUX7Sel = 1'b1;
 		end
 		else if(isbusy && RHL_visit ) begin
-			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -182,7 +181,6 @@ module stall(
 			MUX7Sel = 1'b1;
 		end
 		else if (MUL_sign || (ALU2Op==4'b1000 & isbusy)) begin
-			inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -192,9 +190,7 @@ module stall(
 			MEM2_WBWr = 1'b0;
 			MUX7Sel = 1'b1;
 		end
-		else if (ID_tlb_searchen && EX_CP0WrEn)
-		begin
-		    inst_sram_en = 1'b0;
+		else if (ID_tlb_searchen && EX_CP0WrEn) begin
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -205,7 +201,6 @@ module stall(
 			MUX7Sel = 1'b1;
 		end
 		else if(data_stall) begin
-		    inst_sram_en = 1'b0;
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -216,7 +211,6 @@ module stall(
 			MUX7Sel = 1'b1;
 		end
 		else begin
-			inst_sram_en = 1'b1;
 			PCWr = 1'b1;
 			PF_IFWr = 1'b1;
 			IF_IDWr = 1'b1;

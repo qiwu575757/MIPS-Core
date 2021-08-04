@@ -8,7 +8,7 @@ module instr_fetch_pre(
     MEM2_icache_valid_CI, WB_icache_valid_CI,
 
     PF_AdEL,PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
-    PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
+    PF_invalid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
     PF_uncache_valid, IF_PC_invalid
     );
     input [31:0]    PF_PC;
@@ -39,7 +39,7 @@ module instr_fetch_pre(
     output          PF_Exception;
     output [4:0]    PF_ExcCode;
     output [31:0]   PPC;
-    output          PF_valid;
+    output          PF_invalid;
     output          Invalidate_signal;
     output          PF_icache_sel;
     output          PF_icache_valid;
@@ -48,6 +48,7 @@ module instr_fetch_pre(
 
     wire mapped;
     wire kseg0, kseg1;
+    wire refetch;
 
     /*Exception generation*/
     //the tlb exception should influence the cache and uncache valid or not
@@ -69,14 +70,11 @@ module instr_fetch_pre(
     assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
     //assign PF_icache_sel = 1'b1;
     /* dcache control signal*/
-    assign PF_valid = !isStall&!PF_Exception
-            &!TLB_flush&!EX_TLB_flush&!MEM1_TLB_flush&!MEM2_TLB_flush&!WB_TLB_flush
-            &!icache_valid_CI&!EX_icache_valid_CI&!MEM1_icache_valid_CI&!MEM2_icache_valid_CI
-            &!WB_icache_valid_CI;
-    assign PF_icache_valid = PF_valid & ~PF_icache_sel & IF_uncache_data_ok;
-    assign PF_uncache_valid = PF_valid & PF_icache_sel;
-    assign Invalidate_signal = Branch_flush | PF_Instr_Flush |
-    TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
+    assign PF_invalid = PF_Exception | refetch;
+    assign PF_icache_valid = !isStall & ~PF_icache_sel;
+    assign PF_uncache_valid = !isStall & PF_icache_sel;
+    assign Invalidate_signal = Branch_flush | PF_Instr_Flush | refetch;
+    assign refetch =  TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
     assign IF_PC_invalid = Branch_flush | PF_Instr_Flush;
@@ -199,7 +197,7 @@ module mem1_cache_prep(
     clk,rst,MEM1_dcache_en,MEM1_eret_flush,MEM1_ALU1Out,MEM1_DMWr,
     MEM1_DMSel, MEM1_RFWr,MEM1_Overflow, Temp_M1_Exception,
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,s1_d,
-    s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_iCache_data_ok,
+    s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_data_ok,
     Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,MEM1_LoadOp,
     MEM1_StoreOp,MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
     MEM1_LL_signal,MEM1_SC_signal,MEM1_icache_valid_CI, MEM1_icache_op_CI,
@@ -208,7 +206,7 @@ module mem1_cache_prep(
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr
+    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid
     );
     input           clk;
     input           rst;
@@ -226,7 +224,7 @@ module mem1_cache_prep(
     input           s1_v;
     input           s1_d;
     input           Temp_MEM1_TLB_Exc;
-    input           IF_iCache_data_ok;
+    input           IF_data_ok;
     input           Temp_MEM1_TLBRill_Exc;
     input [19:0]    s1_pfn;
     input           MEM_unCache_data_ok;
@@ -251,7 +249,7 @@ module mem1_cache_prep(
     output          DMWen_dcache;
     output [3:0]    MEM1_dCache_wstrb;
     output reg[4:0] MEM1_ExcCode;
-    output reg MEM1_Exception;
+    output          MEM1_Exception;
     output reg[31:0] MEM1_badvaddr;
     output          MEM1_TLBRill_Exc;
     output          MEM1_TLB_Exc;
@@ -260,6 +258,7 @@ module mem1_cache_prep(
     output reg [31:0] MEM1_wdata;
     output [31:0]   MEM1_SCOut;
     output          Cause_CE_Wr;
+    output          MEM1_invalid;
 
     wire data_mapped;
     wire valid;
@@ -278,6 +277,14 @@ module mem1_cache_prep(
 		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} :
                 {s1_pfn,MEM1_ALU1Out[11:0]} ;
 
+    //dcache sel
+    assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
+    assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
+    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
+                            & ~MEM1_dcache_valid_CI;
+    //assign MEM1_cache_sel = 1'b1;
+	// 1 表示uncache, 0表示cache            
+
     /*Exception generation*/
     /*
     Explain:
@@ -287,7 +294,7 @@ module mem1_cache_prep(
         s1_found&!s1_v --> TLB Invalid
         s1_found&s1_v&!s1_d --> TLB Mod
     */
-    assign valid = MEM1_dcache_en &IF_iCache_data_ok;
+    assign valid = MEM1_dcache_en &IF_data_ok;
 	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
 
     assign tlbl   = data_mapped & ( !DMWen_dcache & ( !s1_found||(s1_found&!s1_v) ) ) & !Temp_M1_Exception;//load
@@ -298,75 +305,61 @@ module mem1_cache_prep(
                               tlbl      ? `TLBL      :
                               tlbs      ? `TLBS      :
                               tlbmod    ? `TLBMod    :
-                              Temp_MEM1_TLB_Exc ? Temp_M1_ExcCode :
-                                        5'b0;
+                                        Temp_M1_ExcCode ;
 
-    //dcache sel
-    assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
-    assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
-    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
-                            & ~MEM1_dcache_valid_CI;
-    //assign MEM1_cache_sel = 1'b1;
-	// 1 表示uncache, 0表示cache
 
     //Exception Sel
     assign AdES_sel =
-        MEM1_DMWr && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00) && ( MEM1_DMSel == 3'b010
+        MEM1_DMWr &&  (MEM1_LoadOp == 2'b00) && ( MEM1_DMSel == 3'b010
         && MEM1_ALU1Out[1:0] != 2'b00 || MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0);
     assign AdEL_sel =
-        MEM1_RFWr && MEM1_DMRd && !Temp_M1_Exception && (MEM1_LoadOp == 2'b00) &&
+        MEM1_RFWr && MEM1_DMRd && (MEM1_LoadOp == 2'b00) &&
         ( (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00) ||
         ( (MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0 ) );
 
+    assign MEM1_Exception = Interrupt | MEM1_Overflow | MEM1_Trap |
+                         AdES_sel | AdEL_sel | MEM1_TLB_Exc | Temp_M1_Exception;
+
     always@(*)
         if (Interrupt) begin
-			MEM1_Exception <= 1'b1;
 			MEM1_ExcCode <= `Int;
             MEM1_badvaddr <= 32'd0;
 		end
-		else if (MEM1_Overflow  && !Temp_M1_Exception) begin
+        else if(Temp_M1_Exception) begin
+		    MEM1_ExcCode <= Temp_M1_ExcCode;
+		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
+		end
+		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode <= `Ov;
-		    MEM1_Exception <= 1'b1;
 		    MEM1_badvaddr <= 32'd0;
 		end
-        else if (MEM1_Trap  && !Temp_M1_Exception) begin
+        else if (MEM1_Trap) begin
 		    MEM1_ExcCode <= `Trap;
-		    MEM1_Exception <= 1'b1;
 		    MEM1_badvaddr <= 32'd0;
 		end
 		else if (AdES_sel)begin
 		    MEM1_ExcCode <= `AdES;
-		    MEM1_Exception <= 1'b1;
 		    MEM1_badvaddr <= MEM1_ALU1Out;
 		end
 		else if (AdEL_sel) begin
 		    MEM1_ExcCode <= `AdEL;
-		    MEM1_Exception <= 1'b1;
 		    MEM1_badvaddr <= MEM1_ALU1Out;
 		end
-        else if (MEM1_TLB_Exc & !Temp_M1_Exception)
-        begin
+        else begin
             MEM1_ExcCode <= MEM1_TLB_ExCode;
-		    MEM1_Exception <= 1'b1;
 		    MEM1_badvaddr <= MEM1_ALU1Out;
         end
-		else begin
-		    MEM1_ExcCode <= Temp_M1_ExcCode;
-		    MEM1_Exception <= Temp_M1_Exception;
-		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
-		end
 
     assign Cause_CE_Wr = MEM1_ExcCode==`Cpu;
 
     /* dcache control signal*/
-    assign DMWen_dcache = MEM1_DMWr & !Temp_M1_Exception & !MEM1_eret_flush &
-            (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
-    assign MEM1_dcache_valid = MEM1_dcache_en & IF_iCache_data_ok & !MEM1_Exception &
-            !MEM1_eret_flush & MEM_unCache_data_ok  & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
-    assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & !MEM1_Exception &
-            !MEM1_eret_flush&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign DMWen_dcache = MEM1_DMWr & (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
+    assign MEM1_dcache_valid = MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok  
+                & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_Exception&!MEM1_eret_flush
                         &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_invalid = MEM1_Exception | MEM1_eret_flush;
 
     /* LL SC Instr */
     always @(posedge clk) begin

@@ -68,10 +68,10 @@ endmodule
 
 module PF_IF(
 	clk,rst,wr,PF_PC,PF_Exception,PF_ExcCode,PF_TLBRill_Exc,
-	PF_TLB_Exc, valid, icache_sel, uncache_valid,PPC,PF_Flush,
+	PF_TLB_Exc, invalid, icache_sel, uncache_valid,PPC,PF_Flush,
 
 	IF_PC,IF_Exception,IF_ExcCode,IF_TLBRill_Exc,IF_TLB_Exc,
-	IF_valid, IF_icache_sel, IF_uncache_valid, IF_PPC
+	IF_invalid, IF_icache_sel, IF_uncache_valid, IF_PPC
 );
 	input 			clk;
 	input 			rst;
@@ -82,7 +82,7 @@ module PF_IF(
 	input [31:0] 	PF_PC;
 	input 			PF_TLBRill_Exc;
 	input 			PF_TLB_Exc;
-	input 			valid;
+	input 			invalid;
 	input 			icache_sel;
 	input 			uncache_valid;
 	input 			PF_Flush;
@@ -93,7 +93,7 @@ module PF_IF(
 	output reg [4:0] IF_ExcCode;
 	output reg 		IF_TLB_Exc;
 	output reg 		IF_TLBRill_Exc;
-	output reg 		IF_valid;
+	output reg 		IF_invalid;
 	output reg 		IF_icache_sel;
 	output reg 		IF_uncache_valid;
 
@@ -105,7 +105,7 @@ module PF_IF(
 			IF_PC <= 32'hbfbf_fffc;
 			IF_TLBRill_Exc <= 1'b0;
 			IF_TLB_Exc <= 1'b0;
-			IF_valid <= 1'b0;
+			IF_invalid <= 1'b0;
 			IF_icache_sel <= 1'b0;
 			IF_uncache_valid <= 1'b0;
 			IF_PPC <= 32'd0;
@@ -117,7 +117,7 @@ module PF_IF(
 			IF_PC <= PF_PC;
 			IF_TLBRill_Exc <= PF_TLBRill_Exc;
 			IF_TLB_Exc <= PF_TLB_Exc;
-			IF_valid <= valid;
+			IF_invalid <= invalid;
 			IF_icache_sel <= icache_sel;
 			IF_uncache_valid <= uncache_valid;
 			IF_PPC <= PPC;
@@ -627,13 +627,13 @@ module MEM1_MEM2(
 		DMSel,cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
 		MEM1_dCache_wstrb,GPR_RT,DMRd,CP0Rd,MEM1_TLB_flush,MEM1_TLB_writeen,
 		MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,MEM1_SCOut, MEM1_icache_valid_CI,
-		MEM1_dcache_en,
+		MEM1_dcache_en, MEM1_invalid,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
         MEM2_DMSel, MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
 		MEM2_uncache_valid, MEM2_DMen,MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT,
 		MEM2_DMRd, MEM2_CP0Rd,MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_LoadOp,
-		MEM2_wdata,MEM2_SCOut, MEM2_icache_valid_CI, MEM2_dcache_en
+		MEM2_wdata,MEM2_SCOut, MEM2_icache_valid_CI, MEM2_dcache_en, MEM2_invalid
 		);
 	input 			clk;
 	input 			rst;
@@ -666,6 +666,7 @@ module MEM1_MEM2(
 	input [31:0] 	MEM1_SCOut;
 	input			MEM1_icache_valid_CI;
 	input			MEM1_dcache_en;
+	input			MEM1_invalid;
 
 	output reg [31:0] MEM2_PC;
 	output reg 		MEM2_RFWr;
@@ -694,6 +695,7 @@ module MEM1_MEM2(
 	output reg [31:0] MEM2_SCOut;
 	output reg		MEM2_icache_valid_CI;
 	output reg 		MEM2_dcache_en;
+	output reg 		MEM2_invalid;
 
 	always@(posedge clk)
 		if(!rst || MEM1_Flush) begin
@@ -724,6 +726,7 @@ module MEM1_MEM2(
 			MEM2_SCOut <= 32'b0;
 			MEM2_icache_valid_CI <= 1'b0;
 			MEM2_dcache_en <= 1'b0;
+			MEM2_invalid <= 1'b0;
 		end
 		else if(MEM1_MEM2Wr) begin
 			MEM2_PC <= PC;
@@ -753,6 +756,7 @@ module MEM1_MEM2(
 			MEM2_SCOut <= MEM1_SCOut;
 			MEM2_icache_valid_CI <= MEM1_icache_valid_CI;
 			MEM2_dcache_en <= MEM1_dcache_en;
+			MEM2_invalid <= MEM1_invalid;
 		end
 endmodule
 
