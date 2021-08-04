@@ -127,39 +127,46 @@ module mux7(
 endmodule
 
 module mux8(
-	GPR_RS, data_MEM1, data_MEM2, MUX8Sel,
-
+	GPR_RS, data_MEM1, data_MEM2, MUX8Sel, WD,
+	
 	out
 	);
-	input[31:0] GPR_RS, data_MEM1, data_MEM2;
+	input[31:0] GPR_RS, data_MEM1, data_MEM2, WD;
 	input[1:0] MUX8Sel;
 	output reg[31:0] out;
+	
 
-	always@(GPR_RS, data_MEM1, data_MEM2, MUX8Sel)
-		case(MUX8Sel)
-			2'b00:	out = GPR_RS;
-			2'b01:	out = data_MEM1;
-			default:out = data_MEM2;
-		endcase
-endmodule
+	always@(GPR_RS, data_MEM1, data_MEM2, MUX8Sel, WD)
+		if(MUX8Sel == 2'b00)
+			out = GPR_RS;
+		else 
+			case(MUX8Sel)
+				2'b10:	out = data_MEM1;
+				2'b11:	out = data_MEM2;
+				default: out = WD;
+			endcase
+endmodule 
 
 module mux9(
-	GPR_RT, data_MEM1, data_MEM2, MUX9Sel,
-
+	GPR_RT, data_MEM1, data_MEM2, MUX9Sel, WD,
+	
 	out
 	);
-	input[31:0] GPR_RT, data_MEM1, data_MEM2;
+	input[31:0] GPR_RT, data_MEM1, data_MEM2, WD;
 	input[1:0] MUX9Sel;
 	output reg[31:0] out;
+	
+	always@(GPR_RT, data_MEM1, data_MEM2, MUX9Sel, WD)
+		if(MUX9Sel == 2'b00)
+			out = GPR_RT;
+		else 
+			case(MUX9Sel)
+				2'b10:	out = data_MEM1;
+				2'b11:	out = data_MEM2;
+				default: out = WD;
+			endcase
 
-	always@(GPR_RT, data_MEM1, data_MEM2, MUX9Sel)
-		case(MUX9Sel)
-			2'b00:	out = GPR_RT;
-			2'b01:	out = data_MEM1;
-			default:out = data_MEM2;
-		endcase
-
-endmodule
+endmodule 
 
 module mux10(WB_MUX2Out, WB_DMOut, WB_MUX2Sel, MUX10Out);
 	input[31:0] WB_MUX2Out;

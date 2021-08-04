@@ -23,7 +23,7 @@ module rf(
 		else if(RFWr && Addr3 != 5'b0)
 			register[Addr3] <= WD;
 
-	assign RD1 = ((Addr1 == Addr3) && RFWr) ? WD : register[Addr1];
-	assign RD2 = ((Addr2 == Addr3) && RFWr) ? WD : register[Addr2];
+	assign RD1 = register[Addr1];
+	assign RD2 = register[Addr2];
 
 endmodule

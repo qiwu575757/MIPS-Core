@@ -1,13 +1,14 @@
 module bypass(
-	EX_RS, EX_RT, ID_RS, ID_RT,
+	ID_RS, ID_RT,
 	MEM1_RD, MEM2_RD, WB_RD,
 	MEM1_RFWr, MEM2_RFWr, WB_RFWr,
 	BJOp, dcache_stall,ALU1Op,MEM1_SC_signal,
+	EX_RFWr, EX_RD,
 
 	MUX4Sel, MUX5Sel, MUX8Sel, MUX9Sel
 	);
-	input MEM1_RFWr, MEM2_RFWr, WB_RFWr, BJOp;
-	input[4:0] ID_RS, ID_RT, EX_RS, EX_RT, MEM1_RD, MEM2_RD, WB_RD;
+	input MEM1_RFWr, MEM2_RFWr, WB_RFWr, EX_RFWr, BJOp;
+	input[4:0] ID_RS, ID_RT, MEM1_RD, MEM2_RD, WB_RD, EX_RD;
 	input dcache_stall;
 	input [4:0] ALU1Op;
 	input MEM1_SC_signal;
@@ -15,43 +16,46 @@ module bypass(
 	output reg[1:0] MUX4Sel, MUX5Sel;
 	output reg[1:0] MUX8Sel, MUX9Sel;
 
-	always@(*)
-		if(MEM1_RFWr && !MEM1_SC_signal &&(MEM1_RD != 5'd0) && (MEM1_RD == EX_RS))
-			MUX4Sel = 2'b01; 	// MEM bypath for RS
-		else if((MEM2_RFWr ) && (MEM2_RD != 5'd0) && (MEM2_RD == EX_RS))
-			MUX4Sel = 2'b10;	// WB bypath for RS
-		else if((WB_RFWr ) && (WB_RD != 5'd0) && (WB_RD == EX_RS))
-			MUX4Sel = 2'b11;
-		else
-			MUX4Sel = 2'b00;	// NO bypath for RS
 
-	always@(*)
-		if(MEM1_RFWr && !MEM1_SC_signal && (MEM1_RD != 5'd0) && (MEM1_RD == EX_RT))
-			MUX5Sel = 2'b01; 	// MEM bypath for RT
-		else if((MEM2_RFWr ) && (MEM2_RD != 5'd0) && (MEM2_RD == EX_RT))
-			MUX5Sel = 2'b10;	// WB bypath for RT
-		else if((WB_RFWr ) && (WB_RD != 5'd0) && (WB_RD == EX_RT))
-			MUX5Sel = 2'b11;
+	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, EX_RD)
+		if(EX_RFWr && (EX_RD == ID_RS))
+			MUX4Sel = 2'b01;		//EX->ID/MEM1->EX for RS
+		else if (MEM1_RFWr && (MEM1_RD == ID_RS))
+			MUX4Sel = 2'b10;		//MEM1->ID/MEM2->EX for RS
+		else if(MEM2_RFWr && (MEM2_RD == ID_RS))
+			MUX4Sel = 2'b11;		//MEM2->ID/WB->EX for RS
 		else
-			MUX5Sel = 2'b00;	// NO bypath for RT
+			MUX4Sel = 2'b00;		//NO bypass for RS
 
-	always@(*)
-		if (BJOp && MEM1_RFWr && !MEM1_SC_signal && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RS))
-			MUX8Sel = 2'b01;		//MEM bypath for RS
-		else if(BJOp && MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RS))
-			MUX8Sel = 2'b10;
+ 	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT, MEM1_RD, MEM2_RD, EX_RD)
+	 	if(EX_RFWr && (EX_RD == ID_RT))
+			MUX5Sel = 2'b01;		//EX->ID/MEM1->EX for RT
+		else if (MEM1_RFWr && (MEM1_RD == ID_RT))
+			MUX5Sel = 2'b10;		//MEM1->ID/MEM2->EX for RT
+		else if(MEM2_RFWr && (MEM2_RD == ID_RT))
+			MUX5Sel = 2'b11;		//MEM2->ID/WB->EX for RT
 		else
-			MUX8Sel = 2'b00;		//NO bypath for RS
+			MUX5Sel = 2'b00;		//NO bypass for RT
 
-	/*for movn movz and BJ*/
- 	always@(*)
-		if ((BJOp || ALU1Op==5'b01011) && MEM1_RFWr && !MEM1_SC_signal && (MEM1_RD != 5'd0) && (MEM1_RD == ID_RT))
-			MUX9Sel = 2'b01;		//MEM bypath for RT
-		else if((BJOp || ALU1Op==5'b01011) && MEM2_RFWr && (MEM2_RD != 5'd0) && (MEM2_RD == ID_RT))
-			MUX9Sel = 2'b10;
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RS))
+			MUX8Sel = 2'b10;		//MEM1->ID for RS
+		else if(MEM2_RFWr && (MEM2_RD == ID_RS))
+			MUX8Sel = 2'b11;		//MEM2->ID for RS
+		else if(WB_RFWr && (WB_RD == ID_RS))
+			MUX8Sel = 2'b01;		//WB->ID for RS
 		else
-			MUX9Sel = 0;		//NO bypath for RT
+			MUX8Sel = 2'b00;		//NO bypass for RS
 
+ 	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RT))
+			MUX9Sel = 2'b10;		//MEM1->ID for RT
+		else if(MEM2_RFWr && (MEM2_RD == ID_RT))
+			MUX9Sel = 2'b11;		//MEM2->ID for RT
+		else if(WB_RFWr && (WB_RD == ID_RT))
+			MUX9Sel = 2'b01;		//WB->ID for RT
+		else
+			MUX9Sel = 2'b00;		//NO bypass for RT
 endmodule
 
 module stall(
@@ -123,7 +127,6 @@ module stall(
 	wire 			stall_0;
 	wire 			stall_1;
 	wire 			stall_2;
-	wire 			stall_3;
 	wire 			data_stall;
 	wire 			WAIT;
 
@@ -132,11 +135,16 @@ module stall(
 	assign isStall=~PCWr;
 	assign data_ok = dCache_data_ok | ~MEM_dCache_en;
 
-	assign stall_0 = (EX_DMRd || EX_CP0Rd || EX_SC_signal) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
-	assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd || MEM1_SC_signal) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
-	assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd || MEM2_CP0Rd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT)  && (MEM2_RT != 5'b0));
-	assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (EX_RT != 5'b0);
-	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3;
+	//assign stall_0 = (EX_DMRd || EX_CP0Rd || EX_SC_signal || BJOp || ALU2Op==5'b01011) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
+	//assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd || MEM1_SC_signal) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
+	//assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT)  && (MEM2_RT != 5'b0));
+	//assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (EX_RT != 5'b0);
+
+	assign stall_0 = (EX_DMRd | EX_CP0Rd | BJOp | EX_SC_signal) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & EX_RFWr;
+	assign stall_1 = (MEM1_DMRd | BJOp&(MEM1_CP0Rd | MEM1_SC_signal)) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
+	assign stall_2 = (BJOp  & MEM2_DMRd ) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
+
+	assign data_stall = stall_0 | stall_1 | stall_2;
 	assign WAIT = MEM1_WAIT_OP & ~Interrupt;
 
 	always@( * )
