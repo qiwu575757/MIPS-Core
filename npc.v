@@ -1,90 +1,61 @@
 module npc(
-	IF_PC, Imm, EPC, ret_addr, NPCOp,
-	MEM1_eret_flush, MEM1_Exception,
-	MEM1_TLBRill_Exc,WB_TLB_flush,MEM2_PC,
-	PF_PC, WB_icache_valid_CI,Status_BEV,
-	Status_EXL,Cause_IV,Interrupt,
-	branch, target_addr, PF_Instr_Flush,
+	ret_addr, NPCOp, NPC_op00, NPC_op01, NPC_op10, flush_condition_00, flush_condition_01,
+	flush_condition_10, flush_condition_11, target_addr_final, 
+	ee, NPC_ee,
 
-	NPC, Instr_Flush
+	Instr_Flush, NPC
 	);
 
-	input [31:0] 	IF_PC;
-	input [31:0] 	PF_PC;
-	input [31:0] 	ret_addr;
-	input [31:0] 	EPC;
-	input [25:0] 	Imm;
-	input [1:0] 	NPCOp;
-	input 			MEM1_eret_flush;
-	input 			MEM1_Exception;
-	input 			MEM1_TLBRill_Exc;
-	input 			WB_TLB_flush;
-	input [31:0] 	MEM2_PC;
-	input			WB_icache_valid_CI;
-	input 			Status_BEV;
-	input 			Status_EXL;
-	input 			Cause_IV;
-	input 			Interrupt;
-	input			branch;
-	input [31:0]	target_addr;
-	input			PF_Instr_Flush;
+	input [31:0] 		ret_addr;
+	input [1:0] 		NPCOp;
+	input [31:0]		NPC_op00;
+    input [31:0] 		NPC_op01;
+    input [31:0] 		NPC_op10;
+    input 				flush_condition_00;
+    input 				flush_condition_01;
+    input 				flush_condition_10;
+    input 				flush_condition_11;
+	input [31:0]		target_addr_final;
+    input 				ee;
+    input [31:0] 		NPC_ee;
 
 	output reg [31:0] 	NPC;
-	output				Instr_Flush;	
-	wire  branch_error;
+	output 				Instr_Flush;
 
-	reg [31:0] NPC_temp;
+	reg [31:0] 			NPC_temp;
+	reg 				branch_error;
 
-	always@(*) begin
-		if (MEM1_eret_flush)
-			NPC = EPC;
-		else if (MEM1_Exception)	//use the standard mips structure
-		begin
-			if ( Interrupt )
-				case ({Status_BEV,Status_EXL,Cause_IV})
-					3'b000:		NPC = 32'h8000_0180;
-					3'b001:		NPC = 32'h8000_2000;
-					3'b100:		NPC = 32'hBFC0_0380;
-					3'b101:		NPC = 32'hBFC0_0400;
-					3'b010,3'b011:
-								NPC = 32'h8000_0180;
-					default:	NPC = 32'hBFC0_0380;
-				endcase
-			else if ( MEM1_TLBRill_Exc )
-				case ({Status_BEV,Status_EXL})
-					2'b00:		NPC = 32'h8000_0000;
-					2'b01:		NPC = 32'h8000_0180;
-					2'b10:		NPC = 32'hBFC0_0200;
-					2'b11:		NPC = 32'hBFC0_0380;
-				endcase
-			else
-				if ( ~Status_BEV )
-						NPC = 32'h8000_0180;
-				else
-						NPC = 32'hBFC0_0380;
+	always@(NPCOp, NPC_op00, NPC_op01, NPC_op10, ret_addr) begin
+			case(NPCOp)
+				2'b00:	NPC_temp = NPC_op00;								//sequential execution
+				2'b01:	NPC_temp = NPC_op01;								//branch
+				2'b10:	NPC_temp = NPC_op10;								//jump
+				default:NPC_temp = ret_addr;								//jump return
+			endcase
+	end
+
+	always@(ee, NPC_ee, branch_error, NPC_temp, target_addr_final) begin
+		if (ee) begin
+			NPC = NPC_ee;
 		end
-		else if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
-			NPC = MEM2_PC;
-		else if (branch_error)
+		else if (branch_error) begin
 			NPC = NPC_temp;
-		else if (branch && !PF_Instr_Flush)
-			NPC = target_addr;
-		else
-			NPC = PF_PC + 4;
+		end
+		else begin
+			NPC = target_addr_final;
+		end
 	end
 
-	always @(*) begin
-		case (NPCOp)
-			2'b00:	NPC_temp = IF_PC + 4;
-			2'b01:	NPC_temp = IF_PC + {{14{Imm[15]}},Imm[15:0],2'b00};
-			2'b10:	NPC_temp = { IF_PC[31:28],Imm[25:0],2'b00};
-			default: NPC_temp = ret_addr;
+	always@(NPCOp, flush_condition_00, flush_condition_01, flush_condition_10, flush_condition_11)
+		case(NPCOp)
+			2'b00:	branch_error = flush_condition_00;
+			2'b01:	branch_error = flush_condition_01;
+			2'b10:	branch_error = flush_condition_10;
+			default:branch_error = flush_condition_11;
 		endcase
-	end
 
-	assign branch_error = (NPC_temp != PF_PC) && !PF_Instr_Flush;
-	assign Instr_Flush = branch_error | MEM1_Exception | MEM1_eret_flush | WB_TLB_flush;
-
+	assign Instr_Flush = branch_error | ee;
+	
 endmodule
 
 

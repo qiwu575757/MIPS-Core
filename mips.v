@@ -129,9 +129,33 @@ module mips(
     wire            PF_IFWr;
     wire            PF_Flush;
     wire            PF_Instr_Flush;
+
+    wire [31:0]     NPC_op00;
+    wire [31:0]     NPC_op01;
+    wire [31:0]     NPC_op10;
+    wire            flush_condition_00;
+    wire            flush_condition_01;
+    wire            flush_condition_10;
+    wire            flush_condition_11;
+    wire [31:0]     target_addr_final;
+    wire            ee;
+    wire [31:0]     NPC_ee;
+
+    wire [31:0]     NPC_op00_reg;
+    wire [31:0]     NPC_op01_reg;
+    wire [31:0]     NPC_op10_reg;
+    wire            flush_condition_00_reg;
+    wire            flush_condition_01_reg;
+    wire            flush_condition_10_reg;
+    wire            flush_condition_11_reg;
+    wire [31:0]     target_addr_final_reg;
+    wire            ee_reg;
+    wire [31:0]     NPC_ee_reg;
+
+    wire[31:0]      ret_addr_reg;
+    wire[1:0]       NPCOp_reg;
 	//--------------IF----------------//
     wire            IF_AdEL;
-    wire[31:0]      NPC;
     wire[31:0]      IF_PC;
     wire[31:0]      PPC;
 
@@ -533,10 +557,18 @@ module mips(
 /**************DATA PATH***************/
     //--------------PF----------------//
 PC U_PC (
-    .clk(clk),.rst(rst),.PCWr(PCWr),.PC_Flush(PC_Flush),
-    .NPC(NPC),.Instr_Flush(Instr_Flush),
+        .clk(clk), .rst(rst), .wr(PCWr), .flush(PC_Flush),
+		.ret_addr(MUX8Out),.NPCOp(NPCOp), .NPC_op00(NPC_op00), .NPC_op01(NPC_op01), .NPC_op10(NPC_op10),
+        .flush_condition_00(flush_condition_00), .flush_condition_01(flush_condition_01),
+        .flush_condition_10(flush_condition_10), .flush_condition_11(flush_condition_11),
+        .target_addr_final(target_addr_final), .ee(ee), .NPC_ee(NPC_ee),
 
-	.PF_PC(PF_PC),.PF_Instr_Flush(PF_Instr_Flush)
+		.ret_addr_reg(ret_addr_reg),.NPCOp_reg(NPCOp_reg), .NPC_op00_reg(NPC_op00_reg), 
+        .NPC_op01_reg(NPC_op01_reg), .NPC_op10_reg(NPC_op10_reg),
+        .flush_condition_00_reg(flush_condition_00_reg), .flush_condition_01_reg(flush_condition_01_reg),
+        .flush_condition_10_reg(flush_condition_10_reg), .flush_condition_11_reg(flush_condition_11_reg),
+        .target_addr_final_reg(target_addr_final_reg), 
+        .ee_reg(ee_reg), .NPC_ee_reg(NPC_ee_reg)
 );
 
 instr_fetch_pre U_INSTR_FETCH(
@@ -550,6 +582,38 @@ instr_fetch_pre U_INSTR_FETCH(
     PF_valid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
     PF_uncache_valid, IF_PC_invalid
     );
+
+branch_predict_prep U_BRANCH_PREDICT_PREP(
+    .IF_PC(IF_PC),
+    .PF_PC(PF_PC),
+    .Imm(ID_Instr[25:0]),
+    .PF_Instr_Flush(PF_Instr_Flush),
+    .ret_addr(MUX8Out),
+    .branch(branch),
+    .target_addr(target_addr),
+    .MEM1_Exception(MEM1_Exception),
+    .MEM1_eret_flush(MEM1_eret_flush),
+    .EPC(EPCOut),
+    .Interrupt(Interrupt),
+    .Status_BEV(Status_BEV),
+    .Status_EXL(Status_EXL),
+    .Cause_IV(Cause_IV),
+    .MEM1_TLBRill_Exc(MEM1_TLBRill_Exc),
+    .WB_TLB_flush(WB_TLB_flush),
+    .WB_icache_valid_CI(WB_icache_valid_CI),
+    .MEM2_PC(MEM2_PC),
+
+    .NPC_op00(NPC_op00),
+    .NPC_op01(NPC_op01),
+    .NPC_op10(NPC_op10),
+    .flush_condition_00(flush_condition_00),
+    .flush_condition_01(flush_condition_01),
+    .flush_condition_10(flush_condition_10),
+    .flush_condition_11(flush_condition_11),
+    .target_addr_final(target_addr_final),
+    .ee(ee),
+    .NPC_ee(NPC_ee)
+);
 
 icache U_ICACHE(
 	.clk(clk), .resetn(rst), .exception(MEM1_Exception || MEM1_eret_flush || IF_TLB_Exc), .stall(isStall),
@@ -1022,14 +1086,13 @@ tlb U_TLB(
 );
 
 npc U_NPC(
-		.IF_PC(IF_PC),.Imm(ID_Instr[25:0]),.ret_addr(MUX8Out),.NPCOp(NPCOp),
-		.EPC(EPCOut),.MEM1_eret_flush(MEM1_eret_flush),.MEM1_Exception(MEM1_Exception),
-        .MEM1_TLBRill_Exc(MEM1_TLBRill_Exc),.WB_TLB_flush(WB_TLB_flush),.MEM2_PC(MEM2_PC),
-        .PF_PC(PF_PC), .WB_icache_valid_CI(WB_icache_valid_CI),.Status_BEV(Status_BEV),
-        .Status_EXL(Status_EXL),.Cause_IV(Cause_IV),.Interrupt(Interrupt),
-        .branch(branch), .target_addr(target_addr), .PF_Instr_Flush(PF_Instr_Flush),
+		.ret_addr(ret_addr_reg), .NPCOp(NPCOp_reg), .NPC_op00(NPC_op00_reg), .NPC_op01(NPC_op01_reg),
+        .NPC_op10(NPC_op10_reg), .flush_condition_00(flush_condition_00_reg), 
+        .flush_condition_01(flush_condition_01_reg), .flush_condition_10(flush_condition_10_reg),
+        .flush_condition_11(flush_condition_11_reg),.target_addr_final(target_addr_final_reg),
+        .ee(ee_reg), .NPC_ee(NPC_ee_reg),
 
-		.NPC(NPC), .Instr_Flush(Instr_Flush)
+		.NPC(PF_PC), .Instr_Flush(PF_Instr_Flush)
 	);
 
 flush U_FLUSH(

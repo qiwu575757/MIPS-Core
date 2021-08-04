@@ -83,6 +83,94 @@ module instr_fetch_pre(
 
 endmodule
 
+module branch_predict_prep(
+    input [31:0]    IF_PC,
+    input [31:0]    PF_PC,
+    input [25:0]    Imm,
+    input           PF_Instr_Flush,
+    input [31:0]    ret_addr,
+    input           branch,
+    input [31:0]    target_addr,
+    input           MEM1_Exception,
+    input           MEM1_eret_flush,
+    input [31:0]    EPC,
+    input           Interrupt,
+    input           Status_BEV,
+    input           Status_EXL,
+    input           Cause_IV,
+    input           MEM1_TLBRill_Exc,
+    input           WB_TLB_flush,
+    input           WB_icache_valid_CI,
+    input [31:0]    MEM2_PC,
+
+    output [31:0]   NPC_op00,
+    output [31:0]   NPC_op01,
+    output [31:0]   NPC_op10,
+    output          flush_condition_00,
+    output          flush_condition_01,
+    output          flush_condition_10,
+    output          flush_condition_11,
+    output [31:0]   target_addr_final,
+    output          ee,
+    output reg[31:0]NPC_ee
+);
+    wire[31:0] IF_PC_add4;
+    wire[31:0] PF_PC_add4;
+    wire branch_signal;
+    //wire npc_condition;
+
+    assign IF_PC_add4 = IF_PC + 4;
+    assign PF_PC_add4 = PF_PC + 4;
+    assign NPC_op00 =  IF_PC_add4;
+    assign NPC_op01 = IF_PC + {{14{Imm[15]}},Imm[15:0],2'b00} ;
+    assign NPC_op10 = {IF_PC[31:28],Imm[25:0],2'b00} ;
+
+    //assign npc_condition = (PF_predict && PF_PC != IF_PC_add4); 
+    
+    assign flush_condition_00 = (NPC_op00 != PF_PC) && !PF_Instr_Flush;
+    assign flush_condition_01 = (NPC_op01 != PF_PC) && !PF_Instr_Flush;
+    assign flush_condition_10 = (NPC_op10 != PF_PC) && !PF_Instr_Flush;
+    assign flush_condition_11 = (ret_addr != PF_PC) && !PF_Instr_Flush;
+
+    assign branch_signal = (branch && !PF_Instr_Flush);
+
+    assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
+
+    assign ee = MEM1_Exception | MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI;
+    always@(*) begin
+		if (MEM1_eret_flush)
+			NPC_ee = EPC;
+		else if (MEM1_Exception)	//use the standard mips structure
+		begin
+			if ( Interrupt )
+				case ({Status_BEV,Status_EXL,Cause_IV})
+					3'b000:		NPC_ee = 32'h8000_0180;
+					3'b001:		NPC_ee = 32'h8000_2000;
+					3'b100:		NPC_ee = 32'hBFC0_0380;
+					3'b101:		NPC_ee = 32'hBFC0_0400;
+					3'b010,3'b011:
+								NPC_ee = 32'h8000_0180;
+					default:	NPC_ee = 32'hBFC0_0380;
+				endcase
+			else if ( MEM1_TLBRill_Exc )
+				case ({Status_BEV,Status_EXL})
+					2'b00:		NPC_ee = 32'h8000_0000;
+					2'b01:		NPC_ee = 32'h8000_0180;
+					2'b10:		NPC_ee = 32'hBFC0_0200;
+					2'b11:		NPC_ee = 32'hBFC0_0380;
+				endcase
+			else
+				if ( ~Status_BEV )
+						NPC_ee = 32'h8000_0180;
+				else
+						NPC_ee = 32'hBFC0_0380;
+		end
+		else //if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
+			NPC_ee = MEM2_PC;
+	end
+
+endmodule
+
 module ex_prep(
     input [1:0]     EX_NPCOp,
     input [25:0]    EX_Imm26,

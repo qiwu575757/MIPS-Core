@@ -1,32 +1,69 @@
 `include "MacroDef.v"
 
-module PC (
-	clk,rst,PCWr,PC_Flush,
-	NPC,Instr_Flush,
+module PC(
+		input 				clk,
+		input 				rst,
+		input 				wr,
+		input 				flush,
 
-	PF_PC,PF_Instr_Flush
+		input [31:0] 		ret_addr,
+		input [1:0] 		NPCOp,
+		input [31:0] 		NPC_op00,
+    	input [31:0] 		NPC_op01,
+    	input [31:0] 		NPC_op10,
+    	input 				flush_condition_00,
+    	input 				flush_condition_01,
+    	input 				flush_condition_10,
+    	input 				flush_condition_11,
+    	input [31:0] 		target_addr_final,
+    	input 				ee,
+    	input [31:0] 		NPC_ee,
+
+		output reg [31:0] 	ret_addr_reg,
+		output reg [1:0] 	NPCOp_reg,
+		output reg [31:0] 	NPC_op00_reg,
+    	output reg [31:0] 	NPC_op01_reg,
+    	output reg [31:0] 	NPC_op10_reg,
+    	output reg 			flush_condition_00_reg,
+    	output reg 			flush_condition_01_reg,
+    	output reg 			flush_condition_10_reg,
+    	output reg 			flush_condition_11_reg,
+    	output reg [31:0] 	target_addr_final_reg,
+    	output reg 			ee_reg,
+    	output reg [31:0] 	NPC_ee_reg
+
 );
-	input 			clk;
-	input 			rst;
-	input 			PCWr;
-	input			PC_Flush;
-	input [31:0]	NPC;
-	input [1:0]		Instr_Flush;
 
-	output reg[31:0]PF_PC;
-	output reg		PF_Instr_Flush;
 
-	always @(posedge clk) begin
-		if(!rst | PC_Flush)begin
-			PF_PC <= 32'hbfc0_0000;
-			PF_Instr_Flush <= 1'b0;
+	always@(posedge clk)
+		if(!rst || flush) begin
+			ret_addr_reg <= 32'd0;
+			NPCOp_reg <= 2'b00;
+			NPC_op00_reg <= 32'hbfc0_0000;
+    		NPC_op01_reg <= 32'd0;
+    		NPC_op10_reg <= 32'd0;
+    		flush_condition_00_reg <= 1'b1;
+    		flush_condition_01_reg <= 1'b0;
+    		flush_condition_10_reg <= 1'b0;
+    		flush_condition_11_reg <= 1'b0;
+    		target_addr_final_reg <= 32'd0;
+    		ee_reg <= 1'b0;
+    		NPC_ee_reg <= 32'd0;
 		end
-		else if ( PCWr ) begin
-			PF_PC <= NPC;
-			PF_Instr_Flush <= Instr_Flush;
+		else if(wr) begin
+			ret_addr_reg <= ret_addr;
+			NPCOp_reg <= NPCOp;
+			NPC_op00_reg <= NPC_op00;
+    		NPC_op01_reg <= NPC_op01;
+    		NPC_op10_reg <= NPC_op10;
+    		flush_condition_00_reg <= flush_condition_00;
+    		flush_condition_01_reg <= flush_condition_01;
+    		flush_condition_10_reg <= flush_condition_10;
+    		flush_condition_11_reg <= flush_condition_11;
+    		target_addr_final_reg <= target_addr_final;
+    		ee_reg <= ee;
+    		NPC_ee_reg <= NPC_ee;
 		end
-	end
-
 endmodule
 
 module PF_IF(
