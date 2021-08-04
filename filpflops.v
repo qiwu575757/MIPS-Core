@@ -142,6 +142,7 @@ module ID_EX(
 	LoadOp,StoreOp,LL_signal,SC_signal,icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,
 	ID_WAIT_OP, 
 	ID_BrType, ID_JType, ID_NPCOp, MUX7Sel, ID_Imm26, 
+	MUX4Sel, MUX5Sel,
 
 	EX_eret_flush, EX_CP0WrEn, EX_Exception, EX_ExcCode, EX_isBD, EX_isBranch, EX_RHLSel_Rd,
 	EX_DMWr, EX_DMRd, EX_MUX3Sel, EX_ALU1Sel, EX_RFWr, EX_RHLWr, EX_ALU2Op, EX_MUX1Sel, EX_RHLSel_Wr,
@@ -150,7 +151,8 @@ module ID_EX(
 	EX_MUX12Sel,EX_tlb_searchen,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,
 	EX_StoreOp,EX_LL_signal,EX_SC_signal, EX_icache_valid_CI, EX_icache_op_CI, EX_dcache_valid_CI,
 	EX_dcache_op_CI,EX_WAIT_OP,
-	EX_BrType, EX_JType, EX_NPCOp, EX_MUX7Sel, EX_Imm26, EX_stall
+	EX_BrType, EX_JType, EX_NPCOp, EX_MUX7Sel, EX_Imm26, EX_stall,
+	EX_MUX4Sel, EX_MUX5Sel
 );
 	input 			clk;
 	input 			rst;
@@ -209,6 +211,8 @@ module ID_EX(
 	input [1:0]		ID_NPCOp;
 	input			MUX7Sel;
 	input [25:0]	ID_Imm26;
+	input [1:0]		MUX4Sel;
+	input [1:0]		MUX5Sel;
 
 	output reg 		EX_eret_flush;
 	output reg 		EX_CP0WrEn;
@@ -264,6 +268,9 @@ module ID_EX(
 	output reg 		EX_MUX7Sel;
 	output reg [25:0]EX_Imm26;
 	output reg 		EX_stall;
+	output reg [1:0]EX_MUX4Sel;
+	output reg [1:0]EX_MUX5Sel;
+
 
 	always@(posedge clk)
 		if(!rst || ID_Flush) begin
@@ -321,6 +328,8 @@ module ID_EX(
 			EX_MUX7Sel <= 1'b0;
 			EX_Imm26 <= 26'd0;
 			EX_stall <= 1'b0;
+			EX_MUX4Sel <= 2'b00;
+			EX_MUX5Sel <= 2'b00;
 		end
 		else if(ID_EXWr)
 		begin
@@ -378,6 +387,8 @@ module ID_EX(
 			EX_Imm26 <= ID_Imm26;
 			EX_NPCOp <= ID_NPCOp;
 			EX_stall <= 1'b0;
+			EX_MUX4Sel <= MUX4Sel;
+			EX_MUX5Sel <= MUX5Sel;
 		end
 		else 
 			EX_stall <= 1'b1;
@@ -389,7 +400,7 @@ module EX_MEM1(
         CP0Addr, CP0Rd, EX_dcache_en, Overflow,EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel,
 		EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,EX_StoreOp,
 		MULOut,EX_start,Trap,EX_LL_signal,EX_SC_signal, EX_icache_valid_CI, EX_icache_op_CI,
-		EX_dcache_valid_CI, EX_dcache_op_CI,EX_WAIT_OP,
+		EX_dcache_valid_CI, EX_dcache_op_CI,EX_WAIT_OP, 
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode,
         MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_RHLOut, MEM1_ALU1Out, MEM1_GPR_RT,
