@@ -120,7 +120,7 @@
 		end
 		else if (Cpu_Op && !IF_Flush) begin
 			ID_Exception <= 1'b1;
-			ID_ExcCode <= `Cpu;
+			ID_ExcCode <= `Cpu;//对于Cpu异常的理解不够深刻，可能存在其他问题
 		end
 		else if (OP == `R_type && Funct == `break) begin
 			ID_Exception <= 1'b1;
@@ -240,7 +240,7 @@
 		case (OP)
 			6'b000010: ID_JType = 2'b01;				/* J */
 			6'b000011: ID_JType = 2'b01;				/* JAL */
-			6'b000000: 
+			6'b000000:
 			case (Funct)
 				6'b001000: ID_JType = 2'b10;			/* JR */
 				6'b001001: ID_JType = 2'b10;			/* JALR */
@@ -255,7 +255,7 @@
 			6'b000011: ID_BrType = 2'b11;		//JAL
 			6'b000100,						//BEQ
 			6'b000101: ID_BrType = 2'b10;		//BNE
-			6'b000001: 
+			6'b000001:
 			case (rt)
 				5'b00001,					//BGEZ
 				5'b00000: ID_BrType = 2'b10;	//BLTZ
@@ -268,7 +268,7 @@
 			6'b000111: ID_BrType = 2'b10;		//BGTZ
 			6'b000000:
 			case (Funct)
-				6'b001000: 
+				6'b001000:
 				if (rs == 5'd31)
 					ID_BrType = 2'b01;	//JR $31
 				else
@@ -998,6 +998,9 @@
 					Cpu_Op <= 1'b1;
 				else
 					Cpu_Op <= 1'b0;
+			6'b110101,6'b111101,6'b110001,6'b111001,6'b010001:
+			//LDC1A,SDC1A,LWC1,SWC1,COP1
+				Cpu_Op <= 1'b1;
 
 			default: Cpu_Op <= 1'b0;
 		endcase

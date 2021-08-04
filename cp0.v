@@ -43,7 +43,7 @@ module CP0(
     clk, rst, CP0WrEn, addr, data_in, MEM1_Exception, MEM1_eret_flush,
     MEM1_isBD,ext_int_in, MEM1_ExcCode, MEM1_PC,EntryLo0_Wren,
     EntryLo1_Wren,Index_Wren,MEM1_TLB_Exc,MEM1_badvaddr,EntryLo0_in,
-    EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,
+    EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,Cause_CE_Wr,
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
@@ -71,6 +71,7 @@ module CP0(
     input [31:0]    EntryLo0_in;
     input [31:0]    EntryLo1_in;
     input [31:0]    Index_in;
+    input           Cause_CE_Wr;
 
     output [31:0]   data_out;
     output [31:0]   EPC_out;
@@ -260,10 +261,10 @@ assign data_out =
             Config1[31]     <= 1'b0;//indicate that don't implement the Config2 reg
             Config1[30:25]  <= 6'h15;
             Config1[24:22]  <= 3'h0;
-            Config1[21:19]  <= 3'h5;
+            Config1[21:19]  <= 3'h0;//5-->icache
             Config1[18:16]  <= 3'h1;
             Config1[15:13]  <= 3'h0;
-            Config1[12:10]  <= 3'h5;
+            Config1[12:10]  <= 3'h0;//5-->dcache
             Config1[9:7]    <= 3'h1;
             Config1[6:0]    <= 7'b0;//the Config1[3] = 0 indicates that don't implement the Watch reg
         end
@@ -326,10 +327,12 @@ assign data_out =
             `status_cu0 <= data_in[28];
     end
 
-    //Status
+    //Status,implement the bev but don't implement the cause_iv
     always @(posedge clk) begin
         if (!rst)
             `status_bev <= 1'b1;
+        else if (CP0WrEn && addr == `Status_index)
+            `status_bev <= data_in[22];
     end
 
     //Status
@@ -396,12 +399,11 @@ assign data_out =
     end
 
     //Cause
-    //---------> 29:28似乎可以不用实现
     always @(posedge clk) begin
         if (!rst)
             `cause_ce <= 2'b0;
-        // else if (MEM1_Exception)
-        //     `cause_ce <= data_in[9:8];
+        else if (Cause_CE_Wr)
+             `cause_ce <= 2'b01;
     end
 
     //Cause-------> 23

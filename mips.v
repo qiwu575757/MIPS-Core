@@ -209,7 +209,7 @@ module mips(
 
     wire            branch;
     wire [31:0]     target_addr;
-    wire            IF_PC_invalid;  
+    wire            IF_PC_invalid;
     //--------------ID----------------//
     wire [31:0]     ID_PC;
     wire [31:0]     ID_Instr;
@@ -426,6 +426,7 @@ module mips(
     wire            Status_EXL;
     wire            Cause_IV;
     wire            MEM1_WAIT_OP;
+    wire            Cause_CE_Wr;
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -563,11 +564,11 @@ PC U_PC (
         .flush_condition_10(flush_condition_10), .flush_condition_11(flush_condition_11),
         .target_addr_final(target_addr_final), .ee(ee), .NPC_ee(NPC_ee),
 
-		.ret_addr_reg(ret_addr_reg),.NPCOp_reg(NPCOp_reg), .NPC_op00_reg(NPC_op00_reg), 
+		.ret_addr_reg(ret_addr_reg),.NPCOp_reg(NPCOp_reg), .NPC_op00_reg(NPC_op00_reg),
         .NPC_op01_reg(NPC_op01_reg), .NPC_op10_reg(NPC_op10_reg),
         .flush_condition_00_reg(flush_condition_00_reg), .flush_condition_01_reg(flush_condition_01_reg),
         .flush_condition_10_reg(flush_condition_10_reg), .flush_condition_11_reg(flush_condition_11_reg),
-        .target_addr_final_reg(target_addr_final_reg), 
+        .target_addr_final_reg(target_addr_final_reg),
         .ee_reg(ee_reg), .NPC_ee_reg(NPC_ee_reg)
 );
 
@@ -885,7 +886,7 @@ CP0 U_CP0(
 		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
     	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),
         .MEM1_TLB_Exc(MEM1_TLB_Exc),.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),
-        .Index_in({!s1_found,27'b0,s1_index}),
+        .Index_in({!s1_found,27'b0,s1_index}),.Cause_CE_Wr(Cause_CE_Wr),
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
 		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),
@@ -925,7 +926,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
         MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
         MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
         MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid, MEM1_DMen,
-        MEM1_wdata,MEM1_SCOut
+        MEM1_wdata,MEM1_SCOut,Cause_CE_Wr
 	);
 
 dcache U_DCACHE(.clk(clk), .resetn(rst), .DMen(MEM2_dcache_en), .stall(~(IF_data_ok&MEM_unCache_data_ok)),
@@ -1087,7 +1088,7 @@ tlb U_TLB(
 
 npc U_NPC(
 		.ret_addr(ret_addr_reg), .NPCOp(NPCOp_reg), .NPC_op00(NPC_op00_reg), .NPC_op01(NPC_op01_reg),
-        .NPC_op10(NPC_op10_reg), .flush_condition_00(flush_condition_00_reg), 
+        .NPC_op10(NPC_op10_reg), .flush_condition_00(flush_condition_00_reg),
         .flush_condition_01(flush_condition_01_reg), .flush_condition_10(flush_condition_10_reg),
         .flush_condition_11(flush_condition_11_reg),.target_addr_final(target_addr_final_reg),
         .ee(ee_reg), .NPC_ee(NPC_ee_reg),

@@ -125,8 +125,8 @@ module branch_predict_prep(
     assign NPC_op01 = IF_PC + {{14{Imm[15]}},Imm[15:0],2'b00} ;
     assign NPC_op10 = {IF_PC[31:28],Imm[25:0],2'b00} ;
 
-    //assign npc_condition = (PF_predict && PF_PC != IF_PC_add4); 
-    
+    //assign npc_condition = (PF_predict && PF_PC != IF_PC_add4);
+
     assign flush_condition_00 = (NPC_op00 != PF_PC) && !PF_Instr_Flush;
     assign flush_condition_01 = (NPC_op01 != PF_PC) && !PF_Instr_Flush;
     assign flush_condition_10 = (NPC_op10 != PF_PC) && !PF_Instr_Flush;
@@ -208,7 +208,7 @@ module mem1_cache_prep(
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata,MEM1_SCOut
+    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr
     );
     input           clk;
     input           rst;
@@ -259,6 +259,7 @@ module mem1_cache_prep(
     output          MEM1_DMen;
     output reg [31:0] MEM1_wdata;
     output [31:0]   MEM1_SCOut;
+    output          Cause_CE_Wr;
 
     wire data_mapped;
     wire valid;
@@ -354,6 +355,8 @@ module mem1_cache_prep(
 		    MEM1_Exception <= Temp_M1_Exception;
 		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
 		end
+
+    assign Cause_CE_Wr = MEM1_ExcCode==`Cpu;
 
     /* dcache control signal*/
     assign DMWen_dcache = MEM1_DMWr & !Temp_M1_Exception & !MEM1_eret_flush &
