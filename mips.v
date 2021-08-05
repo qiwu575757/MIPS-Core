@@ -456,7 +456,6 @@ module mips(
 	wire            MEM2_TLB_flush;
     wire [1:0]      MEM2_LoadOp;
     wire [31:0]     MEM2_wdata;
-    wire            MEM2_can_go;
     wire [31:0]     MEM2_SCOut;
     wire            MEM2_icache_valid_CI;
     wire            MEM2_invalid;  
@@ -828,10 +827,10 @@ mux5 U_MUX5(
 	);
 
 bridge_RHL U_ALU2(
-		.aclk(clk),.aresetn(rst),.A(MUX4Out),.B(MUX5Out),.ALU2Op(EX_ALU2Op),.start(EX_start&~EX_Exception),
-		.EX_RHLWr(EX_RHLWr&~EX_Exception), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
+		.aclk(clk),.aresetn(rst),.A(MUX4Out),.B(MUX5Out),.ALU2Op(EX_ALU2Op),.start(EX_start),
+		.EX_RHLWr(EX_RHLWr), .EX_RHLSel_Wr(EX_RHLSel_Wr), .EX_RHLSel_Rd(EX_RHLSel_Rd),
 		.MEM_Exception(MEM1_Exception), .MEM_eret_flush(MEM1_eret_flush),
-        .dcache_stall(dcache_stall),
+        .dcache_stall(dcache_stall), .EX_Exception(EX_Exception), .WAIT(MEM1_WAIT_OP),
 
 		.isBusy(EX_isBusy),.RHLOut(RHLOut),.MULOut(MULOut),.MUL_sign(MUL_sign)
 	);
@@ -1103,7 +1102,7 @@ npc U_NPC(
 
 flush U_FLUSH(
         .MEM1_eret_flush(MEM1_eret_flush),.MEM1_Exception(MEM1_Exception),
-        .can_go(MEM2_can_go),
+        .can_go(MEM_data_ok),
 
         .PC_Flush(PC_Flush),.PF_Flush(PF_Flush),.IF_Flush(IF_Flush),
         .ID_Flush(ID_Flush),.EX_Flush(EX_Flush),.MEM1_Flush(MEM1_Flush),
@@ -1127,14 +1126,14 @@ stall U_STALL(
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
 		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .isbusy(EX_isBusy), .RHL_visit(RHL_visit),.iCache_data_ok(IF_data_ok),.dCache_data_ok(MEM_data_ok),
-        .MEM_dCache_en(MEM2_DMen),.MEM1_cache_sel(MEM1_cache_sel), .MEM_dCache_addr_ok(MEM_dCache_addr_ok),
-        .MEM1_dCache_en(MEM1_dcache_valid | MEM1_dcache_valid_CI),.ID_tlb_searchen(ID_tlb_searchen),.EX_CP0WrEn(EX_CP0WrEn),
-        .MUL_sign(MUL_sign),.ALU2Op(EX_ALU2Op),.EX_SC_signal(EX_SC_signal),.MEM1_SC_signal(MEM1_SC_signal),
-        .MEM1_WAIT_OP(MEM1_WAIT_OP),.Interrupt(Interrupt),
+        .MEM_dCache_en(MEM2_DMen),.MEM1_cache_sel(MEM1_cache_sel),
+        .MEM1_dCache_en(MEM1_dcache_valid | MEM1_dcache_valid_CI),.ID_tlb_searchen(ID_tlb_searchen),
+        .EX_CP0WrEn(EX_CP0WrEn), .MUL_sign(MUL_sign), .EX_SC_signal(EX_SC_signal),
+        .MEM1_SC_signal(MEM1_SC_signal), .MEM1_WAIT_OP(MEM1_WAIT_OP), .Interrupt(Interrupt),
 
 		.PCWr(PCWr), .IF_IDWr(IF_IDWr), .MUX7Sel(MUX7Sel),.icache_stall(icache_stall),.isStall(isStall),
 		.dcache_stall(dcache_stall), .ID_EXWr(ID_EXWr), .EX_MEM1Wr(EX_MEM1Wr), .MEM1_MEM2Wr(MEM1_MEM2Wr),
-        .MEM2_WBWr(MEM2_WBWr),.data_ok(MEM2_can_go),.PF_IFWr(PF_IFWr)
+        .MEM2_WBWr(MEM2_WBWr),.PF_IFWr(PF_IFWr)
 	);
 
 axi_sram_bridge U_AXI_SRAM_BRIDGE(

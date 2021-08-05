@@ -585,6 +585,7 @@
 					`madd:	RHL_visit <= 1'b1;
 					`msub:	RHL_visit <= 1'b1;
 					`msubu:	RHL_visit <= 1'b1;
+					`mul:	RHL_visit <= 1'b1;
 					default:RHL_visit <= 1'b0;
 				endcase
 			default: RHL_visit <= 1'b0;
@@ -984,6 +985,7 @@
 	always @(*) begin
 		case (OP)
 			6'b010010:
+			//6'b010001,6'b010010:
 				case ( rs )
 					5'b01000:
 						Cpu_Op <= 1'b1;
@@ -999,6 +1001,7 @@
 				else
 					Cpu_Op <= 1'b0;
 			6'b110101,6'b111101,6'b110001,6'b111001,6'b010001:
+			//6'b110101,6'b111101,6'b110001,6'b111001:
 			//LDC1A,SDC1A,LWC1,SWC1,COP1
 				Cpu_Op <= 1'b1;
 
