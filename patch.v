@@ -136,9 +136,7 @@ module branch_predict_prep(
 
     assign ee = MEM1_Exception |( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI);
     always@(*) begin
-		if (MEM1_eret_flush)
-			NPC_ee = EPC;
-		else if (MEM1_Exception)	//use the standard mips structure
+		if (MEM1_Exception)	//use the standard mips structure
 		begin
 			if ( Interrupt )
 				case ({Status_BEV,Status_EXL,Cause_IV})
@@ -164,7 +162,7 @@ module branch_predict_prep(
 						NPC_ee = 32'hBFC0_0380;
 		end
 		else //if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
-			NPC_ee = MEM2_PC;
+			NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
 	end
 
 endmodule

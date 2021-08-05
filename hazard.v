@@ -127,7 +127,10 @@ module stall(
 	wire 			stall_0;
 	wire 			stall_1;
 	wire 			stall_2;
+	wire 			stall_3;	
+	wire 			stall_4;			
 	wire 			data_stall;
+	wire 			whole_stall;
 	wire 			WAIT;
 
 	assign addr_ok = MEM1_cache_sel | MEM_dCache_addr_ok;
@@ -145,8 +148,11 @@ module stall(
 	assign stall_0 = (EX_DMRd | EX_CP0Rd | BJOp | EX_SC_signal) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & EX_RFWr;
 	assign stall_1 = (MEM1_DMRd | BJOp&(MEM1_CP0Rd | MEM1_SC_signal)) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
 	assign stall_2 = (BJOp  & MEM2_DMRd ) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
+	assign stall_3 = ID_tlb_searchen && EX_CP0WrEn;
+	assign stall_4 = isbusy && RHL_visit;
 
-	assign data_stall = stall_0 | stall_1 | stall_2;
+	assign data_stall = stall_0 | stall_1 | stall_2 | stall_3 | stall_4;
+	assign whole_stall = dcache_stall | WAIT | (ALU2Op==4'b1000 & isbusy);
 	assign WAIT = MEM1_WAIT_OP & ~Interrupt;
 
 	always@( * )
@@ -160,7 +166,7 @@ module stall(
 			MEM2_WBWr = data_ok;
 			MUX7Sel = 1'b0;
 		end
-		else if(dcache_stall || WAIT) begin
+		else if(whole_stall) begin
 			PCWr = 1'b0;
 			PF_IFWr = 1'b0;
 			IF_IDWr = 1'b0;
@@ -168,36 +174,6 @@ module stall(
 			EX_MEM1Wr =1'b0;
 			MEM1_MEM2Wr = 1'b0;
 			MEM2_WBWr = 1'b0;
-			MUX7Sel = 1'b1;
-		end
-		else if(isbusy && RHL_visit ) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
-			MUX7Sel = 1'b1;
-		end
-		else if (MUL_sign || (ALU2Op==4'b1000 & isbusy)) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b0;
-			EX_MEM1Wr =1'b0;
-			MEM1_MEM2Wr = 1'b0;
-			MEM2_WBWr = 1'b0;
-			MUX7Sel = 1'b1;
-		end
-		else if (ID_tlb_searchen && EX_CP0WrEn) begin
-			PCWr = 1'b0;
-			PF_IFWr = 1'b0;
-			IF_IDWr = 1'b0;
-			ID_EXWr = 1'b1;
-			EX_MEM1Wr =1'b1;
-			MEM1_MEM2Wr = 1'b1;
-			MEM2_WBWr = 1'b1;
 			MUX7Sel = 1'b1;
 		end
 		else if(data_stall) begin
