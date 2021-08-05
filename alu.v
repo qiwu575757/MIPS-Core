@@ -71,172 +71,172 @@ module alu1(
         case (ALU1Op)
             5'b10001://teq,teqi
                 if (Trap_Equal)
-                    Trap <= 1'b1;
+                    Trap = 1'b1;
                 else
-                    Trap <= 1'b0;
+                    Trap = 1'b0;
             5'b10010,5'b10011://tge,tgei,tgeu,tgeiu
                 if (~Trap_Less)
-                    Trap <= 1'b1;
+                    Trap = 1'b1;
                 else
-                    Trap <= 1'b0;
+                    Trap = 1'b0;
             5'b10100,5'b10101://tlt,tlti,tltu,tltiu
                 if (Trap_Less)
-                    Trap <= 1'b1;
+                    Trap = 1'b1;
                 else
-                    Trap <= 1'b0;
+                    Trap = 1'b0;
             5'b10110://tne,tnei
                 if (~Trap_Equal)
-                    Trap <= 1'b1;
+                    Trap = 1'b1;
                 else
-                    Trap <= 1'b0;
+                    Trap = 1'b0;
 
-            default:Trap <= 1'b0;
+            default:Trap = 1'b0;
         endcase
     end
 
     always@(A) begin
-        casex (A)
-            32'b0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd0;
-            32'b10xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd1;
-            32'b110xxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd2;
-            32'b1110xxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd3;
-            32'b11110xxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd4;
-            32'b111110xxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd5;
-            32'b1111110xxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd6;
-            32'b11111110xxxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd7;
-            32'b111111110xxxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd8;
-            32'b1111111110xxxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd9;
-            32'b11111111110xxxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd10;
-            32'b111111111110xxxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd11;
-            32'b1111111111110xxxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd12;
-            32'b11111111111110xxxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd13;
-            32'b111111111111110xxxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd14;
-            32'b1111111111111110xxxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd15;
-            32'b11111111111111110xxxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd16;
-            32'b111111111111111110xxxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd17;
-            32'b1111111111111111110xxxxxxxxxxxxx:
-                CLO_RESULT <= 6'd18;
-            32'b11111111111111111110xxxxxxxxxxxx:
-                CLO_RESULT <= 6'd19;
-            32'b111111111111111111110xxxxxxxxxxx:
-                CLO_RESULT <= 6'd20;
-            32'b1111111111111111111110xxxxxxxxxx:
-                CLO_RESULT <= 6'd21;
-            32'b11111111111111111111110xxxxxxxxx:
-                CLO_RESULT <= 6'd22;
-            32'b111111111111111111111110xxxxxxxx:
-                CLO_RESULT <= 6'd23;
-            32'b1111111111111111111111110xxxxxxx:
-                CLO_RESULT <= 6'd24;
-            32'b11111111111111111111111110xxxxxx:
-                CLO_RESULT <= 6'd25;
-            32'b111111111111111111111111110xxxxx:
-                CLO_RESULT <= 6'd26;
-            32'b1111111111111111111111111110xxxx:
-                CLO_RESULT <= 6'd27;
-            32'b11111111111111111111111111110xxx:
-                CLO_RESULT <= 6'd28;
-            32'b111111111111111111111111111110xx:
-                CLO_RESULT <= 6'd29;
-            32'b1111111111111111111111111111110x:
-                CLO_RESULT <= 6'd30;
+        casez (A)
+            32'b0zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd0;
+            32'b10zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd1;
+            32'b110zzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd2;
+            32'b1110zzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd3;
+            32'b11110zzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd4;
+            32'b111110zzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd5;
+            32'b1111110zzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd6;
+            32'b11111110zzzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd7;
+            32'b111111110zzzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd8;
+            32'b1111111110zzzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd9;
+            32'b11111111110zzzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd10;
+            32'b111111111110zzzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd11;
+            32'b1111111111110zzzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd12;
+            32'b11111111111110zzzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd13;
+            32'b111111111111110zzzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd14;
+            32'b1111111111111110zzzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd15;
+            32'b11111111111111110zzzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd16;
+            32'b111111111111111110zzzzzzzzzzzzzz:
+                CLO_RESULT = 6'd17;
+            32'b1111111111111111110zzzzzzzzzzzzz:
+                CLO_RESULT = 6'd18;
+            32'b11111111111111111110zzzzzzzzzzzz:
+                CLO_RESULT = 6'd19;
+            32'b111111111111111111110zzzzzzzzzzz:
+                CLO_RESULT = 6'd20;
+            32'b1111111111111111111110zzzzzzzzzz:
+                CLO_RESULT = 6'd21;
+            32'b11111111111111111111110zzzzzzzzz:
+                CLO_RESULT = 6'd22;
+            32'b111111111111111111111110zzzzzzzz:
+                CLO_RESULT = 6'd23;
+            32'b1111111111111111111111110zzzzzzz:
+                CLO_RESULT = 6'd24;
+            32'b11111111111111111111111110zzzzzz:
+                CLO_RESULT = 6'd25;
+            32'b111111111111111111111111110zzzzz:
+                CLO_RESULT = 6'd26;
+            32'b1111111111111111111111111110zzzz:
+                CLO_RESULT = 6'd27;
+            32'b11111111111111111111111111110zzz:
+                CLO_RESULT = 6'd28;
+            32'b111111111111111111111111111110zz:
+                CLO_RESULT = 6'd29;
+            32'b1111111111111111111111111111110z:
+                CLO_RESULT = 6'd30;
             32'b11111111111111111111111111111110:
-                CLO_RESULT <= 6'd31;
+                CLO_RESULT = 6'd31;
             32'b11111111111111111111111111111111:
-                CLO_RESULT <= 6'd32;
+                CLO_RESULT = 6'd32;
             default:
-                CLO_RESULT <= 6'd0;
+                CLO_RESULT = 6'd0;
         endcase
     end
 
     always@(A) begin
-        casex (A)
-            32'b1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd0;
-            32'b01xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd1;
-            32'b001xxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd2;
-            32'b0001xxxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd3;
-            32'b00001xxxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd4;
-            32'b000001xxxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd5;
-            32'b0000001xxxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd6;
-            32'b00000001xxxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd7;
-            32'b000000001xxxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd8;
-            32'b0000000001xxxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd9;
-            32'b00000000001xxxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd10;
-            32'b000000000001xxxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd11;
-            32'b0000000000001xxxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd12;
-            32'b00000000000001xxxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd13;
-            32'b000000000000001xxxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd14;
-            32'b0000000000000001xxxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd15;
-            32'b00000000000000001xxxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd16;
-            32'b000000000000000001xxxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd17;
-            32'b0000000000000000001xxxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd18;
-            32'b00000000000000000001xxxxxxxxxxxx:
-                CLZ_RESULT <= 6'd19;
-            32'b000000000000000000001xxxxxxxxxxx:
-                CLZ_RESULT <= 6'd20;
-            32'b0000000000000000000001xxxxxxxxxx:
-                CLZ_RESULT <= 6'd21;
-            32'b00000000000000000000001xxxxxxxxx:
-                CLZ_RESULT <= 6'd22;
-            32'b000000000000000000000001xxxxxxxx:
-                CLZ_RESULT <= 6'd23;
-            32'b0000000000000000000000001xxxxxxx:
-                CLZ_RESULT <= 6'd24;
-            32'b00000000000000000000000001xxxxxx:
-                CLZ_RESULT <= 6'd25;
-            32'b000000000000000000000000001xxxxx:
-                CLZ_RESULT <= 6'd26;
-            32'b0000000000000000000000000001xxxx:
-                CLZ_RESULT <= 6'd27;
-            32'b00000000000000000000000000001xxx:
-                CLZ_RESULT <= 6'd28;
-            32'b000000000000000000000000000001xx:
-                CLZ_RESULT <= 6'd29;
-            32'b0000000000000000000000000000001x:
-                CLZ_RESULT <= 6'd30;
+        casez (A)
+            32'b1zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd0;
+            32'b01zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd1;
+            32'b001zzzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd2;
+            32'b0001zzzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd3;
+            32'b00001zzzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd4;
+            32'b000001zzzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd5;
+            32'b0000001zzzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd6;
+            32'b00000001zzzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd7;
+            32'b000000001zzzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd8;
+            32'b0000000001zzzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd9;
+            32'b00000000001zzzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd10;
+            32'b000000000001zzzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd11;
+            32'b0000000000001zzzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd12;
+            32'b00000000000001zzzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd13;
+            32'b000000000000001zzzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd14;
+            32'b0000000000000001zzzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd15;
+            32'b00000000000000001zzzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd16;
+            32'b000000000000000001zzzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd17;
+            32'b0000000000000000001zzzzzzzzzzzzz:
+                CLZ_RESULT = 6'd18;
+            32'b00000000000000000001zzzzzzzzzzzz:
+                CLZ_RESULT = 6'd19;
+            32'b000000000000000000001zzzzzzzzzzz:
+                CLZ_RESULT = 6'd20;
+            32'b0000000000000000000001zzzzzzzzzz:
+                CLZ_RESULT = 6'd21;
+            32'b00000000000000000000001zzzzzzzzz:
+                CLZ_RESULT = 6'd22;
+            32'b000000000000000000000001zzzzzzzz:
+                CLZ_RESULT = 6'd23;
+            32'b0000000000000000000000001zzzzzzz:
+                CLZ_RESULT = 6'd24;
+            32'b00000000000000000000000001zzzzzz:
+                CLZ_RESULT = 6'd25;
+            32'b000000000000000000000000001zzzzz:
+                CLZ_RESULT = 6'd26;
+            32'b0000000000000000000000000001zzzz:
+                CLZ_RESULT = 6'd27;
+            32'b00000000000000000000000000001zzz:
+                CLZ_RESULT = 6'd28;
+            32'b000000000000000000000000000001zz:
+                CLZ_RESULT = 6'd29;
+            32'b0000000000000000000000000000001z:
+                CLZ_RESULT = 6'd30;
             32'b00000000000000000000000000000001:
-                CLZ_RESULT <= 6'd31;
+                CLZ_RESULT = 6'd31;
             32'b00000000000000000000000000000000:
-                CLZ_RESULT <= 6'd32;
+                CLZ_RESULT = 6'd32;
             default:
-                CLZ_RESULT <= 6'd0;
+                CLZ_RESULT = 6'd0;
         endcase
     end
 

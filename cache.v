@@ -468,7 +468,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
     reg valid_CI_RB;
     reg[1:0] op_CI_RB;
     reg[5:0] index_CI_RB;
-    reg[19:0] way_CI_RB;
+    reg way_CI_RB;
 
     //Miss Buffer : information for MISS-REPLACE-REFILL use
     reg replace_way_MB;        //the way to be replaced and refilled
@@ -510,8 +510,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
 
     reg[31:0] rdata_way0;
     reg[31:0] rdata_way1;
-    reg[63:0] byte_write1;
-    reg[63:0] byte_write2;
+    reg[15:0] byte_write1;
+    reg[15:0] byte_write2;
 
     integer i;
     wire VTen;

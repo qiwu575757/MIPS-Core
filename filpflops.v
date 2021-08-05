@@ -338,7 +338,7 @@ module ID_EX(
 			EX_GPR_RS <= 32'd0;
 			EX_GPR_RT <= 32'd0;
 			EX_Imm32 <= 32'd0;
-			EX_CP0Addr <= 32'd0;
+			EX_CP0Addr <= 8'd0;
 			EX_CP0Rd <= 1'b0;
 			EX_start <= 1'b0;
 			EX_dcache_en<=1'b0;
@@ -550,7 +550,7 @@ module EX_MEM1(
 			MEM1_ALU1Out <= 32'd0;
 			MEM1_GPR_RT <= 32'd0;
 			MEM1_Imm32 <= 32'd0;
-			MEM1_CP0Addr <= 7'd0;
+			MEM1_CP0Addr <= 8'd0;
 			MEM1_CP0Rd <= 1'b0;
 			MEM1_dcache_en<=1'b0;
 			MEM1_ExcCode <= 5'd0;

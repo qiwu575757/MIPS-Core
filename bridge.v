@@ -12,7 +12,7 @@ module  bridge_dm(
 	input [2:0] 		DMSel2;
 	input [1:0] 		MEM2_LoadOp;
 	input [31:0] 		MEM2_GPR_RT;
-	
+
 	output reg [31:0] 	dout;
 
 always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
@@ -587,7 +587,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		temp_data=0;
+		temp_data<=0;
 	end
 	else if(current_wr_state==state_wr_req)
 	begin
@@ -595,7 +595,7 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[511:32]}};//�??要与 wdata 保持�??�??
+		temp_data<={32'b0,{temp_data[511:32]}};//�??要与 wdata 保持�??�??
 	end
 end
 always @(posedge clk) begin

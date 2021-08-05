@@ -281,7 +281,7 @@ module mem1_cache_prep(
     assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
                             & ~MEM1_dcache_valid_CI;
     //assign MEM1_cache_sel = 1'b1;
-	// 1 表示uncache, 0表示cache            
+	// 1 表示uncache, 0表示cache
 
     /*Exception generation*/
     /*
@@ -320,39 +320,39 @@ module mem1_cache_prep(
 
     always@(*)
         if (Interrupt) begin
-			MEM1_ExcCode <= `Int;
-            MEM1_badvaddr <= 32'd0;
+			MEM1_ExcCode = `Int;
+            MEM1_badvaddr = 32'd0;
 		end
         else if(Temp_M1_Exception) begin
-		    MEM1_ExcCode <= Temp_M1_ExcCode;
-		    MEM1_badvaddr <= MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
+		    MEM1_ExcCode = Temp_M1_ExcCode;
+		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
 		end
 		else if (MEM1_Overflow) begin
-		    MEM1_ExcCode <= `Ov;
-		    MEM1_badvaddr <= 32'd0;
+		    MEM1_ExcCode = `Ov;
+		    MEM1_badvaddr = 32'd0;
 		end
         else if (MEM1_Trap) begin
-		    MEM1_ExcCode <= `Trap;
-		    MEM1_badvaddr <= 32'd0;
+		    MEM1_ExcCode = `Trap;
+		    MEM1_badvaddr = 32'd0;
 		end
 		else if (AdES_sel)begin
-		    MEM1_ExcCode <= `AdES;
-		    MEM1_badvaddr <= MEM1_ALU1Out;
+		    MEM1_ExcCode = `AdES;
+		    MEM1_badvaddr = MEM1_ALU1Out;
 		end
 		else if (AdEL_sel) begin
-		    MEM1_ExcCode <= `AdEL;
-		    MEM1_badvaddr <= MEM1_ALU1Out;
+		    MEM1_ExcCode = `AdEL;
+		    MEM1_badvaddr = MEM1_ALU1Out;
 		end
         else begin
-            MEM1_ExcCode <= MEM1_TLB_ExCode;
-		    MEM1_badvaddr <= MEM1_ALU1Out;
+            MEM1_ExcCode = MEM1_TLB_ExCode;
+		    MEM1_badvaddr = MEM1_ALU1Out;
         end
 
     assign Cause_CE_Wr = MEM1_ExcCode==`Cpu;
 
     /* dcache control signal*/
     assign DMWen_dcache = MEM1_DMWr & (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
-    assign MEM1_dcache_valid = MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok  
+    assign MEM1_dcache_valid = MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok
                 & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_Exception&!MEM1_eret_flush
@@ -373,7 +373,7 @@ module mem1_cache_prep(
             LL_addr <= MEM1_ALU1Out;
     end
     assign SC_OK = LLbit & (LL_addr == MEM1_ALU1Out) & MEM1_SC_signal;
-    assign MEM1_SCOut = {30'b0,(MEM1_dcache_valid|MEM1_uncache_valid)};
+    assign MEM1_SCOut = {31'b0,(MEM1_dcache_valid|MEM1_uncache_valid)};
 
 /* set writeen signal and store data */
     assign MEM1_dCache_wstrb =

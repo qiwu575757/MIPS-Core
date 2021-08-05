@@ -30,10 +30,10 @@ module branch_predictor(
     always @(posedge clk) begin
         if (!resetn) begin
             for (k = 0; k < 256; k = k + 1)
-                counter[k] <= SNT;
+                counter[k] = SNT;
         end
         else if (EX_valid)
-            counter[EX_index] <= counter_next;
+            counter[EX_index] = counter_next;
     end
 
     always @(*) begin
@@ -41,7 +41,7 @@ module branch_predictor(
             counter_next = ST;
         else begin
             case (counter[EX_index])
-                SNT: 
+                SNT:
                 if (EX_taken)
                     counter_next = WNT;
                 else
@@ -56,7 +56,7 @@ module branch_predictor(
                     counter_next = ST;
                 else
                     counter_next = WNT;
-                default: 
+                default:
                 if (EX_taken)
                     counter_next = ST;
                 else
@@ -84,8 +84,8 @@ module branch_target_predictor (
     input EX_taken,
 
                                                             //BrType�?01时表示该指令为return指令(JR 31)
-    output reg [31:0] target_address                        
-                                                            
+    output reg [31:0] target_address
+
                                                             //BrType�?00时表示该指令不是分支指令
 );
 
@@ -102,7 +102,7 @@ module branch_target_predictor (
     reg [22:0] tagBuffer_temp;
     reg [31:0] addressBuffer_temp;
     reg [1:0] BrTypeBuffer_temp;
-    reg [31:0] RAS_temp;                        
+    reg [31:0] RAS_temp;
     reg [4:0] stackPointer_temp;
 
     wire valid;
@@ -110,6 +110,7 @@ module branch_target_predictor (
     wire [31:0] EX_PC_add_8;
     wire [4:0] stackPointer_sub1 = stackPointer - 1;
 
+    wire hit;
     //read from BTB
     assign valid = validBuffer[index];
     assign hit = valid && (tag_out == tag);
@@ -192,7 +193,7 @@ module branch_target_predictor (
         end
 
     end
-    
+
     //write to BTB
 
     tag_LUT tagBuffer(
@@ -206,12 +207,12 @@ module branch_target_predictor (
     always @(posedge clk) begin
         if (!resetn)
             for (k = 0; k < 128; k = k + 1) begin
-                validBuffer[k] <= 1'b0;
-                BrTypeBuffer[k] <= 2'b00;
+                validBuffer[k] = 1'b0;
+                BrTypeBuffer[k] = 2'b00;
             end
         else if (BTBWr) begin
-            validBuffer[EX_index] <= validBuffer_temp;
-            BrTypeBuffer[EX_index] <= BrTypeBuffer_temp;
+            validBuffer[EX_index] = validBuffer_temp;
+            BrTypeBuffer[EX_index] = BrTypeBuffer_temp;
         end
     end
 
