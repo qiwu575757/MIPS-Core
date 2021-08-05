@@ -246,7 +246,7 @@ assign data_out =
             Config[15]      <= 1'b0;
             Config[14:13]   <= 2'b0;
             Config[12:10]   <= 3'b0;
-            Config[9:7]     <= 3'h1;//表示MMU采用标准的TLB
+            Config[9:7]     <= 3'h1;//表示MMU采用标准的TLB(直接映射)
             Config[6:3]     <= 4'b0;
             Config[2:0]     <= 3'h3;//K0
         end
