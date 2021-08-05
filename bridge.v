@@ -42,7 +42,7 @@ always @(MEM2_LoadOp,addr2,Din,DMSel2,MEM2_GPR_RT) begin
 				(addr2[1:0] == 2'b01) ? {Din[15:0],MEM2_GPR_RT[15:0]} :
 				(addr2[1:0] == 2'b10) ? {Din[23:0],MEM2_GPR_RT[7:0]} :
 										Din[31:0];
-		2'b11 :				//LWR
+		default :				//LWR
 			dout =
 				(addr2[1:0] == 2'b00) ? Din[31:0]:
 				(addr2[1:0] == 2'b01) ? {MEM2_GPR_RT[31:24],Din[31:8]} :
@@ -56,12 +56,12 @@ endmodule
 
 
 
-// 这个模块用于当前与cpu与乘除器的交互。
-// 借助状态机来控制
-// * start为1时，乘除法开始计算
-// * isBusy为1时，表示正在运行
-// * 乘法5周期运算，除法多周期（34个）。
-// * C是运算结果，支持读保存，即如果没有新的start，结果会保持为上一次的运算结果
+// 这个模块用于当前与cpu与乘除器的交互�??
+// 借助状�?�机来控�?
+// * start�?1时，乘除法开始计�?
+// * isBusy�?1时，表示正在运行
+// * 乘法5周期运算，除法多周期�?34个）�?
+// * C是运算结果，支持读保存，即如果没有新的start，结果会保持为上�?次的运算结果
 module bridge_RHL(
 		aclk,
 		aresetn,
@@ -136,7 +136,7 @@ reg [2:0] 		counter;
 				mul:	ALU2Op <= 4'b1000;
 */
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
-assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写好几次
+assign MULOut = multi_sign_out_temp[31:0];//mul 可能会往目标寄存器写好几�?
 assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 parameter state_free = 1'b0 ;
@@ -334,20 +334,20 @@ multiplier_unsigned multiplier_unsigned(
 
 endmodule
 
-// 因为cache的接口设计是偏向类sram接口的
-// 所以用这个模块进行 cpu和cache对axi的交互
-// 写着写着又写成转接口了 XD
+// 因为cache的接口设计是偏向类sram接口�?
+// �?以用这个模块进行 cpu和cache对axi的交�?
+// 写着写着又写成转接口�? XD
 // 写的很粗糙，有巨大优化空间，目前仅仅为了实现功能
-// 将来也许会对cache等做进一步优化
+// 将来也许会对cache等做进一步优�?
 
 //              -----------
-// ***********  |实 现 原 理| ************
+// ***********  |�? �? �? 理| ************
 //              -----------
-//	1.借助状态机实现,按照五个通道的axi设计，顺势设出两个状态机，再多添一个空闲、一个完成
-//      FSM_R: 读请求，读响应，空闲， 完成
-//		FSM_W：写请求，写数据，写响应，空闲、完成
-//  2.根据握手信号实现前请求状态到响应状态的转换
-//  3.根据当前状态和其他一些信号的组合逻辑生成一些诸如data_ok,addr_ok的信号
+//	1.借助状�?�机实现,按照五个通道的axi设计，顺势设出两个状态机，再多添�?个空闲�?�一个完�?
+//      FSM_R: 读请求，读响应，空闲�? 完成
+//		FSM_W：写请求，写数据，写响应，空闲�?�完�?
+//  2.根据握手信号实现前请求状态到响应状�?�的转换
+//  3.根据当前状�?�和其他�?些信号的组合逻辑生成�?些诸如data_ok,addr_ok的信�?
 //  4.如果icache和dcache同时缺失，优先响应read dcache
 module axi_sram_bridge(
 
@@ -435,7 +435,7 @@ module axi_sram_bridge(
     input [5:0] ext_int_in      ;  //interrupt,high active;
 
 
-// 时钟与复位信�?
+// 时钟与复位信�??
     input clk      ;
     input rst      ;   //low active
 // 读请求�?�道
@@ -511,7 +511,7 @@ module axi_sram_bridge(
 	input [31:0]MEM_uncache_wr_data;
 
 reg [3:0] count_wr16;
-//暂时用不到的信号初始�?
+//暂时用不到的信号初始�??
     assign arlock   =   0;
 	assign arcache  =  	0;
     assign arprot   =   0;
@@ -525,7 +525,7 @@ reg [3:0] count_wr16;
 
     // assign wlast    =   1;
 
-//状�?�定�?
+//状�?�定�??
 /*FSM_R*/
 parameter state_rd_free = 2'b00;
 parameter state_rd_req = 2'b01;
@@ -548,7 +548,6 @@ reg [2:0] current_wr_state;
 reg [2:0] next_wr_state;
 reg [511:0] temp_data;//write buffer
 
-reg arid_reg;// 寄存事务id
 reg conf_wr;// write event argument
 reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
@@ -611,7 +610,7 @@ always @(posedge clk) begin
 	end
 	else if((current_wr_state==state_wr_data)&&wready)
 	begin
-		temp_data={32'b0,{temp_data[511:32]}};//�?要与 wdata 保持�?�?
+		temp_data={32'b0,{temp_data[511:32]}};//�??要与 wdata 保持�??�??
 	end
 end
 always @(posedge clk) begin
@@ -688,19 +687,6 @@ end
 // assign arid = MEM_dcache_rd_req ? 1:
 // 			 IF_icache_rd_req  ? 0 : 0;
 
-always @(posedge clk) begin
-	if(!rst)
-	begin
-		arid_reg<=0;
-	end
-	else if(current_rd_state==state_rd_free
-	||current_rd_state==state_rd_finish)
-	begin
-		arid_reg <=IF_icache_rd_req? 0:
-			   MEM_dcache_rd_req ? 1 : 0;
-	end
-end
-
 
 
 always @(posedge clk) begin
@@ -774,7 +760,7 @@ assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
 assign awburst = conf_wr ? 2'b0 : 2'b1;
 
 assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
-assign wstrb = MEM_dcache_wr_wstrb; //可能有问�?
+assign wstrb = MEM_dcache_wr_wstrb; //可能有问�??
 assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );
 assign wlast = conf_wr ? 1: dram_wr ? count_wr16==4'hf : 0;
 assign bready = 1;

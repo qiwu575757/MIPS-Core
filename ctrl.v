@@ -983,7 +983,7 @@
 	//Cpu_Op signal
 	always @(*) begin
 		case (OP)
-			6'b010001,6'b010010:
+			6'b010010:
 				case ( rs )
 					5'b01000:
 						Cpu_Op <= 1'b1;

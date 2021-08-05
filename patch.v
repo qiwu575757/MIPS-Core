@@ -134,7 +134,7 @@ module branch_predict_prep(
 
     assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
 
-    assign ee = MEM1_Exception | MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI;
+    assign ee = MEM1_Exception |( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI);
     always@(*) begin
 		if (MEM1_eret_flush)
 			NPC_ee = EPC;
@@ -155,7 +155,7 @@ module branch_predict_prep(
 					2'b00:		NPC_ee = 32'h8000_0000;
 					2'b01:		NPC_ee = 32'h8000_0180;
 					2'b10:		NPC_ee = 32'hBFC0_0200;
-					2'b11:		NPC_ee = 32'hBFC0_0380;
+					default:	NPC_ee = 32'hBFC0_0380;
 				endcase
 			else
 				if ( ~Status_BEV )

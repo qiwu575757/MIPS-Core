@@ -79,7 +79,6 @@ module icache(       clk, resetn, exception, stall,
 
     //Request Buffer
     reg[5:0] index_RB;
-    reg[19:0] tag_RB;
     reg[5:0] offset_RB;
     reg op_CI_RB;
     reg[5:0] index_CI_RB;
@@ -160,7 +159,6 @@ module icache(       clk, resetn, exception, stall,
     always@(posedge clk)
         if(!resetn) begin
             index_RB <= 6'd0;
-            tag_RB <= 20'd0;
             offset_RB <= 6'd0;
             op_CI_RB <= 1'b0;
             index_CI_RB <= 6'd0;
@@ -168,7 +166,6 @@ module icache(       clk, resetn, exception, stall,
         end
         else if(RBWr) begin
             index_RB <= index;
-            tag_RB <= tag;
             offset_RB <= offset;
             op_CI_RB <= op_CI;
             index_CI_RB <= index_CI;
@@ -297,7 +294,7 @@ module icache(       clk, resetn, exception, stall,
     assign rd_addr = {replace_tag_new_MB, replace_index_MB, 6'b000000};
 
     //block address control
-    always@(index, C_STATE, replace_index_MB, index_RB, valid_CI, index_CI)
+    always@(index, C_STATE, replace_index_MB, index_RB, valid_CI, index_CI, index_CI_RB)
         if(C_STATE == REFILL)
             VT_addr = replace_index_MB;
         else if(C_STATE == INSTR)
@@ -465,7 +462,6 @@ module dcache(       clk, resetn, DMen, stall, exception,
     //Request Buffer
     reg op_RB;
     reg[5:0] index_RB;
-    reg[19:0] tag_RB;
     reg[5:0] offset_RB;
     reg[3:0] wstrb_RB;
     reg[31:0] wdata_RB;
@@ -606,7 +602,6 @@ module dcache(       clk, resetn, DMen, stall, exception,
         if(!resetn) begin
             op_RB <= 1'b0;
             index_RB <= 6'd0;
-            tag_RB <= 20'd0;
             offset_RB <= 6'd0;
             wstrb_RB <= 4'd0;
             wdata_RB <= 32'd0;
@@ -618,7 +613,6 @@ module dcache(       clk, resetn, DMen, stall, exception,
         else if((valid | valid_CI) && data_ok) begin
             op_RB <= op;
             index_RB <= index;
-            tag_RB <= tag;
             offset_RB <= offset;
             wstrb_RB <= wstrb;
             wdata_RB <= wdata;
