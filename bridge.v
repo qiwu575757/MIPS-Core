@@ -136,12 +136,20 @@ reg [2:0] 		counter;
 
 				mul:	ALU2Op <= 4'b1000;
 */
-assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
-assign MULOut = multi_sign_out[31:0];//mul 可能会往目标寄存器写好几�?
-assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
+
+assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
+assign MULOut = multi_sign_out[31:0];//mul 可能会往目标寄存器写好几�?
+//assign isBusy= next_state_div | next_state_mult | next_state_multu;
+
+assign isBusy = present_state_div&!m_axis_dout_tvalid_sign&!m_axis_dout_tvalid_unsign |
+				(present_state_mult|present_state_multu)&(counter != 3'd4) |
+				start&!EX_Exception&(!present_state_div& ~ALU2Op[2] & ALU2Op[1] |
+				!present_state_mult&(ALU2Op==4'b0001 | ALU2Op==4'b0101 | ALU2Op==4'b0110 | ALU2Op==4'b1000) |
+				!present_state_multu&(ALU2Op==4'b0000 | ALU2Op==4'b0100 | ALU2Op==4'b0111));
+
 
 always@(posedge aclk)
 	if(!aresetn || counter == 3'd4 )
@@ -161,7 +169,7 @@ always @(posedge aclk) begin
 end
 
 //the signal is signing the mul is working
-	assign MUL_sign = (ALU2Op==4'b1000 & isBusy);
+	assign MUL_sign = (ALU2Op==4'b1000 & isBusy) ;
 
 
 
