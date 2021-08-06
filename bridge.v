@@ -121,6 +121,7 @@ reg 			next_state_mult;
 reg 			present_state_multu;
 reg 			next_state_multu;
 reg [2:0] 		counter;
+reg 			valid;	
 
 /*
 	Control signals:
@@ -171,30 +172,40 @@ end
 //the signal is signing the mul is working
 	assign MUL_sign = (ALU2Op==4'b1000 & isBusy) ;
 
+always@(posedge aclk)
+	if(!aresetn)
+		valid <= 1'b1;
+	else if((!present_state_div&next_state_div | !present_state_mult&next_state_mult 
+			| !present_state_multu&next_state_multu)&MEM_Exception)
+		valid <= 1'b0;
+	else if(present_state_div&(m_axis_dout_tvalid_sign|m_axis_dout_tvalid_unsign) 
+			| (present_state_mult|present_state_multu)&(counter == 3'd4))
+		valid <= 1'b1;
+
 
 
 always @(posedge aclk) begin
     if(!aresetn)
         RHL <= 64'd0;
-	else if((present_state_multu == state_busy) && (counter == 3'd4))
+	else if((present_state_multu == state_busy) && (counter == 3'd4) && valid)
 		case(Temp_ALU2Op)
 			4'b0100:	RHL <= RHL + multi_unsign_out;
 			4'b0111:	RHL <= RHL - multi_unsign_out;
 			default:	RHL <= multi_unsign_out;
 		endcase
-	else if((present_state_mult == state_busy) && (counter == 3'd4))
+	else if((present_state_mult == state_busy) && (counter == 3'd4) & valid)
 		case(Temp_ALU2Op)
 			4'b0101:	RHL <= RHL + multi_sign_out;
 			4'b0110:	RHL <= RHL - multi_sign_out;
 			default:	RHL <= multi_sign_out;
 		endcase
-	else if(m_axis_dout_tvalid_sign) //sign
+	else if(m_axis_dout_tvalid_sign & valid) //sign
 		RHL <= {divider_sign_out[31:0],divider_sign_out[63:32]};
-	else if(m_axis_dout_tvalid_unsign ) //unsign
+	else if(m_axis_dout_tvalid_unsign & valid) //unsign
 		RHL <= {divider_unsign_out[31:0],divider_unsign_out[63:32]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b01)
+	else if(EX_RHLWr && (EX_RHLSel_Wr == 2'b01) && !MEM_Exception && !MEM_eret_flush)
 	    RHL <= {A,RHL[31:0]};
-	else if(EX_RHLWr && EX_RHLSel_Wr == 2'b00)
+	else if(EX_RHLWr && (EX_RHLSel_Wr == 2'b00) && !MEM_Exception && !MEM_eret_flush)
 	    RHL <= {RHL[63:32],A};
 end
 
@@ -211,7 +222,7 @@ end
 
 always @(*) begin
 	if(present_state_div == state_free) begin
-	   if(start && ~ALU2Op[2] && ALU2Op[1] && !MEM_Exception && !MEM_eret_flush && !EX_Exception)
+	   if(start && ~ALU2Op[2] && ALU2Op[1] && !MEM_eret_flush && !EX_Exception)
 	       next_state_div=state_busy;
 	   else
 	       next_state_div=state_free;
@@ -279,8 +290,8 @@ always @(present_state_multu, multiplier_unsigned_valid,counter) begin
 
 end
 
-wire divider_sign_valid=start && (ALU2Op == 4'b0011) && !MEM_Exception && !MEM_eret_flush && !EX_Exception
-			&& isBusy && !present_state_div;
+wire divider_sign_valid=(start && (ALU2Op == 4'b0011)  && !MEM_eret_flush && !EX_Exception
+			&& isBusy && !present_state_div);
 divider_signed divider_signed (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
@@ -292,8 +303,8 @@ divider_signed divider_signed (
   .m_axis_dout_tdata(divider_sign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
-wire divider_unsign_valid = start && (ALU2Op == 4'b0010) && !MEM_Exception && !MEM_eret_flush && !EX_Exception
-			&& isBusy && !present_state_div;
+wire divider_unsign_valid = (start && (ALU2Op == 4'b0010)  && !MEM_eret_flush && !EX_Exception
+			&& isBusy && !present_state_div);
 divider_unsigned divider_unsigned (
   .aclk(aclk),                                      // input wire aclk
   .aresetn(aresetn),                                // input wire aresetn
@@ -305,8 +316,8 @@ divider_unsigned divider_unsigned (
   .m_axis_dout_tdata(divider_unsign_out)            // output wire [63 : 0] m_axis_dout_tdata
 );
 
-assign multiplier_signed_valid = start && (ALU2Op==4'b0001 || ALU2Op==4'b0101 || ALU2Op==4'b0110 || ALU2Op==4'b1000)
-						&& !MEM_Exception && !MEM_eret_flush && !EX_Exception && !dcache_stall && !WAIT;
+assign multiplier_signed_valid = (start && (ALU2Op==4'b0001 || ALU2Op==4'b0101 || ALU2Op==4'b0110 || ALU2Op==4'b1000)
+						&& !MEM_eret_flush && !EX_Exception && !dcache_stall && !WAIT);
 multiplier_signed multiplier_signed(
 	.CLK(aclk),
 	.A(A),
@@ -315,8 +326,8 @@ multiplier_signed multiplier_signed(
 	.P(multi_sign_out)
 );
 
-assign multiplier_unsigned_valid = start &&  (ALU2Op==4'b0000 || ALU2Op==4'b0100 || ALU2Op==4'b0111)
-					&& !MEM_Exception && !MEM_eret_flush && !EX_Exception && !dcache_stall && !WAIT;
+assign multiplier_unsigned_valid = (start &&  (ALU2Op==4'b0000 || ALU2Op==4'b0100 || ALU2Op==4'b0111)
+					 && !MEM_eret_flush && !EX_Exception && !dcache_stall && !WAIT);
 multiplier_unsigned multiplier_unsigned(
 	.CLK(aclk),
 	.A(A),

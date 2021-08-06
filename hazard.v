@@ -130,9 +130,8 @@ module stall(
 	wire 			whole_stall;
 
 	assign dcache_stall = (~dCache_data_ok |~iCache_data_ok);
-	assign isStall=~PCWr;
-	assign icache_stall = (~dCache_data_ok | MEM1_WAIT_OP | MUL_sign) 
-						| data_stall;
+	assign isStall= whole_stall | data_stall;
+	assign icache_stall = (~dCache_data_ok | MEM1_WAIT_OP | MUL_sign) | data_stall;
 
 	//assign stall_0 = (EX_DMRd || EX_CP0Rd || EX_SC_signal || BJOp || ALU2Op==5'b01011) && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (ID_PC != EX_PC);
 	//assign stall_1 = (MEM1_DMRd || MEM1_CP0Rd || MEM1_SC_signal) && ( (MEM1_RT == ID_RS) || (MEM1_RT == ID_RT) ) && (ID_PC != MEM1_PC);
