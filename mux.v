@@ -27,11 +27,14 @@ module mux2(
 	input [31:0]		MEM2_SCOut;
 	input [2:0] 		MUX2Sel;
 
-	output[31:0] 		WD;
+	output reg[31:0] 		WD;
 
-	assign WD = ( MUX2Sel == 3'b101 ) ? CP0Out :
-				( MUX2Sel == 3'b111 ) ? MEM2_SCOut :
-										MUX6Out;
+	always@(*)
+		case(MUX2Sel)
+			3'b101:	WD = CP0Out;
+			3'b111: WD = MEM2_SCOut;
+			default:WD = MUX6Out;
+		endcase
 
 endmodule
 
@@ -93,22 +96,19 @@ module mux5(
 endmodule
 
 module mux6(
-	RHLOut, ALU1Out, PC,
-	MEM1_MULOut, Imm32, MUX6Sel,
+	ALU1Out, MEM1_MULOut, MUX13Out, MUX6Sel,
 
 	out
 	);
-	input[31:0] RHLOut, ALU1Out, PC, Imm32, MEM1_MULOut;
+	input[31:0] ALU1Out, MUX13Out, MEM1_MULOut;
 	input[2:0] MUX6Sel;
 	output reg[31:0] out;
 
-	always@(RHLOut, ALU1Out, MEM1_MULOut, PC, Imm32, MUX6Sel)
+	always@(*)
 		case(MUX6Sel)
-			3'b000:	out = RHLOut;
-			3'b001:	out = Imm32;
 			3'b010:	out = ALU1Out;
 			3'b100: out = MEM1_MULOut;
-			default:out = PC + 8;
+			default:out = MUX13Out;
 		endcase
 
 endmodule
@@ -201,5 +201,37 @@ module mux12 (
 	output [3:0] out;
 
 	assign out = MUX12_Sel ? index : random;
+
+endmodule
+
+module mux13(
+	Imm32, PC, RHLOut, EX_MUX2Sel,
+
+	MUX13Out
+);
+	input[31:0] Imm32;
+	input[31:0] PC;
+	input[31:0] RHLOut;
+	input[2:0] EX_MUX2Sel;
+	output reg[31:0] MUX13Out;
+
+	always@(*)
+		case(EX_MUX2Sel)
+			3'b000:	MUX13Out = RHLOut;
+			3'b001: MUX13Out = Imm32;
+			default:MUX13Out = PC + 8;
+		endcase
+
+	/*  case(MUX2Sel)
+			3'b000:	WD = RHLOut;
+			3'b001: WD = Imm32;
+			3'b010: WD = ALU1Out;
+			3'b011: WD = PC + 8;
+			3'b100: WD = MULOut;
+			3'b101: WD = CP0Out;
+			3'b110: WD = DMOut;
+			3'b111: WD = SCOut;
+	*/
+
 
 endmodule
