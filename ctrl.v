@@ -778,7 +778,7 @@
 					`madd:	MUX2Sel = 3'b000;
 					`msub:	MUX2Sel = 3'b000;
 					`msubu:	MUX2Sel = 3'b000;
-					`mul:	MUX2Sel = 3'b100;
+					`mul:	MUX2Sel = 3'b110;
 					default:MUX2Sel = 3'b010;
 				endcase
 			6'b100000: MUX2Sel = 3'b100;		/* LB */

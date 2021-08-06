@@ -107,7 +107,7 @@ module mux6(
 	always@(*)
 		case(MUX6Sel)
 			3'b010:	out = ALU1Out;
-			3'b100: out = MEM1_MULOut;
+			3'b110: out = MEM1_MULOut;
 			default:out = MUX13Out;
 		endcase
 
@@ -227,9 +227,9 @@ module mux13(
 			3'b001: WD = Imm32;
 			3'b010: WD = ALU1Out;
 			3'b011: WD = PC + 8;
-			3'b100: WD = MULOut;
+			3'b100: WD = DMOut;
 			3'b101: WD = CP0Out;
-			3'b110: WD = DMOut;
+			3'b110: WD = MULOut;
 			3'b111: WD = SCOut;
 	*/
 
