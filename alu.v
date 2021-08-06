@@ -17,6 +17,10 @@ module alu1(
 	wire            Less;
     wire            Trap_Equal;
     wire            Trap_Less;
+    wire [31:0]     add_result;
+    wire [31:0]     sub_result;
+    wire [2:0]      add_overflow;
+	wire [2:0]      sub_overflow;
 	reg [5:0]       CLO_RESULT;
 	reg [5:0]       CLZ_RESULT;
 
@@ -27,6 +31,9 @@ module alu1(
     assign Trap_Equal = A == B;
     assign Trap_Less =
     ( (ALU1Op == 5'b10010 || ALU1Op == 5'b10100) && A[31]^B[31]) ? ~(A < B) : (A < B);//signed/unsigned compare
+
+    assign add_result = A + B;
+	assign sub_result = A - B;
 
 	always@(A, B, ALU1Op, Less, temp, CLO_RESULT, CLZ_RESULT)
 		case(ALU1Op)
@@ -47,25 +54,24 @@ module alu1(
 			default:	C = {31'h00000000,Less};//	signed/unsigned compare
 		endcase
 
-	always@(A,B,C,ALU1Op)
-		if(ALU1Op == 5'b00000) begin
-			if(A[31] == 1'b1 && B[31] == 1'b1 && C[31] == 1'b0)
-				Overflow = 1'b1;
-			else if(A[31] == 1'b0 && B[31] == 1'b0 && C[31] == 1'b1)
-				Overflow = 1'b1;
-			else
-				Overflow = 1'b0;
-		end
-		else if(ALU1Op == 5'b00001) begin
-			if(A[31] == 1'b1 && B[31] == 1'b0 && C[31] == 1'b0)
-				Overflow = 1'b1;
-			else if(A[31] == 1'b0 && B[31] == 1'b1 && C[31] == 1'b1)
-				Overflow = 1'b1;
-			else
-				Overflow = 1'b0;
-		end
-		else
-			Overflow = 1'b0;
+	assign add_overflow = {A[31],B[31],add_result[31]};
+	assign sub_overflow = {A[31],B[31],sub_result[31]};
+
+	always@(ALU1Op,add_overflow, sub_overflow)
+		case(ALU1Op)
+		5'b00000:
+			case(add_overflow)
+				3'b110, 3'b001:		Overflow = 1'b1;
+				default:			Overflow = 1'b0;
+			endcase
+		5'b00001:
+			case(sub_overflow)
+				3'b100, 3'b011:		Overflow = 1'b1;
+				default:			Overflow = 1'b0;
+			endcase
+		default:	Overflow = 1'b0;
+		endcase
+
 
     always @(Trap_Equal,Trap_Less,ALU1Op) begin
         case (ALU1Op)

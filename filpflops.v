@@ -529,7 +529,7 @@ module EX_MEM1(
 	output reg 		MEM1_dcache_valid_CI;
 	output reg [1:0]MEM1_dcache_op_CI;
 	output reg  	MEM1_WAIT_OP;
-	output reg[18:0] 	s1_vpn2;
+	output reg [18:0] s1_vpn2;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin

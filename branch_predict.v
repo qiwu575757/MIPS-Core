@@ -33,7 +33,7 @@ module branch_predictor(
                 counter[k] = SNT;
         end
         else if (EX_valid)
-            counter[EX_index] = counter_next;
+            counter[EX_index] <= counter_next;
     end
 
     always @(*) begin
@@ -211,8 +211,8 @@ module branch_target_predictor (
                 BrTypeBuffer[k] = 2'b00;
             end
         else if (BTBWr) begin
-            validBuffer[EX_index] = validBuffer_temp;
-            BrTypeBuffer[EX_index] = BrTypeBuffer_temp;
+            validBuffer[EX_index] <= validBuffer_temp;
+            BrTypeBuffer[EX_index] <= BrTypeBuffer_temp;
         end
     end
 
