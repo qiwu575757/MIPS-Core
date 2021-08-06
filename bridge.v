@@ -212,11 +212,11 @@ end
 always @(posedge aclk ) begin
 	if(!aresetn)
 	begin
-		present_state_div=state_free;
+		present_state_div<=state_free;
 	end
 	else
 	begin
-		present_state_div=next_state_div;
+		present_state_div<=next_state_div;
 	end
 end
 
@@ -239,11 +239,11 @@ end
 always @(posedge aclk ) begin
 	if(!aresetn)
 	begin
-		present_state_mult=state_free;
+		present_state_mult<=state_free;
 	end
 	else
 	begin
-		present_state_mult=next_state_mult;
+		present_state_mult<=next_state_mult;
 	end
 end
 
@@ -266,11 +266,11 @@ end
 always @(posedge aclk ) begin
 	if(!aresetn)
 	begin
-		present_state_multu=state_free;
+		present_state_multu<=state_free;
 	end
 	else
 	begin
-		present_state_multu=next_state_multu;
+		present_state_multu<=next_state_multu;
 	end
 end
 
@@ -567,39 +567,39 @@ end
 
 always @(posedge clk) begin
 	if(!rst)
-		is_writing=0;
+		is_writing<=0;
 	else if(MEM_dcache_wr_req)
-		is_writing=1;
+		is_writing<=1;
 	else if(next_wr_state == state_wr_finish)
-		is_writing=0;
+		is_writing<=0;
 
 end
 
 always @(posedge clk) begin
 	if(!rst)
-		writing_addr=0;
+		writing_addr<=0;
 	else if(MEM_dcache_wr_req)
-		writing_addr=MEM_dcache_wr_addr;
+		writing_addr<=MEM_dcache_wr_addr;
 
 end
 
 always @(posedge clk) begin
 	if(!rst)
-		conf_wr=0;
+		conf_wr<=0;
 	if(MEM_dcache_wr_req & dcache_sel)
-	 	conf_wr=1;
+	 	conf_wr<=1;
 	else if (next_wr_state==state_wr_finish)
-		conf_wr=0;
+		conf_wr<=0;
 
 end
 
 always @(posedge clk) begin
 	if(!rst)
-		dram_wr=0;
+		dram_wr<=0;
 	if(MEM_dcache_wr_req & ~dcache_sel)
-	 	dram_wr=1;
+	 	dram_wr<=1;
 	else if (next_wr_state==state_wr_finish)
-		dram_wr=0;
+		dram_wr<=0;
 
 end
 //Write Passway
@@ -630,21 +630,21 @@ end
 
 always @(posedge clk) begin
 	if((current_wr_state==state_wr_data) && wready)
-		count_wr16=count_wr16+1;
+		count_wr16<=count_wr16+1;
 	else if ((current_wr_state==state_wr_data) && !wready)
-		count_wr16=count_wr16;
+		count_wr16<=count_wr16;
 	else
-		count_wr16=0;
+		count_wr16<=0;
 end
 
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		current_wr_state = state_wr_free;
+		current_wr_state <= state_wr_free;
 	end
 	else
 	begin
-		current_wr_state = next_wr_state;
+		current_wr_state <= next_wr_state;
 	end
 end
 
@@ -696,11 +696,11 @@ end
 always @(posedge clk) begin
 	if(!rst)
 	begin
-		current_rd_state = state_rd_free;
+		current_rd_state <= state_rd_free;
 	end
 	else
 	begin
-		current_rd_state = next_rd_state;
+		current_rd_state <= next_rd_state;
 	end
 end
 

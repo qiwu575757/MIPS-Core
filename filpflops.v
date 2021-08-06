@@ -437,7 +437,7 @@ module EX_MEM1(
         CP0Addr, CP0Rd, EX_dcache_en, Overflow,EX_TLBRill_Exc,EX_tlb_searchen,EX_MUX11Sel,
 		EX_MUX12Sel,EX_TLB_Exc,EX_TLB_flush,EX_TLB_writeen,EX_TLB_readen,EX_LoadOp,EX_StoreOp,
 		MULOut,Trap,EX_LL_signal,EX_SC_signal, EX_icache_valid_CI, EX_icache_op_CI,
-		EX_dcache_valid_CI, EX_dcache_op_CI,EX_WAIT_OP, 
+		EX_dcache_valid_CI, EX_dcache_op_CI,EX_WAIT_OP, EX_s1_vpn2,
 
 		MEM1_DMWr, MEM1_DMRd, MEM1_RFWr,MEM1_eret_flush, MEM1_CP0WrEn, MEM1_Exception, MEM1_ExcCode,
         MEM1_isBD, MEM1_DMSel, MEM1_MUX2Sel, MEM1_RD, MEM1_PC, MEM1_MUX13Out, MEM1_ALU1Out, MEM1_GPR_RT,
@@ -445,7 +445,7 @@ module EX_MEM1(
 		MEM1_MUX11Sel,MEM1_MUX12Sel,MEM1_TLB_Exc,MEM1_TLB_flush,MEM1_TLB_writeen,MEM1_TLB_readen,MEM1_LoadOp,
 		MEM1_StoreOp,MEM1_MULOut,MEM1_Trap,MEM1_LL_signal,MEM1_SC_signal,
 		MEM1_icache_valid_CI, MEM1_icache_op_CI, MEM1_dcache_valid_CI, MEM1_dcache_op_CI,
-		MEM1_WAIT_OP
+		MEM1_WAIT_OP, s1_vpn2
 	);
 	input 			clk;
 	input 			rst;
@@ -489,6 +489,7 @@ module EX_MEM1(
 	input 			EX_dcache_valid_CI;
 	input [1:0]		EX_dcache_op_CI;
 	input			EX_WAIT_OP;
+	input [18:0]	EX_s1_vpn2;
 
 	output reg 		MEM1_DMWr;
 	output reg 		MEM1_DMRd;
@@ -528,6 +529,7 @@ module EX_MEM1(
 	output reg 		MEM1_dcache_valid_CI;
 	output reg [1:0]MEM1_dcache_op_CI;
 	output reg  	MEM1_WAIT_OP;
+	output reg[18:0] 	s1_vpn2;
 
 	always@(posedge clk)
 		if(!rst || EX_Flush) begin
@@ -570,6 +572,7 @@ module EX_MEM1(
 			MEM1_dcache_valid_CI <= 1'b0;
 			MEM1_dcache_op_CI <= 2'b00;
 			MEM1_WAIT_OP <= 1'b0;
+			s1_vpn2 <= 19'd0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -610,6 +613,7 @@ module EX_MEM1(
 			MEM1_dcache_valid_CI <= EX_dcache_valid_CI;
 			MEM1_dcache_op_CI <= EX_dcache_op_CI;
 			MEM1_WAIT_OP <= EX_WAIT_OP;
+			s1_vpn2 <= EX_s1_vpn2;
 		end
 
 endmodule

@@ -349,6 +349,7 @@ module mips(
     wire [1:0]      EX_JType;
     wire [25:0]     EX_Imm26;
     wire [31:0]     EX_address;
+    wire [18:0]     EX_s1_vpn2;
 	//-------------MEM1---------------//
     wire            MEM1_eret_flush;
     wire            MEM1_Exception;
@@ -868,6 +869,7 @@ EX_MEM1 U_EX_MEM1(
         .Trap(Trap),.EX_LL_signal(EX_LL_signal),.EX_SC_signal(EX_SC_signal),
         .EX_icache_valid_CI(EX_icache_valid_CI), .EX_icache_op_CI(EX_icache_op_CI),
         .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),.EX_WAIT_OP(EX_WAIT_OP),
+        .EX_s1_vpn2(EX_s1_vpn2),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode),
@@ -880,7 +882,8 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp),.MEM1_MULOut(MEM1_MULOut),
         .MEM1_Trap(MEM1_Trap),.MEM1_LL_signal(MEM1_LL_signal),.MEM1_SC_signal(MEM1_SC_signal),
         .MEM1_icache_valid_CI(MEM1_icache_valid_CI), .MEM1_icache_op_CI(MEM1_icache_op_CI),
-        .MEM1_dcache_valid_CI(MEM1_dcache_valid_CI), .MEM1_dcache_op_CI(MEM1_dcache_op_CI),.MEM1_WAIT_OP(MEM1_WAIT_OP)
+        .MEM1_dcache_valid_CI(MEM1_dcache_valid_CI), .MEM1_dcache_op_CI(MEM1_dcache_op_CI),.MEM1_WAIT_OP(MEM1_WAIT_OP),
+        .s1_vpn2(s1_vpn2)
 	);
 
 CP0 U_CP0(
@@ -900,9 +903,9 @@ CP0 U_CP0(
 	);
 
 mux11 U_MUX11(
-	.vpn2(EntryHi_out[31:13]),.alu1out(MEM1_ALU1Out[31:13]),.MUX11_Sel(MEM1_MUX11Sel),
+	.vpn2(EntryHi_out[31:13]),.alu1out(ALU1Out[31:13]),.MUX11_Sel(EX_MUX11Sel),
 
-	.out(s1_vpn2)
+	.out(EX_s1_vpn2)
 );
 
 mux12 U_MUX12(
