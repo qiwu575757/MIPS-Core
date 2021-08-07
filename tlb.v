@@ -349,7 +349,6 @@ module dm_tlb(
     input   [ 7:0]  s0_asid,
 
     output          s0_found,
-    output  [ 3:0]  s0_index,
     output  [19:0]  s0_pfn,
     output  [ 2:0]  s0_c,
     output          s0_d,
@@ -361,7 +360,7 @@ module dm_tlb(
     input   [ 7:0]  s1_asid,
 
     output          s1_found,
-    output  [ 3:0]  s1_index,
+    output  [ 1:0]  s1_index,
     output  [19:0]  s1_pfn,
     output  [ 2:0]  s1_c,
     output          s1_d,
@@ -369,7 +368,7 @@ module dm_tlb(
 
     //write port,更改配置寄存器信息,实际使用虚拟页号来索引
     input           we,//write enable
-    input   [ 3:0]  w_index,
+    input   [ 1:0]  w_index,
     input   [18:0]  w_vpn2,
     input   [ 7:0]  w_asid,
     input           w_g,
@@ -383,7 +382,7 @@ module dm_tlb(
     input           w_v1,
 
     //read port
-    input   [ 3:0]  r_index,
+    input   [ 1:0]  r_index,
 
     output  [18:0]  r_vpn2,
     output  [ 7:0]  r_asid,
@@ -407,7 +406,7 @@ module dm_tlb(
          19      8      1    20     3   1  1     20      3 1  1   (bit)
     */
 
-    parameter TLBNUM = 16;
+    parameter TLBNUM = 4;
     reg [18:0]  tlb_vpn2    [TLBNUM-1:0];
     reg [ 7:0]  tlb_asid    [TLBNUM-1:0];
     reg         tlb_g       [TLBNUM-1:0];
@@ -421,19 +420,18 @@ module dm_tlb(
     reg         tlb_v1      [TLBNUM-1:0];
 
     //search port
-    assign s0_found = (s0_vpn2==tlb_vpn2[s0_vpn2[3:0]]) && ( (s0_asid==tlb_asid[s0_vpn2[3:0]]) || tlb_g[s0_vpn2[3:0]] );
-    assign s0_index = s0_vpn2[3:0];
-    assign s0_pfn   = !s0_odd_page ? tlb_pfn0[s0_vpn2[3:0]] : tlb_pfn1[s0_vpn2[3:0]];
-    assign s0_c     = !s0_odd_page ? tlb_c0[s0_vpn2[3:0]] : tlb_c1[s0_vpn2[3:0]];
-    assign s0_d     = !s0_odd_page ? tlb_d0[s0_vpn2[3:0]] : tlb_d1[s0_vpn2[3:0]];
-    assign s0_v     = !s0_odd_page ? tlb_v0[s0_vpn2[3:0]] : tlb_v1[s0_vpn2[3:0]];
+    assign s0_found = (s0_vpn2==tlb_vpn2[s0_vpn2[1:0]]) && ( (s0_asid==tlb_asid[s0_vpn2[1:0]]) || tlb_g[s0_vpn2[1:0]] );
+    assign s0_pfn   = !s0_odd_page ? tlb_pfn0[s0_vpn2[1:0]] : tlb_pfn1[s0_vpn2[1:0]];
+    assign s0_c     = !s0_odd_page ? tlb_c0[s0_vpn2[1:0]] : tlb_c1[s0_vpn2[1:0]];
+    assign s0_d     = !s0_odd_page ? tlb_d0[s0_vpn2[1:0]] : tlb_d1[s0_vpn2[1:0]];
+    assign s0_v     = !s0_odd_page ? tlb_v0[s0_vpn2[1:0]] : tlb_v1[s0_vpn2[1:0]];
 
-    assign s1_found = (s1_vpn2==tlb_vpn2[s1_vpn2[3:0]]) && ( (s1_asid==tlb_asid[s1_vpn2[3:0]]) || tlb_g[s1_vpn2[3:0]]);
-    assign s1_index =  s1_vpn2[3:0];
-    assign s1_pfn   = !s1_odd_page ? tlb_pfn0[s1_vpn2[3:0]] : tlb_pfn1[s1_vpn2[3:0]];
-    assign s1_c     = !s1_odd_page ?   tlb_c0[s1_vpn2[3:0]] :   tlb_c1[s1_vpn2[3:0]];
-    assign s1_d     = !s1_odd_page ?   tlb_d0[s1_vpn2[3:0]] :   tlb_d1[s1_vpn2[3:0]];
-    assign s1_v     = !s1_odd_page ?   tlb_v0[s1_vpn2[3:0]] :   tlb_v1[s1_vpn2[3:0]];
+    assign s1_found = (s1_vpn2==tlb_vpn2[s1_vpn2[1:0]]) && ( (s1_asid==tlb_asid[s1_vpn2[1:0]]) || tlb_g[s1_vpn2[1:0]]);
+    assign s1_index =  s1_vpn2[1:0];
+    assign s1_pfn   = !s1_odd_page ? tlb_pfn0[s1_vpn2[1:0]] : tlb_pfn1[s1_vpn2[1:0]];
+    assign s1_c     = !s1_odd_page ?   tlb_c0[s1_vpn2[1:0]] :   tlb_c1[s1_vpn2[1:0]];
+    assign s1_d     = !s1_odd_page ?   tlb_d0[s1_vpn2[1:0]] :   tlb_d1[s1_vpn2[1:0]];
+    assign s1_v     = !s1_odd_page ?   tlb_v0[s1_vpn2[1:0]] :   tlb_v1[s1_vpn2[1:0]];
 
     //------------write port-----------//
     integer i;
@@ -454,17 +452,17 @@ module dm_tlb(
             end
         else if ( we )
         begin
-            tlb_vpn2[w_vpn2[3:0]] = w_vpn2;
-            tlb_asid[w_vpn2[3:0]] = w_asid;
-            tlb_g[w_vpn2[3:0]]    = w_g;
-            tlb_pfn0[w_vpn2[3:0]] = w_pfn0;
-            tlb_c0[w_vpn2[3:0]]   = w_c0;
-            tlb_d0[w_vpn2[3:0]]   = w_d0;
-            tlb_v0[w_vpn2[3:0]]   = w_v0;
-            tlb_pfn1[w_vpn2[3:0]] = w_pfn1;
-            tlb_c1[w_vpn2[3:0]]   = w_c1;
-            tlb_d1[w_vpn2[3:0]]   = w_d1;
-            tlb_v1[w_vpn2[3:0]]   = w_v1;
+            tlb_vpn2[w_vpn2[1:0]] = w_vpn2;
+            tlb_asid[w_vpn2[1:0]] = w_asid;
+            tlb_g[w_vpn2[1:0]]    = w_g;
+            tlb_pfn0[w_vpn2[1:0]] = w_pfn0;
+            tlb_c0[w_vpn2[1:0]]   = w_c0;
+            tlb_d0[w_vpn2[1:0]]   = w_d0;
+            tlb_v0[w_vpn2[1:0]]   = w_v0;
+            tlb_pfn1[w_vpn2[1:0]] = w_pfn1;
+            tlb_c1[w_vpn2[1:0]]   = w_c1;
+            tlb_d1[w_vpn2[1:0]]   = w_d1;
+            tlb_v1[w_vpn2[1:0]]   = w_v1;
         end
     end
 

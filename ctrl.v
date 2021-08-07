@@ -82,6 +82,7 @@
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
+	reg [3:0]		BLType;
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -924,54 +925,67 @@
 		Branch_flush, if the branch is taken, the Branch_flush = 0.
 		Execute the delay slot only if the branch is taken
 	*/
+		
 	always @(OP or rt or CMPOut1 or CMPOut2) begin
 		case (OP)
-			6'b010100:				/* BEQL */
+			6'b010100: BLType = 4'b0000;				/* BEQL */
+			6'b010101: BLType = 4'b0001;				/* BNEL */
+			6'b000001:
+				case (rt)
+					5'b00011: BLType = 4'b0010;			/* BGEZL */
+					5'b00010: BLType = 4'b0011;			/* BLTZL */
+					5'b10011: BLType = 4'b0100;			/* BGEZALL */
+					5'b10010: BLType = 4'b0101;			/* BLTZALL */
+					default: BLType = 4'b1111;
+				endcase
+			6'b010110: BLType = 4'b0110;				/* BLEZL */
+			6'b010111: BLType = 4'b0111;				/* BGTZL */
+			default: BLType = 4'b1111;
+		endcase
+	end
+	
+	always @(BLType or CMPOut1 or CMPOut2) begin
+		case (BLType)
+			4'b0000:				/* BEQL */
 				if (CMPOut1 == 0)
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
-			6'b010101:				/* BNEL */
+			4'b0001:				/* BNEL */
 				if (CMPOut1 == 1)
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
-			6'b000001:
-				case (rt)
-					5'b00011:			/* BGEZL */
-						if (CMPOut2 != 2'b10)
-							Branch_flush = 0;
-						else
-							Branch_flush = 1;
-					5'b00010:			/* BLTZL */
-						if (CMPOut2 == 2'b10)
-							Branch_flush = 0;
-						else
-							Branch_flush = 1;
-					5'b10011:			/* BGEZALL */
-						if (CMPOut2 != 2'b10)
-							Branch_flush = 0;
-						else
-							Branch_flush = 1;
-					5'b10010:			/* BLTZALL */
-						if (CMPOut2 == 2'b10)
-							Branch_flush = 0;
-						else
-							Branch_flush = 1;
-
-					default: Branch_flush = 0;
-				endcase
-			6'b010110:				/* BLEZL */
+			4'b0010:				/* BGEZL */
+				if (CMPOut2 != 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			4'b0011:				/* BLTZL */
+				if (CMPOut2 == 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			4'b0100:				/* BGEZALL */
+				if (CMPOut2 != 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			4'b0101:				/* BLTZALL */
+				if (CMPOut2 == 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			4'b0110:				/* BLEZL */
 				if(CMPOut2 != 2'b01 && rt == 5'b0)
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
-			6'b010111:				/* BGTZL */
+			4'b0111:				/* BGTZL */
 				if(CMPOut2 == 2'b01 && rt == 5'b0)
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
-
 			default: Branch_flush = 0;
 		endcase
 	end
