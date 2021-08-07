@@ -247,7 +247,7 @@ module mem1_cache_prep(
     output          DMWen_dcache;
     output [3:0]    MEM1_dCache_wstrb;
     output reg[4:0] MEM1_ExcCode;
-    output          MEM1_Exception;
+    output reg      MEM1_Exception;
     output reg[31:0] MEM1_badvaddr;
     output          MEM1_TLBRill_Exc;
     output          MEM1_TLB_Exc;
@@ -262,7 +262,7 @@ module mem1_cache_prep(
     wire valid;
     wire [4:0] MEM1_TLB_ExCode;
     wire kseg0, kseg1;
-    wire tlbs, tlbl, tlbmod;
+    reg tlbs, tlbl, tlbmod;
     wire AdES_sel, AdEL_sel;
     wire SC_OK;
     reg  LLbit;
@@ -296,9 +296,33 @@ module mem1_cache_prep(
     assign valid = MEM1_dcache_en &IF_data_ok;
 	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
 
-    assign tlbl   = data_mapped & ( !DMWen_dcache & ( !s1_found | !s1_v ) );//load
-    assign tlbs   = data_mapped & (  DMWen_dcache & ( !s1_found | !s1_v ) );//store
-    assign tlbmod = data_mapped & (  DMWen_dcache & (  s1_found&s1_v&!s1_d) );//store
+    always @(*) begin  
+        if (s1_found && s1_v)
+            tlbl = 1'b0;
+        else if (data_mapped & !DMWen_dcache)
+            tlbl = 1'b1;
+        else
+            tlbl = 1'b0;
+    end
+
+    always @(*) begin  
+        if (s1_found && s1_v)
+            tlbs = 1'b0;
+        else if (data_mapped & DMWen_dcache)
+            tlbs = 1'b1;
+        else
+            tlbs = 1'b0;
+    end
+
+    always @(*) begin  
+        if (!s1_found)
+            tlbmod = 1'b0;
+        else if (data_mapped & !DMWen_dcache & s1_v & !s1_d)
+            tlbmod = 1'b1;
+        else
+            tlbmod = 1'b0;
+    end
+
     assign MEM1_TLB_Exc = (MEM1_TLB_Exc_temp&!Temp_M1_Exception) | Temp_MEM1_TLB_Exc;//include tlb rill,tlb invaild
     assign MEM1_TLB_Exc_temp = tlbl | tlbs | tlbmod;
     assign MEM1_TLB_ExCode =
@@ -316,9 +340,14 @@ module mem1_cache_prep(
         ( (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00) ||
         ( (MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0 ) );
 
-    assign MEM1_Exception = 
-                            (Interrupt | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  | Temp_M1_Exception) 
-                            | MEM1_TLB_Exc_temp;
+    always @(*) begin
+        if (MEM1_TLB_Exc_temp)
+            MEM1_Exception = 1'b1;
+        else if (Interrupt | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  | Temp_M1_Exception)
+            MEM1_Exception = 1'b1;
+        else
+            MEM1_Exception = 1'b0;
+    end
 
     always@(*)
         if (Interrupt) begin

@@ -8,7 +8,7 @@
 		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
 		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
 		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,Jump,
+		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,
 		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,ID_WAIT_OP,
 		ID_BrType, ID_JType
 	);
@@ -67,7 +67,6 @@
 	output reg 		Branch_flush;
 	output 			LL_signal;
 	output 			SC_signal;
-	output 			Jump;
 	output 			ID_WAIT_OP;
 
 	output reg 		icache_valid_CI;
@@ -743,9 +742,7 @@
 			endcase
 		end
 
-			
-
-	assign Jump = NPCOp != 2'b0;//imply the pipeline will jump or the branch is taken
+		
 
 	always @(OP or Funct) begin		/* the genenration of MUX1Sel, choose the TARGET REG */
 		 case (OP)

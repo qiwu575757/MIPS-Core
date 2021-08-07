@@ -267,7 +267,6 @@ module mips(
     wire            LL_signal;
     wire            SC_signal;
     wire            movz_movn;
-    wire            Jump;
     wire            ID_WAIT_OP;
     wire            icache_valid_CI;
 	wire            icache_op_CI;
@@ -760,7 +759,7 @@ ctrl U_CTRL(
 		.RHL_visit(RHL_visit),.dcache_en(ID_dcache_en),.ID_tlb_searchen(ID_tlb_searchen),.ID_MUX11Sel(ID_MUX11Sel),
         .ID_MUX12Sel(ID_MUX12Sel),.TLB_flush(TLB_flush),.TLB_writeen(TLB_writeen),.TLB_readen(TLB_readen),
         .LoadOp(LoadOp),.StoreOp(StoreOp),.movz_movn(movz_movn),.Branch_flush(Branch_flush),.LL_signal(LL_signal),
-        .SC_signal(SC_signal),.Jump(Jump), .icache_valid_CI(icache_valid_CI), .icache_op_CI(icache_op_CI),
+        .SC_signal(SC_signal), .icache_valid_CI(icache_valid_CI), .icache_op_CI(icache_op_CI),
         .dcache_valid_CI(dcache_valid_CI), .dcache_op_CI(dcache_op_CI),.ID_WAIT_OP(ID_WAIT_OP),
         .ID_BrType(ID_BrType), .ID_JType(ID_JType)
 	);
