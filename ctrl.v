@@ -83,6 +83,8 @@
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
 	reg [3:0]		BLType;
+	reg				B_cmp;
+	reg [2:0] 		B_Type;
 
 	always @(posedge clk) begin
 		if (!rst)
@@ -644,103 +646,104 @@
 		endcase
 	end
 
-	always @(OP or rt or Funct or CMPOut1 or CMPOut2) begin		/* the genenration of NPCOp */
-		 case (OP)
-			6'b000100:				/* BEQ */
-				if (CMPOut1 == 0)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-			6'b010100:				/* BEQL */
-				if (CMPOut1 == 0)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-			6'b000101:				/* BNE */
-				if (CMPOut1 == 1)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-			6'b010101:				/* BNEL */
-				if (CMPOut1 == 1)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
+	always @(OP or rt) begin							/* the generation of B_Type */
+		case (OP)
+			6'b000100, 6'b010100: B_Type = 3'b000;				/* BEQ, BEQL */
+			6'b000101, 6'b010101: B_Type = 3'b001;				/* BNE, BNEL */
 			6'b000001:
-				case (rt)
-					5'b00001:			/* BGEZ */
-						if (CMPOut2 != 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b00011:			/* BGEZL */
-						if (CMPOut2 != 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b00000:			/* BLTZ */
-						if (CMPOut2 == 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b00010:			/* BLTZL */
-						if (CMPOut2 == 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b10001:			/* BGEZAL */
-						if (CMPOut2 != 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b10011:			/* BGEZALL */
-						if (CMPOut2 != 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b10000:			/* BLTZAL */
-						if (CMPOut2 == 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-					5'b10010:			/* BLTZALL */
-						if (CMPOut2 == 2'b10)
-							NPCOp = 2'b01;
-						else
-							NPCOp = 2'b00;
-
-					default: NPCOp = 2'b00;
-				endcase
-			6'b000110:				/* BLEZ */
-				if(CMPOut2 != 2'b01)
-					NPCOp = 2'b01;
+			case (rt)
+				5'b00001, 5'b00011: B_Type = 3'b010; 			/* BGEZ, BGEZL */
+				5'b00000, 5'b00010: B_Type = 3'b011;			/* BLTZ, BLTZL */
+				5'b10001, 5'b10011: B_Type = 3'b010;			/* BGEZAL, BGEZALL */
+				5'b10000, 5'b10010: B_Type = 3'b011;			/* BLTZAL, BLEZALL */
+				default:  B_Type = 3'b111;
+			endcase
+			6'b000110: B_Type = 3'b100;				/* BLEZ */
+			6'b010110:
+				if (rt == 5'b00000)					/* BLEZL */
+					B_Type = 3'b100;
 				else
-					NPCOp = 2'b00;
-			6'b010110:				/* BLEZL */
-				if(CMPOut2 != 2'b01 && rt == 5'b0)
-					NPCOp = 2'b01;
+					B_Type = 3'b111;
+			6'b000111: B_Type = 3'b101;				/* BGTZ */
+			6'b010111:
+				if (rt == 5'b00000)
+					B_Type = 3'b101;				/* BGTZL */
 				else
-					NPCOp = 2'b00;
-			6'b000111:				/* BGTZ */
-				if(CMPOut2 == 2'b01)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-			6'b010111:				/* BGTZL */
-				if(CMPOut2 == 2'b01 && rt == 5'b0)
-					NPCOp = 2'b01;
-				else
-					NPCOp = 2'b00;
-			6'b000010: NPCOp = 2'b10;	/* J */
-			6'b000011: NPCOp = 2'b10;	/* JAL */
-			6'b000000:
-				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR or JALR */
-					NPCOp = 2'b11;
-				else
-					NPCOp = 2'b00;
-				default: NPCOp = 2'b00;
+					B_Type = 3'b111;
+			default:   B_Type = 3'b111;
 		endcase
 	end
+
+	always @(OP or rt or Funct) begin							/* the generation of B_cmp */
+		case (OP)
+			6'b000100: B_cmp = 1'b1;				/* BEQ */
+			6'b000101: B_cmp = 1'b1;				/* BNE */
+			6'b000001:
+			case (rt)
+				5'b00001: B_cmp = 1'b1; 			/* BGEZ */
+				5'b00000: B_cmp = 1'b1;				/* BLTZ */
+				5'b10001: B_cmp = 1'b1;				/* BGEZAL */
+				5'b10000: B_cmp = 1'b1;				/* BLTZAL */
+				default: B_cmp = 1'b0;
+			endcase
+			6'b000010: B_cmp = 1'b0;				/* J */
+			6'b000011: B_cmp = 1'b0;				/* JAL */
+			6'b000110: B_cmp = 1'b1;				/* BLEZ */
+			6'b000111: B_cmp = 1'b1;				/* BGTZ */
+			6'b000000: 
+			case (Funct)
+				6'b001000: B_cmp = 1'b0;			/* JR */
+				6'b001001: B_cmp = 1'b0;			/* JALR */
+			default: B_cmp = 1'b0;
+			endcase
+			default: B_cmp = 1'b0;
+		endcase
+	end
+
+	always@(B_cmp, B_Type, ID_JType, CMPOut1, CMPOut2)
+		if(B_cmp) begin
+			case(B_Type)
+				3'b000://BEQ
+					if(CMPOut1 == 1'b0)	
+						NPCOp = 2'b01;
+					else 
+						NPCOp = 2'b00;
+				3'b001://BNE
+					if(CMPOut1 == 1'b1)	
+						NPCOp = 2'b01;
+					else 
+						NPCOp = 2'b00;
+				3'b010://BGEZ,BGEZAL
+					if (CMPOut2 != 2'b10)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				3'b011://BLTZ,BLTZAL
+					if (CMPOut2 == 2'b10)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				3'b100://BLEZ
+					if(CMPOut2 != 2'b01)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+				default://BGTZ
+					if(CMPOut2 == 2'b01)
+						NPCOp = 2'b01;
+					else
+						NPCOp = 2'b00;
+			endcase
+		end
+		else begin
+			case(ID_JType)
+				2'b01:	NPCOp = 2'b10;
+				2'b10:	NPCOp = 2'b11;
+				default:NPCOp = 2'b00;
+			endcase
+		end
+
+			
 
 	assign Jump = NPCOp != 2'b0;//imply the pipeline will jump or the branch is taken
 
@@ -943,7 +946,7 @@
 			default: BLType = 4'b1111;
 		endcase
 	end
-	
+
 	always @(BLType or CMPOut1 or CMPOut2) begin
 		case (BLType)
 			4'b0000:				/* BEQL */

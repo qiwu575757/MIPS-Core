@@ -466,7 +466,7 @@ module mips(
     wire [31:0]     WB_DMOut;
     wire [31:0]     MUX10Out;
 	wire            we;//write enable
-    wire [ 3:0]     w_index;
+    wire [ 1:0]     w_index;
     wire [18:0]     w_vpn2;
     wire [ 7:0]     w_asid;
     wire            w_g;
