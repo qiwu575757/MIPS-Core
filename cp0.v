@@ -404,6 +404,8 @@ assign data_out =
             `cause_ce <= 2'b0;
         else if (Cause_CE_Wr)
              `cause_ce <= 2'b01;
+        else if (MEM1_Exception)
+            `cause_ce <= 2'b0;
     end
 
     //Cause-------> 23
