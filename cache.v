@@ -351,7 +351,7 @@ module icache(       clk, resetn, exception, stall,
 
     //output signals
     assign addr_ok = 1'b1;
-    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && cache_hit) || (C_STATE == INSTR);
+    assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && (cache_hit | exception));
     //assign rd_req = (N_STATE == REFILL) ;
     assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
@@ -1024,7 +1024,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
 endmodule
 
 module uncache_im(
-        clk, resetn, wr,
+        clk, resetn, wr, exception,
         //CPU_Pipeline side
         /*input*/   valid, addr,
         /*output*/  data_ok, rdata,
@@ -1036,6 +1036,7 @@ module uncache_im(
     input clk;
     input resetn;
     input wr;
+    input exception;
 
     input valid;
     input[31:0] addr;
@@ -1073,20 +1074,22 @@ module uncache_im(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, rd_rdy, ret_valid, ret_last, valid, done)
+    always@(C_STATE, rd_rdy, ret_valid, ret_last, valid, done, exception)
         case(C_STATE)
-            IDLE:    if(valid && rd_rdy && !done)
+            IDLE:   if(exception)
+                            N_STATE = IDLE; 
+                    else if(valid & rd_rdy & !done)
                             N_STATE = LOAD;
-                        else
+                    else
                             N_STATE = IDLE;
-            LOAD:       if(ret_valid && ret_last)
+            LOAD:   if(ret_valid & ret_last)
                             N_STATE = IDLE;
-                        else
+                    else
                             N_STATE = LOAD;
             default:    N_STATE = IDLE;
         endcase
 
-    assign data_ok = ~valid || done;
+    assign data_ok = ~valid | done | exception;
     assign rdata = rdata_reg;
 
     always@(posedge clk)
@@ -1103,7 +1106,8 @@ module uncache_im(
         else if((C_STATE == LOAD) && ret_valid && ret_last)
             rdata_reg <= ret_data;
 
-    assign rd_req = ((C_STATE == IDLE) & valid & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last));
+    assign rd_req = !exception&
+            (((C_STATE == IDLE) & valid & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
     assign wr_req = 1'b0;
     assign rd_type = 3'b010;
     assign wr_type = 3'b010;
@@ -1114,7 +1118,7 @@ module uncache_im(
 endmodule
 
 module uncache_dm(
-        clk, resetn, MEM2_DMSel, wr,
+        clk, resetn, MEM2_DMSel, wr, exception,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
@@ -1127,6 +1131,7 @@ module uncache_dm(
     input resetn;
     input [2:0] MEM2_DMSel;
     input wr;
+    input exception;
 
     input valid;
     input op;
@@ -1174,26 +1179,29 @@ module uncache_dm(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, ret_last, wr_valid, done)
+    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, 
+                ret_last, wr_valid, done, exception)
         case(C_STATE)
-            IDLE:    if(load && rd_rdy && !done)
+            IDLE:   if(exception)
+                        N_STATE = IDLE; 
+                    else if(load & rd_rdy & !done)
                             N_STATE = LOAD;
-                        else if(store && wr_rdy && !done)
+                    else if(store & wr_rdy & !done)
                             N_STATE = STORE;
-                        else
+                    else
                             N_STATE = IDLE;
-            LOAD:       if(ret_valid && ret_last)
+            LOAD:   if(ret_valid && ret_last)
                             N_STATE = IDLE;
-                        else
+                    else
                             N_STATE = LOAD;
-            STORE:      if(wr_valid)
+            STORE:  if(wr_valid)
                             N_STATE = IDLE;
-                        else
+                    else
                             N_STATE = STORE;
             default:    N_STATE = IDLE;
         endcase
 
-    assign data_ok = ~valid || done ;
+    assign data_ok = ~valid | done | exception;
     assign rdata = rdata_reg;
 
     always@(posedge clk)
@@ -1212,8 +1220,10 @@ module uncache_dm(
         else if((C_STATE == LOAD) && ret_valid && ret_last)
             rdata_reg <= ret_data;
 
-    assign rd_req = ((C_STATE == IDLE) & load & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last));
-    assign wr_req = ((C_STATE == IDLE) & store & wr_rdy & !done) | ((C_STATE == STORE) & !wr_valid);
+    assign rd_req = !exception&
+            (((C_STATE == IDLE) & load & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
+    assign wr_req = !exception&
+            (((C_STATE == IDLE) & store & wr_rdy & !done) | ((C_STATE == STORE) & !wr_valid));
     assign rd_type =
             ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
             ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :

@@ -649,7 +649,7 @@ PF_IF U_PF_IF(
         .IF_uncache_valid(IF_uncache_valid), .IF_PPC(IF_PPC)
 	);
 uncache_im U_UNCACHE_IM(
-        .clk(clk), .resetn(rst), .wr(PF_IFWr),
+        .clk(clk), .resetn(rst), .wr(PF_IFWr), .exception(MEM1_ee | IF_invalid),
         //CPU_Pipeline side
         /*input*/   .valid(IF_uncache_valid & ~IF_invalid), .addr(IF_PPC),
         /*output*/  .data_ok(IF_uncache_data_ok), .rdata(IF_uncache_rdata),
@@ -701,9 +701,9 @@ branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
     //--------------ID----------------//
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC_invalid ? PF_PC :IF_PC),
-        .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~PF_Instr_Flush)),
-		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~PF_Instr_Flush)),
-        .IF_TLB_Exc(IF_TLB_Exc&(~PF_Instr_Flush)),
+        .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~Invalidate_signal)),
+		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~Invalidate_signal)),
+        .IF_TLB_Exc(IF_TLB_Exc&(~Invalidate_signal)),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLBRill_Exc(ID_TLBRill_Exc),.ID_TLB_Exc(ID_TLB_Exc)
@@ -986,7 +986,7 @@ mux2 U_MUX2(
 	);
 
 uncache_dm U_UNCACHE_DM(
-        .clk(clk),.resetn(rst), .MEM2_DMSel(MEM2_DMSel), .wr(MEM1_MEM2Wr),
+        .clk(clk),.resetn(rst), .MEM2_DMSel(MEM2_DMSel), .wr(MEM1_MEM2Wr), .exception(MEM2_invalid),
         .valid(MEM2_uncache_valid &~MEM2_invalid),.op(DMWen_uncache),.addr(MEM2_Paddr),
         .wstrb(MEM2_unCache_wstrb),.wdata(MEM2_wdata),.data_ok(MEM_unCache_data_ok),.rdata(uncache_Out),
         .rd_rdy(MEM_dcache_rd_rdy),.wr_rdy(MEM_dcache_wr_rdy),
