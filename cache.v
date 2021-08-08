@@ -319,7 +319,7 @@ module icache(       clk, resetn, exception, stall,
             C_STATE <= IDLE;
         else
             C_STATE <= N_STATE;
-    always@(C_STATE, valid, cache_hit, valid_CI, ret_valid, ret_last, exception, rd_rdy)
+    always@(C_STATE, valid, cache_hit, valid_CI, ret_valid, ret_last, exception)
         case(C_STATE)
             IDLE:   if(valid)
                         N_STATE = LOOKUP;
@@ -337,10 +337,7 @@ module icache(       clk, resetn, exception, stall,
                         N_STATE = INSTR;
                     else
                         N_STATE = IDLE;
-            MISS:   if(rd_rdy)
-                        N_STATE = REFILL;
-                    else
-                        N_STATE = MISS;
+            MISS:       N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
                     else
@@ -353,7 +350,7 @@ module icache(       clk, resetn, exception, stall,
     assign addr_ok = 1'b1;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && (cache_hit | exception));
     //assign rd_req = (N_STATE == REFILL) ;
-    assign rd_req = ((C_STATE == MISS) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
+    assign rd_req = (C_STATE == MISS) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
     assign RBWr = (valid | valid_CI)& data_ok;
@@ -654,7 +651,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
     always@(posedge clk)                //help locate the block offset during REFILL state
         if(!resetn)
             ret_number_MB <= 4'b0000;
-        else if(/*rd_rdy*/C_STATE == MISS)
+        else if(C_STATE == MISS)
             ret_number_MB <= 4'b0000;
         else if(ret_valid)
             ret_number_MB <= ret_number_MB + 1;
@@ -911,20 +908,11 @@ module dcache(       clk, resetn, DMen, stall, exception,
                         N_STATE = MISS;
                     else
                         N_STATE = REPLACE;
-            REPLACE:if(valid_CI_RB) begin
-                        if(wr_valid)
-                            N_STATE = INSTR;
-                        else
-                            N_STATE = REPLACE;
-                    end
-                    else if(wr_valid)
-                        N_STATE = HOLD;
-                    else
-                        N_STATE = REPLACE;
-            HOLD:   if(rd_rdy)
-                        N_STATE = REFILL;
+            REPLACE:if(valid_CI_RB)
+                        N_STATE = INSTR;
                     else
                         N_STATE = HOLD;
+            HOLD:       N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
                     else
@@ -951,9 +939,9 @@ module dcache(       clk, resetn, DMen, stall, exception,
     //output signals
     assign addr_ok = 1'b1;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && (cache_hit | exception));
-    assign rd_req = ((C_STATE == HOLD) & rd_rdy) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
-    assign wr_req = (((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) | ((C_STATE == REPLACE) & !wr_valid))
-                      & (C_STATE != INSTR);
+    assign rd_req = (C_STATE == HOLD) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
+    assign wr_req = (((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) 
+                    | ((C_STATE == REPLACE) & valid_CI_RB));
 
     always@(*)
         case(op_CI_RB)
@@ -1074,11 +1062,11 @@ module uncache_im(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, rd_rdy, ret_valid, ret_last, valid, done, exception)
+    always@(C_STATE, ret_valid, ret_last, valid, done, exception)
         case(C_STATE)
             IDLE:   if(exception)
                             N_STATE = IDLE; 
-                    else if(valid & rd_rdy & !done)
+                    else if(valid & !done)
                             N_STATE = LOAD;
                     else
                             N_STATE = IDLE;
@@ -1107,7 +1095,7 @@ module uncache_im(
             rdata_reg <= ret_data;
 
     assign rd_req = !exception&
-            (((C_STATE == IDLE) & valid & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
+            (((C_STATE == IDLE) & valid & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
     assign wr_req = 1'b0;
     assign rd_type = 3'b010;
     assign wr_type = 3'b010;
@@ -1179,12 +1167,12 @@ module uncache_dm(
         else
             C_STATE <= N_STATE;
 
-    always@(C_STATE, load, store, rd_rdy, wr_rdy, ret_valid, 
-                ret_last, wr_valid, done, exception)
+    always@(C_STATE, load, store,  wr_rdy, ret_valid, 
+                ret_last, done, exception)
         case(C_STATE)
             IDLE:   if(exception)
                         N_STATE = IDLE; 
-                    else if(load & rd_rdy & !done)
+                    else if(load & !done)
                             N_STATE = LOAD;
                     else if(store & wr_rdy & !done)
                             N_STATE = STORE;
@@ -1194,10 +1182,7 @@ module uncache_dm(
                             N_STATE = IDLE;
                     else
                             N_STATE = LOAD;
-            STORE:  if(wr_valid)
-                            N_STATE = IDLE;
-                    else
-                            N_STATE = STORE;
+            STORE:      N_STATE = IDLE;
             default:    N_STATE = IDLE;
         endcase
 
@@ -1211,7 +1196,7 @@ module uncache_dm(
             done <= 1'b0;
         else if((C_STATE == LOAD) && ret_valid && ret_last)
             done <= 1'b1;
-        else if((C_STATE == STORE) && wr_valid)
+        else if(C_STATE == STORE)
             done <= 1'b1;
 
     always@(posedge clk)
@@ -1221,9 +1206,9 @@ module uncache_dm(
             rdata_reg <= ret_data;
 
     assign rd_req = !exception&
-            (((C_STATE == IDLE) & load & rd_rdy & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
+            (((C_STATE == IDLE) & load  & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
     assign wr_req = !exception&
-            (((C_STATE == IDLE) & store & wr_rdy & !done) | ((C_STATE == STORE) & !wr_valid));
+            ((C_STATE == IDLE) & store & wr_rdy & !done);
     assign rd_type =
             ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
             ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
