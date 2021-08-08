@@ -599,7 +599,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		conf_wr<=0;
-	if(MEM_dcache_wr_req & ~dcache_sel)
+	if(MEM_dcache_wr_req & dcache_sel)
 	 	conf_wr<=1;
 	else if (next_wr_state==state_wr_finish)
 		conf_wr<=0;
@@ -609,7 +609,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		dram_wr<=0;
-	if(MEM_dcache_wr_req & dcache_sel)
+	if(MEM_dcache_wr_req & ~dcache_sel)
 	 	dram_wr<=1;
 	else if (next_wr_state==state_wr_finish)
 		dram_wr<=0;
