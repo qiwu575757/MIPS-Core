@@ -599,7 +599,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		conf_wr<=0;
-	if(MEM_dcache_wr_req & ~dcache_sel)
+	if(MEM_dcache_wr_req & dcache_sel)
 	 	conf_wr<=1;
 	else if (next_wr_state==state_wr_finish)
 		conf_wr<=0;
@@ -609,7 +609,7 @@ end
 always @(posedge clk) begin
 	if(!rst)
 		dram_wr<=0;
-	if(MEM_dcache_wr_req & dcache_sel)
+	if(MEM_dcache_wr_req & ~dcache_sel)
 	 	dram_wr<=1;
 	else if (next_wr_state==state_wr_finish)
 		dram_wr<=0;
@@ -723,7 +723,7 @@ always @(*) begin
 	case(current_rd_state)
         state_rd_free:
 		begin
-			if ((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
+			if ((IF_icache_rd_req) & (~is_writing | (araddr[31:6] != writing_addr[31:6])))
 			begin
 				next_rd_state = state_if_send;
 			end
@@ -788,7 +788,7 @@ assign MEM_dcache_ret_valid = (rvalid & rid[0]);
 assign MEM_dcache_ret_last = (rlast & rid[0]);
 
 assign MEM_dcache_ret_data = rdata;
-assign MEM_dcache_wr_rdy = ((~is_writing)|(IF_icache_rd_addr!=writing_addr))&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish );
+assign MEM_dcache_wr_rdy = (~is_writing)&awready&(current_wr_state==state_wr_free || current_wr_state==state_wr_finish );
 assign IF_icache_rd_rdy = (~is_writing)&arready&(current_rd_state==state_rd_free );
 assign IF_icache_ret_valid = rvalid& (~rid[0]);
 assign IF_icache_ret_last = rlast & (~rid[0]);
