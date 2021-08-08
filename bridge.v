@@ -547,9 +547,7 @@ parameter state_if_send = 3'd1;
 parameter state_if_wait = 3'd2;
 parameter state_mem_send = 3'd3;
 parameter state_mem_wait = 3'd4;
-parameter state_two_need_send_if = 3'd5;
-parameter state_two_need_send_mem = 3'd6;
-parameter state_two_waiting = 3'd7;
+parameter state_finish = 3'd5;
 /*FSM_W*/
 parameter state_wr_free = 3'b000;
 parameter state_wr_req = 3'b001;
@@ -737,23 +735,18 @@ always @(*) begin
 		end
         state_if_send:
 		begin
-			if(arvalid&arready)
+			if(arready)
 			begin
-                if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_two_need_send_mem;
-                else
-                    next_rd_state=state_if_wait;
+                next_rd_state=state_if_wait;
 			end
 			else
 				next_rd_state = state_if_send;
 		end
 		state_if_wait:
 		begin
-			if(rlast & (~rid[0]))
+			if(rlast& rvalid & (~rid[0]))
 			begin
-                if((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_if_send;
-                else if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
+                if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
                     next_rd_state=state_mem_send;
 				else
 					next_rd_state=state_rd_free;
@@ -763,69 +756,29 @@ always @(*) begin
 		end
 		state_mem_send:
 		begin
-			if(arvalid&arready)
+			if(arready)
 			begin
-                if((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_two_need_send_if;
-                else
-                    next_rd_state=state_mem_wait;
+                next_rd_state=state_mem_wait;
 			end
 			else
 				next_rd_state = state_mem_send;
 		end
 		state_mem_wait:
 		begin
-			if(rlast & (rid[0]))
+			if(rlast & rvalid & (rid[0]))
 			begin
                 if((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
                     next_rd_state=state_if_send;
-                else if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_mem_send;
 				else
 					next_rd_state=state_rd_free;
 			end
 			else
 				next_rd_state = state_mem_wait;
 		end
-		state_two_need_send_if:
-		begin
-			if(arvalid&arready)
-				next_rd_state = state_two_waiting;
-			else
-				next_rd_state = state_two_need_send_if;
-		end
-		state_two_need_send_mem:
-		begin
-			if(arvalid&arready)
-				next_rd_state = state_two_waiting;
-			else
-				next_rd_state = state_two_need_send_mem;
-		end
-		state_two_waiting:
-		begin
-			if(rlast & (rid[0]))
-			begin
-                if((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_if_send;
-                else if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_mem_send;
-				else
-					next_rd_state=state_if_wait;
-			end
-
-			else if(rlast & (~rid[0]))
-			begin
-                if((IF_icache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_if_send;
-                else if((MEM_dcache_rd_req) & (~is_writing | (araddr != writing_addr)))
-                    next_rd_state=state_mem_send;
-				else
-					next_rd_state=state_mem_wait;
-			end
-			else
-				next_rd_state = state_two_waiting;
-		end
-
+        default:
+        begin
+            next_rd_state = state_rd_free;
+        end
 
 	endcase
 end
@@ -842,28 +795,21 @@ assign IF_icache_ret_last = rlast & (~rid[0]);
 assign IF_icache_ret_data = rdata;
 assign IF_icache_wr_rdy=1;
 // 0 -> instr   1 -> data
-assign arid =   (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if) ? 0:1;
+assign arid =   (current_rd_state==state_if_send)  ? 0:1;
 
-assign arsize = (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if)
+assign arsize = (current_rd_state==state_if_send) 
 				   			? IF_icache_rd_type : MEM_dcache_rd_type;
-assign araddr = (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if)
+assign araddr = (current_rd_state==state_if_send) 
 							? IF_icache_rd_addr : MEM_dcache_rd_addr;
-assign arlen =  (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if)
+assign arlen =  (current_rd_state==state_if_send) 
 							?   icache_sel ? 4'b0:4'b1111 :
                                 dcache_sel ? 4'b0:4'b1111;
-assign arburst = (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if)
+assign arburst = (current_rd_state==state_if_send) 
 							?   icache_sel ? 2'b0:2'b01 :
                                 dcache_sel ? 2'b0:2'b01;
 
 assign arvalid = (current_rd_state==state_if_send) ||
-				(current_rd_state==state_two_need_send_if) ||
-				(current_rd_state==state_mem_send) ||
-				(current_rd_state==state_two_need_send_mem);
+				(current_rd_state==state_mem_send);
 
 
 assign awaddr =writing_addr;
