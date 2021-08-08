@@ -60,13 +60,12 @@ endmodule
 
 
 module flush(
-	MEM1_eret_flush, MEM1_Exception, can_go,
+	MEM1_ee, can_go,
 
 	PC_Flush,PF_Flush,IF_Flush,ID_Flush,
 	EX_Flush,MEM1_Flush,MEM2_Flush
 	);
-	input 			MEM1_eret_flush;
-	input 			MEM1_Exception;
+	input 			MEM1_ee;
 	input 			can_go;
 
 	output 			IF_Flush;
@@ -77,10 +76,10 @@ module flush(
 	output 			MEM2_Flush;
 	output 			PF_Flush;
 
-	assign IF_Flush =  (MEM1_eret_flush | MEM1_Exception) ;
-	assign ID_Flush = (MEM1_eret_flush | MEM1_Exception) ;
-	assign EX_Flush = (MEM1_eret_flush | MEM1_Exception) ;
-	assign MEM1_Flush = (MEM1_eret_flush | MEM1_Exception) &can_go;
+	assign IF_Flush =  MEM1_ee ;
+	assign ID_Flush = MEM1_ee ;
+	assign EX_Flush = MEM1_ee ;
+	assign MEM1_Flush = MEM1_ee &can_go;
 	assign PC_Flush = 1'b0 ;
 	assign MEM2_Flush = 1'b0;
 	assign PF_Flush = 1'b0 ;

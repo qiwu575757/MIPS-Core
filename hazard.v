@@ -62,7 +62,7 @@ module stall(
 	clk,rst ,EX_RT, MEM1_RT, MEM2_RT, ID_RS, ID_RT,
 	EX_DMRd, ID_PC, EX_PC, MEM1_PC, MEM1_DMRd, MEM2_DMRd,
 	BJOp, EX_RFWr,EX_CP0Rd, MEM1_CP0Rd, MEM2_CP0Rd,rst_sign,
-	MEM1_ex, MEM1_RFWr, MEM2_RFWr,MEM1_eret_flush,isbusy, RHL_visit,
+	MEM1_ee, MEM1_RFWr, MEM2_RFWr,isbusy, RHL_visit,
 	iCache_data_ok,dCache_data_ok,MEM_dCache_en,
     MEM1_cache_sel,MEM1_dCache_en,ID_tlb_searchen,EX_CP0WrEn,MUL_sign,
 	EX_SC_signal,MEM1_SC_signal,MEM1_WAIT_OP,Interrupt,
@@ -90,8 +90,7 @@ module stall(
 	input 			EX_CP0Rd;
 	input 			MEM1_CP0Rd;
 	input 			MEM2_CP0Rd;
-	input 			MEM1_ex;
-	input 			MEM1_eret_flush;
+	input 			MEM1_ee;
 	input 			rst_sign;
 	input 			isbusy;
 	input 			RHL_visit;
@@ -148,7 +147,7 @@ module stall(
 	assign whole_stall = dcache_stall | MEM1_WAIT_OP | MUL_sign;
 
 	always@( * )
-		if(MEM1_ex || MEM1_eret_flush) begin
+		if(MEM1_ee) begin
 			PF_IFWr = 1'b1;
 			PCWr = 1'b1;
 			IF_IDWr = 1'b1;

@@ -91,6 +91,7 @@ module branch_predict_prep(
     input [31:0]    target_addr,
     input           MEM1_Exception,
     input           MEM1_eret_flush,
+    input           MEM1_ee,
     input [31:0]    EPC,
     input           Interrupt,
     input           Status_BEV,
@@ -134,7 +135,7 @@ module branch_predict_prep(
 
     assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
 
-    assign ee = MEM1_Exception |( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI);
+    assign ee = MEM1_ee |(WB_TLB_flush | WB_icache_valid_CI);
     always@(*) begin
 		if (MEM1_Exception)	//use the standard mips structure
 		begin
@@ -204,7 +205,7 @@ module mem1_cache_prep(
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid
+    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid, MEM1_ee
     );
     input           clk;
     input           rst;
@@ -257,6 +258,7 @@ module mem1_cache_prep(
     output [31:0]   MEM1_SCOut;
     output          Cause_CE_Wr;
     output          MEM1_invalid;
+    output reg      MEM1_ee;
 
     wire data_mapped;
     wire valid;
@@ -349,6 +351,15 @@ module mem1_cache_prep(
             MEM1_Exception = 1'b0;
     end
 
+    always @(*) begin
+        if (MEM1_TLB_Exc_temp)
+            MEM1_ee = 1'b1;
+        else if (Interrupt | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  | Temp_M1_Exception | MEM1_eret_flush)
+            MEM1_ee = 1'b1;
+        else
+            MEM1_ee = 1'b0;
+    end
+
     always@(*)
         if (Interrupt) begin
 			MEM1_ExcCode = `Int;
@@ -386,19 +397,19 @@ module mem1_cache_prep(
     assign MEM1_dcache_valid = MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok
                 & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
-    assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_Exception&!MEM1_eret_flush
+    assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_ee
                         &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
-    assign MEM1_invalid = MEM1_Exception | MEM1_eret_flush;
+    assign MEM1_invalid = MEM1_ee;
 
     /* LL SC Instr */
     always @(posedge clk) begin
-        if ( !rst | MEM1_eret_flush | MEM1_Exception )
+        if ( !rst | MEM1_ee )
             LLbit <= 1'b0;
         else if ( MEM1_LL_signal )
             LLbit <= 1'b1;
     end
     always @(posedge clk) begin
-        if ( !rst | MEM1_eret_flush | MEM1_Exception )
+        if ( !rst | MEM1_ee )
             LL_addr <= 32'b0;
         else if ( MEM1_LL_signal )
             LL_addr <= MEM1_ALU1Out;

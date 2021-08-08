@@ -425,6 +425,7 @@ module mips(
     wire            MEM1_WAIT_OP;
     wire            Cause_CE_Wr;
     wire            MEM1_invalid;      
+    wire            MEM1_ee;      
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -592,6 +593,7 @@ branch_predict_prep U_BRANCH_PREDICT_PREP(
     .target_addr(target_addr),
     .MEM1_Exception(MEM1_Exception),
     .MEM1_eret_flush(MEM1_eret_flush),
+    .MEM1_ee(MEM1_ee),
     .EPC(EPCOut),
     .Interrupt(Interrupt),
     .Status_BEV(Status_BEV),
@@ -615,7 +617,7 @@ branch_predict_prep U_BRANCH_PREDICT_PREP(
 );
 
 icache U_ICACHE(
-	.clk(clk), .resetn(rst), .exception(MEM1_Exception | MEM1_eret_flush | IF_invalid), .stall(icache_stall),
+	.clk(clk), .resetn(rst), .exception(MEM1_ee | IF_invalid), .stall(icache_stall),
 	// cpu && cache
 	/*input*/
   	.valid(PF_icache_valid), .index(PF_PC[11:6]), .tag(IF_PPC[31:12]), .offset(PF_PC[5:0]),
@@ -931,7 +933,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
         MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
         MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
         MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid, MEM1_DMen,
-        MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid
+        MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid, MEM1_ee
 	);
 
 dcache U_DCACHE(
@@ -1104,8 +1106,8 @@ npc U_NPC(
 	);
 
 flush U_FLUSH(
-        .MEM1_eret_flush(MEM1_eret_flush),.MEM1_Exception(MEM1_Exception),
-        .can_go(MEM_data_ok),
+        .MEM1_ee(MEM1_ee),
+        .can_go(MEM_data_ok), 
 
         .PC_Flush(PC_Flush),.PF_Flush(PF_Flush),.IF_Flush(IF_Flush),
         .ID_Flush(ID_Flush),.EX_Flush(EX_Flush),.MEM1_Flush(MEM1_Flush),
@@ -1127,7 +1129,7 @@ stall U_STALL(
 		.EX_RT(MUX1Out), .MEM1_RT(MEM1_RD), .MEM2_RT(MEM2_RD), .ID_RS(ID_Instr[25:21]), .ID_RT(ID_Instr[20:16]),
 		.EX_DMRd(EX_DMRd),.ID_PC(ID_PC),.EX_PC(EX_PC), .MEM1_PC(MEM1_PC), .MEM1_DMRd(MEM1_DMRd), .MEM2_DMRd(MEM2_DMRd),
 		.BJOp(B_JOp),.EX_RFWr(EX_RFWr), .EX_CP0Rd(EX_CP0Rd), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM2_CP0Rd(MEM2_CP0Rd),
-		.rst_sign(!rst), .MEM1_ex(MEM1_Exception), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
+		.rst_sign(!rst), .MEM1_ee(MEM1_ee), .MEM1_RFWr(MEM1_RFWr), .MEM2_RFWr(MEM2_RFWr),
         .isbusy(EX_isBusy), .RHL_visit(RHL_visit),.iCache_data_ok(IF_data_ok),.dCache_data_ok(MEM_data_ok),
         .MEM_dCache_en(MEM2_DMen),.MEM1_cache_sel(MEM1_cache_sel),
         .MEM1_dCache_en(MEM1_dcache_valid | MEM1_dcache_valid_CI),.ID_tlb_searchen(ID_tlb_searchen),
