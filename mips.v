@@ -187,6 +187,10 @@ module mips(
     wire            IF_uncache_valid;
     wire [31:0]     IF_PPC;
     wire [31:0]     Instr;
+	wire            IF_uncache_rd_rdy;
+	wire            IF_uncache_ret_valid;
+	wire            IF_uncache_ret_last;
+	wire [31:0]     IF_uncache_ret_data;
     wire            IF_uncache_data_ok;
     wire [31:0]     IF_uncache_rdata;
     wire            IF_uncache_rd_req;
@@ -197,6 +201,7 @@ module mips(
     wire [31:0]     IF_uncache_wr_addr;
     wire [31:0]     IF_uncache_wr_data;
     wire [3:0]      IF_uncache_wr_wstrb;
+	wire            IF_uncache_wr_rdy;
     wire            IF_data_ok;
     wire            IF_rd_req;
     wire            IF_wr_req;
@@ -424,8 +429,8 @@ module mips(
     wire            Cause_IV;
     wire            MEM1_WAIT_OP;
     wire            Cause_CE_Wr;
-    wire            MEM1_invalid;      
-    wire            MEM1_ee;      
+    wire            MEM1_invalid;
+    wire            MEM1_ee;
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -456,7 +461,7 @@ module mips(
     wire [31:0]     MEM2_wdata;
     wire [31:0]     MEM2_SCOut;
     wire            MEM2_icache_valid_CI;
-    wire            MEM2_invalid;  
+    wire            MEM2_invalid;
     //--------------WB----------------//
     wire [31:0]     WB_PC;
 	wire [31:0]     WB_MUX2Out;
@@ -542,6 +547,13 @@ module mips(
     wire [31:0]     MEM_uncache_wr_addr;
     wire [3:0]      MEM_uncache_wr_wstrb;
     wire [31:0]     MEM_uncache_wr_data;
+
+	wire            MEM_uncache_rd_rdy;
+	wire            MEM_uncache_ret_valid;
+	wire            MEM_uncache_ret_last;
+	wire [31:0]     MEM_uncache_ret_data;
+    wire            MEM_uncache_wr_rdy;
+
     wire [31:0]     cache_Out;
     wire            MEM_data_ok;
     wire            MEM_rd_req;
@@ -654,8 +666,8 @@ uncache_im U_UNCACHE_IM(
         /*input*/   .valid(IF_uncache_valid & ~IF_invalid), .addr(IF_PPC),
         /*output*/  .data_ok(IF_uncache_data_ok), .rdata(IF_uncache_rdata),
         //AXI-Bus side
-        /*input*/   .rd_rdy(IF_icache_rd_rdy), .wr_rdy(IF_icache_wr_rdy),
-        .ret_valid(IF_icache_ret_valid), .ret_last(IF_icache_ret_valid), .ret_data(IF_icache_ret_data),
+        /*input*/   .rd_rdy(IF_uncache_rd_rdy), .wr_rdy(IF_uncache_wr_rdy),
+        .ret_valid(IF_uncache_ret_valid), .ret_last(IF_uncache_ret_valid), .ret_data(IF_uncache_ret_data),
         /*output*/  .rd_req(IF_uncache_rd_req), .wr_req(IF_uncache_wr_req),
         .rd_type(IF_uncache_rd_type), .wr_type(IF_uncache_wr_type), .rd_addr(IF_uncache_rd_addr),
         .wr_addr(IF_uncache_wr_addr), .wr_wstrb(IF_uncache_wr_wstrb), .wr_data(IF_uncache_wr_data)
@@ -876,7 +888,7 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_isBD(MEM1_isBD),.MEM1_DMSel(MEM1_DMSel), .MEM1_MUX2Sel(MEM1_MUX2Sel), .MEM1_RD(MEM1_RD),
         .MEM1_PC(MEM1_PC), .MEM1_MUX13Out(MEM1_MUX13Out), .MEM1_ALU1Out(MEM1_ALU1Out), .MEM1_GPR_RT(MEM1_GPR_RT),
         .MEM1_CP0Addr(MEM1_CP0Addr), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM1_dcache_en(MEM1_dcache_en),
-        .MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc), 
+        .MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc),
         .MEM1_tlb_searchen(MEM1_tlb_searchen),.MEM1_MUX11Sel(MEM1_MUX11Sel),.MEM1_MUX12Sel(MEM1_MUX12Sel),
         .MEM1_TLB_Exc(Temp_MEM1_TLB_Exc),.MEM1_TLB_flush(MEM1_TLB_flush),.MEM1_TLB_writeen(MEM1_TLB_writeen),
         .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_LoadOp(MEM1_LoadOp),.MEM1_StoreOp(MEM1_StoreOp),.MEM1_MULOut(MEM1_MULOut),
@@ -937,7 +949,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
 	);
 
 dcache U_DCACHE(
-    .clk(clk), .resetn(rst), .DMen(MEM2_dcache_en), 
+    .clk(clk), .resetn(rst), .DMen(MEM2_dcache_en),
     .stall(~(IF_data_ok&MEM_unCache_data_ok)), .exception(MEM2_invalid),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_ALU1Out[11:6]),
@@ -989,8 +1001,8 @@ uncache_dm U_UNCACHE_DM(
         .clk(clk),.resetn(rst), .MEM2_DMSel(MEM2_DMSel), .wr(MEM1_MEM2Wr), .exception(MEM2_invalid),
         .valid(MEM2_uncache_valid &~MEM2_invalid),.op(DMWen_uncache),.addr(MEM2_Paddr),
         .wstrb(MEM2_unCache_wstrb),.wdata(MEM2_wdata),.data_ok(MEM_unCache_data_ok),.rdata(uncache_Out),
-        .rd_rdy(MEM_dcache_rd_rdy),.wr_rdy(MEM_dcache_wr_rdy),
-        .ret_valid(MEM_dcache_ret_valid),.ret_last(MEM_dcache_ret_last),.ret_data(MEM_dcache_ret_data),.wr_valid(bvalid),
+        .rd_rdy(MEM_uncache_rd_rdy),.wr_rdy(MEM_uncache_wr_rdy),
+        .ret_valid(MEM_uncache_ret_valid),.ret_last(MEM_uncache_ret_last),.ret_data(MEM_uncache_ret_data),.wr_valid(bvalid),
         .rd_req(MEM_uncache_rd_req),.wr_req(MEM_uncache_wr_req), .rd_type(MEM_uncache_rd_type),
 		.wr_type(MEM_uncache_wr_type), .rd_addr(MEM_uncache_rd_addr), .wr_addr(MEM_uncache_wr_addr),
 		.wr_wstrb(MEM_uncache_wr_wstrb), .wr_data(MEM_uncache_wr_data)
@@ -1107,7 +1119,7 @@ npc U_NPC(
 
 flush U_FLUSH(
         .MEM1_ee(MEM1_ee),
-        .can_go(MEM_data_ok), 
+        .can_go(MEM_data_ok),
 
         .PC_Flush(PC_Flush),.PF_Flush(PF_Flush),.IF_Flush(IF_Flush),
         .ID_Flush(ID_Flush),.EX_Flush(EX_Flush),.MEM1_Flush(MEM1_Flush),
@@ -1141,7 +1153,7 @@ stall U_STALL(
         .MEM2_WBWr(MEM2_WBWr),.PF_IFWr(PF_IFWr)
 	);
 
-axi_sram_bridge U_AXI_SRAM_BRIDGE(
+new_bridge U_AXI_SRAM_BRIDGE(
 	MEM2_cache_sel,
     IF_icache_sel,
     ext_int_in   ,   //high active
@@ -1189,35 +1201,62 @@ axi_sram_bridge U_AXI_SRAM_BRIDGE(
     bresp     ,
     bvalid    ,
     bready    ,
-// icache
-	IF_rd_req,// icache �???? dcache 同时缺失怎么�????
-	IF_rd_type,
-	IF_rd_addr,
+
+	IF_icache_rd_req,
+	IF_icache_rd_type,
+	IF_icache_rd_addr,
 	IF_icache_rd_rdy,
 	IF_icache_ret_valid,
 	IF_icache_ret_last,
 	IF_icache_ret_data,
-	IF_wr_req,
-	IF_wr_type,
-	IF_wr_addr,
-	IF_wr_wstrb,
+	IF_icache_wr_req,
+	IF_icache_wr_type,
+	IF_icache_wr_addr,
+	IF_icache_wr_wstrb,
 	IF_icache_wr_data,
 	IF_icache_wr_rdy,
+// iuncache
+	IF_uncache_rd_req,
+	IF_uncache_rd_type,
+	IF_uncache_rd_addr,
+	IF_uncache_rd_rdy,
+	IF_uncache_ret_valid,
+	IF_uncache_ret_last,
+	IF_uncache_ret_data,
+	IF_uncache_wr_req,
+	IF_uncache_wr_type,
+	IF_uncache_wr_addr,
+	IF_uncache_wr_wstrb,
+    IF_uncache_wr_data,
+	IF_uncache_wr_rdy,
 //	dcache
-	MEM_rd_req,
-	MEM_rd_type,
-	MEM_rd_addr,
+	MEM_dcache_rd_req,
+	MEM_dcache_rd_type,
+	MEM_dcache_rd_addr,
 	MEM_dcache_rd_rdy,
 	MEM_dcache_ret_valid,
 	MEM_dcache_ret_last,
 	MEM_dcache_ret_data,
-	MEM_wr_req,
-	MEM_wr_type,
-	MEM_wr_addr,
-	MEM_wr_wstrb,
+	MEM_dcache_wr_req,
+	MEM_dcache_wr_type,
+	MEM_dcache_wr_addr,
+	MEM_dcache_wr_wstrb,
 	MEM_dcache_wr_data,
 	MEM_dcache_wr_rdy,
-	MEM_uncache_wr_data
+//  d uncache
+	MEM_uncache_rd_req,
+	MEM_uncache_rd_type,
+	MEM_uncache_rd_addr,
+	MEM_uncache_rd_rdy,
+	MEM_uncache_ret_valid,
+	MEM_uncache_ret_last,
+	MEM_uncache_ret_data,
+	MEM_uncache_wr_req,
+	MEM_uncache_wr_type,
+	MEM_uncache_wr_addr,
+	MEM_uncache_wr_wstrb,
+	MEM_uncache_wr_data,
+	MEM_uncache_wr_rdy
 
 );
 
