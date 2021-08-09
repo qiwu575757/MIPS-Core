@@ -570,7 +570,7 @@ reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
 reg is_writing;
 reg [31:0] writing_addr;
-reg [3:0] MEM_dcache_wr_type_buf;
+reg [3:0] MEM_dcache_wr_wstrb_buf;
 reg [2:0] MEM_dcache_wr_type_buf;
 initial begin
 	count_wr16 = 0;
