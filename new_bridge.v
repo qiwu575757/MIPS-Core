@@ -290,18 +290,18 @@ always @(posedge clk) begin
 end
 
 always @(posedge clk) begin
-    if(next_state_i_cache_1==state_wr_data && awready_1)
+    if(next_state_i_cache_1==state_wr_data && wready_1)
         count_wr16_i <= count_wr16_i+1;
-    else if(next_state_i_cache_1==state_wr_data && ~awready_1)
+    else if(next_state_i_cache_1==state_wr_data && ~wready_1)
         count_wr16_i <= count_wr16_i;
     else
         count_wr16_i <= 0;
 
 end
 always @(posedge clk) begin
-    if(next_state_d_cache_3==state_wr_data && awready_3)
+    if(next_state_d_cache_3==state_wr_data && wready_3)
         count_wr16_d <= count_wr16_d+1;
-    else if(next_state_d_cache_3==state_wr_data && ~awready_3)
+    else if(next_state_d_cache_3==state_wr_data && ~wready_3)
         count_wr16_d <= count_wr16_d;
     else
         count_wr16_d <= 0;
@@ -609,7 +609,7 @@ begin
         end
         state_wr_data:
         begin
-            if(wready_0 & wready_0 & wlast_0 )
+            if(wvalid_0 & wready_0 & wlast_0 )
                 next_state_i_uncache_0 = state_wr_res;
             else
                 next_state_i_uncache_0 = state_wr_data;
@@ -661,7 +661,7 @@ begin
         end
         state_wr_data:
         begin
-            if(wready_1 & wready_1 & wlast_1 )
+            if(wvalid_1 & wready_1 & wlast_1 )
                 next_state_i_cache_1 = state_wr_res;
             else
                 next_state_i_cache_1 = state_wr_data;
@@ -713,7 +713,7 @@ begin
         end
         state_wr_data:
         begin
-            if(wready_2 & wready_2 & wlast_2 )
+            if(wvalid_2 & wready_2 & wlast_2 )
                 next_state_d_uncache_2 = state_wr_res;
             else
                 next_state_d_uncache_2 = state_wr_data;
@@ -765,7 +765,7 @@ begin
         end
         state_wr_data:
         begin
-            if(wready_3 & wready_3 & wlast_3 )
+            if(wvalid_3 & wready_3 & wlast_3 )
                 next_state_d_cache_3 = state_wr_res;
             else
                 next_state_d_cache_3 = state_wr_data;
