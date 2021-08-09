@@ -236,21 +236,34 @@ reg [state_number-1:0] next_state_d_cache_3  ;
 
 reg [3:0] count_wr16_i;
 reg [3:0] count_wr16_d;
+reg dcache_sel_buf;
+always@(posedge clk) begin
+    if(MEM_uncache_wr_req||MEM_dcache_wr_req)
+        dcache_sel_buf <= dcache_sel;
+end
 
 reg [31:0] MEM_uncache_wr_addr_buf;
-reg [31:0] MEM_uncache_wr_data_buf;
 reg [31:0] MEM_dcache_wr_addr_buf;
+reg [31:0] MEM_uncache_wr_data_buf;
 reg [511:0] tempdata;
+reg [3:0] MEM_dcache_wr_wstrb_buf;
+reg [3:0] MEM_uncache_wr_wstrb_buf;
+reg [2:0] MEM_dcache_wr_type_buf;
+reg [2:0] MEM_uncache_wr_type_buf;
 always @(posedge clk) begin
     if(!rst)
     begin
-    MEM_uncache_wr_addr_buf <= 0;
-    MEM_uncache_wr_data_buf <= 0;
+        MEM_uncache_wr_addr_buf <= 0;
+        MEM_uncache_wr_data_buf <= 0;
+        MEM_uncache_wr_wstrb_buf<= 0;
+        MEM_uncache_wr_type_buf <= 0;
     end
 	else if(state_d_uncache_2==state_free && MEM_uncache_wr_req)
 	begin
         MEM_uncache_wr_addr_buf <= MEM_uncache_wr_addr;
         MEM_uncache_wr_data_buf <= MEM_uncache_wr_data;
+        MEM_uncache_wr_wstrb_buf<= MEM_uncache_wr_wstrb;
+        MEM_uncache_wr_type_buf <= MEM_uncache_wr_type;
 	end
 
 end
@@ -258,17 +271,24 @@ always @(posedge clk) begin
 	if(!rst)
 	begin
 		tempdata<=0;
+        MEM_dcache_wr_addr_buf <= 0;
+        MEM_dcache_wr_wstrb_buf<= 0;
+        MEM_dcache_wr_type_buf <= 0;
+
 	end
 	else if(state_d_cache_3==state_free && MEM_dcache_wr_req)
 	begin
 		tempdata<=MEM_dcache_wr_data;
         MEM_dcache_wr_addr_buf<=MEM_dcache_wr_addr;
+        MEM_dcache_wr_wstrb_buf<= MEM_dcache_wr_wstrb;
+        MEM_dcache_wr_type_buf <= MEM_dcache_wr_type;
 	end
 	else if((state_d_cache_3==state_wr_data)&&wready)
 	begin
 		tempdata<={32'b0,{tempdata[511:32]}};//�?要与 wdata 保持�?�?
 	end
 end
+
 always @(posedge clk) begin
     if(next_state_i_cache_1==state_wr_data && awready_1)
         count_wr16_i <= count_wr16_i+1;
@@ -870,7 +890,7 @@ assign  rready_2  = 1'b1 ;
 assign  awid_2    = 4'b10 ;
 assign  awaddr_2  = MEM_uncache_wr_addr_buf ;
 assign  awlen_2   = 4'b0 ;
-assign  awsize_2  = MEM_uncache_wr_type ;
+assign  awsize_2  = MEM_uncache_wr_type_buf ;
 assign  awburst_2 = 2'b1 ;
 assign  awlock_2  = 2'b0 ;
 assign  awcache_2 = 4'b0 ;
@@ -881,7 +901,7 @@ assign  awqos_2   = 4'b0 ;
 
 assign  wid_2     = 4'b10 ;
 assign  wdata_2   = MEM_uncache_wr_data_buf ;
-assign  wstrb_2   = MEM_uncache_wr_wstrb ;
+assign  wstrb_2   = MEM_uncache_wr_wstrb_buf ;
 assign  wlast_2   = 1 ;
 assign  wvalid_2  = state_d_uncache_2==state_wr_data;
 assign  wready_2  = s_axi_wready[2] ;
@@ -913,7 +933,7 @@ assign  rready_3  = 1'b1 ;
 assign  awid_3    = 4'b11 ;
 assign  awaddr_3  = MEM_dcache_wr_addr_buf ;
 assign  awlen_3   = 4'b1111 ;
-assign  awsize_3  = MEM_dcache_wr_type ;
+assign  awsize_3  = MEM_dcache_wr_type_buf ;
 assign  awburst_3 = 2'b1 ;
 assign  awlock_3  = 2'b0 ;
 assign  awcache_3 = 4'b0 ;
@@ -924,7 +944,7 @@ assign  awqos_3   = 4'b0 ;
 
 assign  wid_3     = 4'b11 ;
 assign  wdata_3   = tempdata[31:0] ;
-assign  wstrb_3   = MEM_dcache_wr_wstrb ;
+assign  wstrb_3   = MEM_dcache_wr_wstrb_buf ;
 assign  wlast_3   = count_wr16_d==4'hf ;
 assign  wvalid_3  = state_d_cache_3==state_wr_data;
 assign  wready_3  = s_axi_wready[3] ;
