@@ -237,15 +237,32 @@ reg [state_number-1:0] next_state_d_cache_3  ;
 reg [3:0] count_wr16_i;
 reg [3:0] count_wr16_d;
 
+reg [31:0] MEM_uncache_wr_addr_buf;
+reg [31:0] MEM_uncache_wr_data_buf;
+reg [31:0] MEM_dcache_wr_addr_buf;
 reg [511:0] tempdata;
+always @(posedge clk) begin
+    if(!rst)
+    begin
+    MEM_uncache_wr_addr_buf <= 0;
+    MEM_uncache_wr_data_buf <= 0;
+    end
+	else if(state_d_uncache_2==state_free && MEM_uncache_wr_req)
+	begin
+        MEM_uncache_wr_addr_buf <= MEM_uncache_wr_addr;
+        MEM_uncache_wr_data_buf <= MEM_uncache_wr_data;
+	end
+
+end
 always @(posedge clk) begin
 	if(!rst)
 	begin
 		tempdata<=0;
 	end
-	else if(state_d_cache_3==state_wr_req)
+	else if(state_d_cache_3==state_free && MEM_dcache_wr_req)
 	begin
 		tempdata<=MEM_dcache_wr_data;
+        MEM_dcache_wr_addr_buf<=MEM_dcache_wr_addr;
 	end
 	else if((state_d_cache_3==state_wr_data)&&wready)
 	begin
@@ -851,7 +868,7 @@ assign  rvalid_2  = s_axi_rvalid[2] && (rid_2 == 4'b10) ;
 assign  rready_2  = 1'b1 ;
 
 assign  awid_2    = 4'b10 ;
-assign  awaddr_2  = MEM_uncache_wr_addr ;
+assign  awaddr_2  = MEM_uncache_wr_addr_buf ;
 assign  awlen_2   = 4'b0 ;
 assign  awsize_2  = MEM_uncache_wr_type ;
 assign  awburst_2 = 2'b1 ;
@@ -863,7 +880,7 @@ assign  awready_2 = s_axi_awready[2] ;
 assign  awqos_2   = 4'b0 ;
 
 assign  wid_2     = 4'b10 ;
-assign  wdata_2   = MEM_uncache_wr_data ;
+assign  wdata_2   = MEM_uncache_wr_data_buf ;
 assign  wstrb_2   = MEM_uncache_wr_wstrb ;
 assign  wlast_2   = 1 ;
 assign  wvalid_2  = state_d_uncache_2==state_wr_data;
@@ -894,7 +911,7 @@ assign  rvalid_3  = s_axi_rvalid[3] && (rid_3 == 4'b11) ;
 assign  rready_3  = 1'b1 ;
 
 assign  awid_3    = 4'b11 ;
-assign  awaddr_3  = MEM_dcache_wr_addr ;
+assign  awaddr_3  = MEM_dcache_wr_addr_buf ;
 assign  awlen_3   = 4'b1111 ;
 assign  awsize_3  = MEM_dcache_wr_type ;
 assign  awburst_3 = 2'b1 ;
