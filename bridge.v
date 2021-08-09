@@ -570,6 +570,8 @@ reg dram_wr;
 reg [31:0] uncache_wr_data_reg;
 reg is_writing;
 reg [31:0] writing_addr;
+reg [3:0] MEM_dcache_wr_type_buf;
+reg [2:0] MEM_dcache_wr_type_buf;
 initial begin
 	count_wr16 = 0;
 	conf_wr=0;
@@ -590,9 +592,17 @@ end
 
 always @(posedge clk) begin
 	if(!rst)
+    begin
 		writing_addr<=0;
+        MEM_dcache_wr_type_buf<=0;
+        MEM_dcache_wr_wstrb_buf<=0;
+    end
 	else if(MEM_dcache_wr_req)
+    begin
 		writing_addr<=MEM_dcache_wr_addr;
+        MEM_dcache_wr_type_buf<=MEM_dcache_wr_type;
+        MEM_dcache_wr_wstrb_buf<=MEM_dcache_wr_wstrb;
+    end
 
 end
 
@@ -813,13 +823,13 @@ assign arvalid = (current_rd_state==state_if_send) ||
 
 
 assign awaddr =writing_addr;
-assign awsize = MEM_dcache_wr_type;
+assign awsize = MEM_dcache_wr_type_buf;
 assign awlen = conf_wr ? 4'b0:4'b1111;
 assign awvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_req );
 assign awburst = conf_wr ? 2'b0 : 2'b1;
 
 assign wdata = conf_wr ? uncache_wr_data_reg: dram_wr ? temp_data[31:0] : 0;
-assign wstrb = MEM_dcache_wr_wstrb; //可能有问�?
+assign wstrb = MEM_dcache_wr_wstrb_buf; //可能有问�?
 assign wvalid =   (conf_wr|dram_wr)& (current_wr_state==state_wr_data );
 assign wlast = conf_wr ? 1: dram_wr ? count_wr16==4'hf : 0;
 assign bready = 1;
