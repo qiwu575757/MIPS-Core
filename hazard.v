@@ -1,20 +1,28 @@
 module bypass(
-	ID_RS, ID_RT,
-	MEM1_RD, MEM2_RD, WB_RD,
-	MEM1_RFWr, MEM2_RFWr, WB_RFWr,
-	BJOp, dcache_stall,ALU1Op,MEM1_SC_signal,
-	EX_RFWr, EX_RD,
+	input 			MEM1_RFWr, 
+	input			MEM2_RFWr, 
+	input			WB_RFWr, 
+	input			EX_RFWr,
+	input [4:0] 	ID_RS, 
+	input [4:0]		ID_RT, 
+	input [4:0]		MEM1_RD, 
+	input [4:0]		MEM2_RD, 
+	input [4:0]		WB_RD, 
+	input [4:0]		EX_RD,
+	input [4:0] 	ID_RS_forCMP, 
+	input [4:0]		ID_RT_forCMP,
+	input 			ID_MUX3Sel,
+	input 			ALU1Sel,
 
-	MUX4Sel, MUX5Sel, MUX8Sel, MUX9Sel
-	);
-	input MEM1_RFWr, MEM2_RFWr, WB_RFWr, EX_RFWr, BJOp;
-	input[4:0] ID_RS, ID_RT, MEM1_RD, MEM2_RD, WB_RD, EX_RD;
-	input dcache_stall;
-	input [4:0] ALU1Op;
-	input MEM1_SC_signal;
-
-	output reg[1:0] MUX4Sel, MUX5Sel;
-	output reg[1:0] MUX8Sel, MUX9Sel;
+	output reg [1:0]	MUX4Sel,
+	output reg [1:0]	MUX5Sel,
+	output reg [1:0] 	MUX8Sel, 
+	output reg [1:0]	MUX9Sel,
+	output reg [1:0] 	MUX8Sel_forCMP, 
+	output reg [1:0]	MUX9Sel_forCMP,
+	output [1:0]		MUX5Sel_forALU1,
+	output [1:0]		MUX4Sel_forALU1
+);
 
 
 	always@(EX_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS, MEM1_RD, MEM2_RD, EX_RD)
@@ -56,6 +64,29 @@ module bypass(
 			MUX9Sel = 2'b01;		//WB->ID for RT
 		else
 			MUX9Sel = 2'b00;		//NO bypass for RT
+
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RS_forCMP, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b10;		//MEM1->ID for RS
+		else if(MEM2_RFWr && (MEM2_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b11;		//MEM2->ID for RS
+		else if(WB_RFWr && (WB_RD == ID_RS_forCMP))
+			MUX8Sel_forCMP = 2'b01;		//WB->ID for RS
+		else
+			MUX8Sel_forCMP = 2'b00;		//NO bypass for RS
+
+	always@(WB_RFWr, MEM1_RFWr, MEM2_RFWr, ID_RT_forCMP, MEM1_RD, MEM2_RD, WB_RD)
+		if (MEM1_RFWr && (MEM1_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b10;		//MEM1->ID for RT
+		else if(MEM2_RFWr && (MEM2_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b11;		//MEM2->ID for RT
+		else if(WB_RFWr && (WB_RD == ID_RT_forCMP))
+			MUX9Sel_forCMP = 2'b01;		//WB->ID for RT
+		else
+			MUX9Sel_forCMP = 2'b00;		//NO bypass for RT
+
+	assign MUX5Sel_forALU1 = MUX5Sel & {2{~ID_MUX3Sel}};
+	assign MUX4Sel_forALU1 = MUX4Sel & {2{~ALU1Sel}};
 endmodule
 
 module stall(
@@ -138,7 +169,7 @@ module stall(
 	//assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (EX_RT != 5'b0);
 
 	assign stall_0 = (EX_DMRd | EX_CP0Rd | BJOp | EX_SC_signal) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & EX_RFWr;
-	assign stall_1 = (MEM1_DMRd | BJOp&(MEM1_CP0Rd | MEM1_SC_signal)) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
+	assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd | BJOp&MEM1_SC_signal) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
 	assign stall_2 = (BJOp  & MEM2_DMRd ) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
 	assign stall_3 = ID_tlb_searchen && EX_CP0WrEn;
 	assign stall_4 = isbusy && RHL_visit;

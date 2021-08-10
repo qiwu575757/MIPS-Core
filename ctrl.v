@@ -1,87 +1,77 @@
  `include "MacroDef.v"
 
  module ctrl(
-	 	clk, rst, OP, Funct, rs, rt, CMPOut1, CMPOut2, EXE_isBranch,
- 		Temp_ID_Excetion, IF_Flush,Temp_ID_ExcCode,ID_TLB_Exc,rd,CMPOut3,shamt,
+	input 			clk,
+	input 			rst,
+	input [5:0] 	OP,
+	input [5:0] 	Funct,
+	input [4:0] 	rs,
+	input [4:0] 	rt,
+	input [4:0] 	rd,
+	input 			CMPOut1,
+	input [1:0] 	CMPOut2,
+	input 			EXE_isBranch,
+	input 			Temp_ID_Excetion,
+	input 			IF_Flush,
+	input [4:0] 	Temp_ID_ExcCode,
+	input 			ID_TLB_Exc,
+	input 			CMPOut3,
+	input [4:0]		shamt,
+	input 			ID_BJOp,
 
-		MUX1Sel, MUX2Sel, MUX3Sel, RFWr, RHLWr, DMWr, DMRd, NPCOp, EXTOp, ALU1Op,
-		ALU1Sel, ALU2Op,RHLSel_Rd, RHLSel_Wr, DMSel,B_JOp, eret_flush, CP0WrEn,
-		ID_ExcCode, ID_Exception, isBD, isBranch,CP0Rd, start, RHL_visit,dcache_en,
-		ID_MUX11Sel,ID_MUX12Sel,ID_tlb_searchen,TLB_flush,TLB_writeen,TLB_readen,
-		LoadOp,StoreOp,movz_movn,Branch_flush,LL_signal,SC_signal,
-		icache_valid_CI, icache_op_CI, dcache_valid_CI, dcache_op_CI,ID_WAIT_OP,
-		ID_BrType, ID_JType
-	);
-	input 			clk;
-	input 			rst;
-	input [5:0] 	OP;
-	input [5:0] 	Funct;
-	input [4:0] 	rs;
-	input [4:0] 	rt;
-	input [4:0] 	rd;
-	input 			CMPOut1;
-	input [1:0] 	CMPOut2;
-	input 			EXE_isBranch;
-	input 			Temp_ID_Excetion;
-	input 			IF_Flush;
-	input [4:0] 	Temp_ID_ExcCode;
-	input 			ID_TLB_Exc;
-	input 			CMPOut3;
-	input [4:0]		shamt;
+	output reg [1:0]	MUX1Sel,
+	output reg [2:0]	MUX2Sel,
+	output reg 			MUX3Sel,
+	output reg 			RFWr,
+	output reg 			RHLWr,
+	output reg 			DMWr,
+	output reg 			DMRd,
+	output reg 			RHLSel_Rd,
+	output reg [1:0]	NPCOp,
+	output reg [1:0]	EXTOp,
+	output reg [4:0]	ALU1Op,
+	output reg 			ALU1Sel,
+	output reg [3:0]	ALU2Op,
+	output reg [1:0]	RHLSel_Wr,
+	output reg [2:0]	DMSel,
+	output reg 			eret_flush,
+	output reg 			CP0WrEn,
+	output reg 			CP0Rd,
+	output reg 			ID_Exception,
+	output reg [4:0]	ID_ExcCode,
+	output 				isBD,
+	output reg 			isBranch,
+	output reg 			start,
+	output reg 			RHL_visit,
+	output reg 			dcache_en,
+	output reg 			ID_MUX11Sel,
+	output 				ID_MUX12Sel,
+	output reg 			ID_tlb_searchen,
+	output 				TLB_flush,
+	output				TLB_readen,
+	output				TLB_writeen,
+	output reg [1:0]	StoreOp,
+	output reg [1:0]	LoadOp,
+	output  			movz_movn,
+//	output reg 			Branch_flush,
+	output 				LL_signal,
+	output 				SC_signal,
+	output 				ID_WAIT_OP,
 
-	output reg [1:0]MUX1Sel;
-	output reg [2:0]MUX2Sel;
-	output reg 		MUX3Sel;
-	output reg 		RFWr;
-	output reg 		RHLWr;
-	output reg 		DMWr;
-	output reg 		DMRd;
-	output reg 		RHLSel_Rd;
-	output reg 		B_JOp;
-	output reg [1:0]NPCOp;
-	output reg [1:0]EXTOp;
-	output reg [4:0]ALU1Op;
-	output reg 		ALU1Sel;
-	output reg [3:0]ALU2Op;
-	output reg [1:0]RHLSel_Wr;
-	output reg [2:0]DMSel;
-	output reg 		eret_flush;
-	output reg 		CP0WrEn;
-	output reg 		CP0Rd;
-	output reg 		ID_Exception;
-	output reg [4:0]ID_ExcCode;
-	output 			isBD;
-	output reg 		isBranch;
-	output reg 		start;
-	output reg 		RHL_visit;
-	output reg 		dcache_en;
-	output reg 		ID_MUX11Sel;
-	output 			ID_MUX12Sel;
-	output reg 		ID_tlb_searchen;
-	output 			TLB_flush;
-	output			TLB_readen;
-	output			TLB_writeen;
-	output reg [1:0]StoreOp;
-	output reg [1:0]LoadOp;
-	output  		movz_movn;
-	output reg 		Branch_flush;
-	output 			LL_signal;
-	output 			SC_signal;
-	output 			ID_WAIT_OP;
-
-	output reg 		icache_valid_CI;
-	output reg 		icache_op_CI;
-	output reg 		dcache_valid_CI;
-	output reg [1:0]dcache_op_CI;
-	output reg [1:0]ID_BrType;
-	output reg [1:0]ID_JType;
+	output reg 			icache_valid_CI,
+	output reg 			icache_op_CI,
+	output reg 			dcache_valid_CI,
+	output reg [1:0]	dcache_op_CI,
+	output reg [1:0]	ID_BrType,
+	output reg [1:0]	ID_JType
+ );
 
 	wire 			ri;			//reserved instr
 	reg 			rst_sign;
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
-	reg [3:0]		BLType;
+	//reg [2:0]		BLType;
 	reg				B_cmp;
 	reg [2:0] 		B_Type;
 
@@ -94,7 +84,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
-		(OP == `cop0) || B_JOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op
+		(OP == `cop0) || ID_BJOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op
 		|| Cache_OP;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
@@ -190,53 +180,7 @@
 
 	assign isBD = EXE_isBranch;		/* the generation of isBD */
 
-	always @(OP or Funct or rt) begin		/* the genenration of B_JOp */
-		 case (OP)
-			6'b000100: B_JOp = 1;		/* BEQ */
-			6'b000101: B_JOp = 1;		/* BNE */
-			6'b000111: B_JOp = 1;		/* BGTZ */
-			6'b000110: B_JOp = 1;		/* BLEZ */
-			6'b000001:
-				case (rt)
-					5'b00001:			/* BGEZ */
-						B_JOp = 1;
-					5'b00011:			/* BGEZL */
-						B_JOp = 1;
-					5'b00000:			/* BLTZ */
-						B_JOp = 1;
-					5'b00010:			/* BLTZL */
-						B_JOp = 1;
-					5'b10001:			/* BGEZAL */
-						B_JOp = 1;
-					5'b10011:			/* BGEZALL */
-						B_JOp = 1;
-					5'b10000:			/* BLTZAL */
-						B_JOp = 1;
-					5'b10010:			/* BLTZALL */
-						B_JOp = 1;
-					default:
-						B_JOp = 0;
-				endcase
-			6'b010100: B_JOp = 1;		/* BEQL */
-			6'b010101: B_JOp = 1;		/* BNEl */
-			6'b010111:
-				if ( rt == 5'b0)
-					B_JOp = 1;		/* BGTZL */
-				else
-					B_JOp = 0;
-			6'b010110:
-				if ( rt == 5'b0 )
-					B_JOp = 1;		/* BLEZL */
-				else
-					B_JOp = 0;
-			6'b000000:
-				if (Funct == 6'b001000 || Funct == 6'b001001)	/* JR, JALR */
-					B_JOp = 1;
-				else
-					B_JOp = 0;
-			default:   B_JOp = 0;
-		endcase
-	end
+
 
 	always @(OP or Funct) begin								/* the generation of ID_JType */
 		case (OP)
@@ -675,26 +619,28 @@
 
 	always @(OP or rt or Funct) begin							/* the generation of B_cmp */
 		case (OP)
-			6'b000100: B_cmp = 1'b1;				/* BEQ */
-			6'b000101: B_cmp = 1'b1;				/* BNE */
+			6'b000100, 6'b010100: B_cmp = 1'b1;				/* BEQ */
+			6'b000101, 6'b010101: B_cmp = 1'b1;				/* BNE */
 			6'b000001:
 			case (rt)
-				5'b00001: B_cmp = 1'b1; 			/* BGEZ */
-				5'b00000: B_cmp = 1'b1;				/* BLTZ */
-				5'b10001: B_cmp = 1'b1;				/* BGEZAL */
-				5'b10000: B_cmp = 1'b1;				/* BLTZAL */
+				5'b00001, 5'b00011: B_cmp = 1'b1; 			/* BGEZ */
+				5'b00000, 5'b00010: B_cmp = 1'b1;				/* BLTZ */
+				5'b10001, 5'b10011: B_cmp = 1'b1;				/* BGEZAL */
+				5'b10000, 5'b10010: B_cmp = 1'b1;				/* BLTZAL */
 				default: B_cmp = 1'b0;
 			endcase
-			6'b000010: B_cmp = 1'b0;				/* J */
-			6'b000011: B_cmp = 1'b0;				/* JAL */
 			6'b000110: B_cmp = 1'b1;				/* BLEZ */
-			6'b000111: B_cmp = 1'b1;				/* BGTZ */
-			6'b000000: 
-			case (Funct)
-				6'b001000: B_cmp = 1'b0;			/* JR */
-				6'b001001: B_cmp = 1'b0;			/* JALR */
-			default: B_cmp = 1'b0;
-			endcase
+			6'b010110:
+				if (rt == 5'b00000)					/* BLEZL */
+					B_cmp = 1'b1;
+				else
+					B_cmp = 1'b0;
+			6'b000111: B_cmp = 1'b1;				/* BGTZ */ 
+			6'b010111:
+				if (rt == 5'b00000)
+					B_cmp = 1'b1;				/* BGTZL */
+				else
+					B_cmp = 1'b0;
 			default: B_cmp = 1'b0;
 		endcase
 	end
@@ -926,69 +872,67 @@
 		Execute the delay slot only if the branch is taken
 	*/
 		
-	always @(OP or rt or CMPOut1 or CMPOut2) begin
-		case (OP)
-			6'b010100: BLType = 4'b0000;				/* BEQL */
-			6'b010101: BLType = 4'b0001;				/* BNEL */
-			6'b000001:
-				case (rt)
-					5'b00011: BLType = 4'b0010;			/* BGEZL */
-					5'b00010: BLType = 4'b0011;			/* BLTZL */
-					5'b10011: BLType = 4'b0100;			/* BGEZALL */
-					5'b10010: BLType = 4'b0101;			/* BLTZALL */
-					default: BLType = 4'b1111;
-				endcase
-			6'b010110: BLType = 4'b0110;				/* BLEZL */
-			6'b010111: BLType = 4'b0111;				/* BGTZL */
-			default: BLType = 4'b1111;
-		endcase
-	end
+	// always @(OP or rt or CMPOut1 or CMPOut2) begin
+	// 	case (OP)
+	// 		6'b010100: BLType = 3'b000;				/* BEQL */
+	// 		6'b010101: BLType = 3'b001;				/* BNEL */
+	// 		6'b000001:
+	// 			case (rt)
+	// 				5'b00011: BLType = 3'b010;			/* BGEZL */
+	// 				5'b00010: BLType = 3'b011;			/* BLTZL */
+	// 				5'b10011: BLType = 3'b010;			/* BGEZALL */
+	// 				5'b10010: BLType = 3'b011;			/* BLTZALL */
+	// 				default: BLType = 3'b111;
+	// 			endcase
+	// 		6'b010110: 
+	// 			if (rt == 5'd0)
+	// 				BLType = 3'b100;				/* BLEZL */
+	// 			else
+	// 				BLType = 3'b111;
+	// 		6'b010111: 
+	// 			if (rt == 5'd0)
+	// 				BLType = 3'b101;				/* BGTZL */
+	// 			else
+	// 				BLType = 3'b111;
+	// 		default: BLType = 3'b111;
+	// 	endcase
+	// end
 
-	always @(BLType or CMPOut1 or CMPOut2) begin
-		case (BLType)
-			4'b0000:				/* BEQL */
-				if (CMPOut1 == 0)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0001:				/* BNEL */
-				if (CMPOut1 == 1)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0010:				/* BGEZL */
-				if (CMPOut2 != 2'b10)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0011:				/* BLTZL */
-				if (CMPOut2 == 2'b10)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0100:				/* BGEZALL */
-				if (CMPOut2 != 2'b10)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0101:				/* BLTZALL */
-				if (CMPOut2 == 2'b10)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0110:				/* BLEZL */
-				if(CMPOut2 != 2'b01 && rt == 5'b0)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			4'b0111:				/* BGTZL */
-				if(CMPOut2 == 2'b01 && rt == 5'b0)
-					Branch_flush = 0;
-				else
-					Branch_flush = 1;
-			default: Branch_flush = 0;
-		endcase
-	end
+	// always @(BLType or CMPOut1 or CMPOut2) begin
+	// 	case (BLType)
+	// 		3'b000:				/* BEQL */
+	// 			if (CMPOut1 == 0)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		3'b001:				/* BNEL */
+	// 			if (CMPOut1 == 1)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		3'b010:				/* BGEZL, BGEZALL*/
+	// 			if (CMPOut2 != 2'b10)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		3'b011:				/* BLTZL, BLTZALL */
+	// 			if (CMPOut2 == 2'b10)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		3'b100:				/* BLEZL */
+	// 			if(CMPOut2 != 2'b01)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		3'b101:				/* BGTZL */
+	// 			if(CMPOut2 == 2'b01)
+	// 				Branch_flush = 0;
+	// 			else
+	// 				Branch_flush = 1;
+	// 		default: Branch_flush = 0;
+	// 	endcase
+	// end
 
 	//LL SC signal
 	assign LL_signal = (OP == 6'b110000);

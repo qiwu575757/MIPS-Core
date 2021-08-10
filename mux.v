@@ -56,9 +56,9 @@ module mux3(
 endmodule
 
 module mux4(
-	GPR_RS, data_EX,
-	data_MEM1, data_MEM2, MUX4Sel,
-
+	GPR_RS, data_EX, 
+	data_MEM1, data_MEM2, MUX4Sel, 
+	
 	out
 	);
 	input[31:0] GPR_RS, data_EX, data_MEM1, data_MEM2;
@@ -67,18 +67,17 @@ module mux4(
 
 	always@(GPR_RS, data_EX, data_MEM1, data_MEM2, MUX4Sel)
 		case(MUX4Sel)
-			2'b00:	out = GPR_RS;
+			2'b00, 2'b10:	out = GPR_RS;
 			2'b01:	out = data_EX;
-			2'b10:	out = data_MEM1;
 			default:out = data_MEM2;
 		endcase
 
 endmodule
 
 module mux5(
-	GPR_RT, data_EX,
-	data_MEM1, data_MEM2, MUX5Sel,
-
+	GPR_RT, data_EX, 
+	data_MEM1, data_MEM2, MUX5Sel, 
+	
 	out
 	);
 	input[31:0] GPR_RT, data_EX, data_MEM1, data_MEM2;
@@ -87,9 +86,8 @@ module mux5(
 
 	always@(GPR_RT, data_EX, data_MEM1, data_MEM2, MUX5Sel)
 		case(MUX5Sel)
-			2'b00:	out = GPR_RT;
+			2'b00, 2'b10:	out = GPR_RT;
 			2'b01:	out = data_EX;
-			2'b10:	out = data_MEM1;
 			default:out = data_MEM2;
 		endcase
 
@@ -233,5 +231,23 @@ module mux13(
 			3'b111: WD = SCOut;
 	*/
 
+
+endmodule
+
+module mux14(
+	RD1, shamt, ALU1Sel, 
+	
+	A
+	);
+	input[31:0] RD1;
+	input[4:0] shamt;
+	input ALU1Sel;
+	output reg[31:0] A;
+
+	always@(RD1, shamt, ALU1Sel)
+		case(ALU1Sel)
+			1'b0:	A = RD1;
+			default:A = {27'd0, shamt};
+		endcase	
 
 endmodule

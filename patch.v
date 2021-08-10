@@ -67,17 +67,17 @@ module instr_fetch_pre(
     assign kseg0 = (PF_PC[31:29] == 3'b100);
     assign kseg1 = (PF_PC[31:29] == 3'b101);
     //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
-    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
+     assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
     //assign PF_icache_sel = 1'b1;
     /* dcache control signal*/
     assign PF_invalid = PF_Exception | refetch;
     assign PF_icache_valid = !isStall & ~PF_icache_sel;
     assign PF_uncache_valid = !isStall & PF_icache_sel;
-    assign Invalidate_signal = Branch_flush | PF_Instr_Flush | refetch;
+    assign Invalidate_signal = /*Branch_flush | */PF_Instr_Flush | refetch;
     assign refetch =  TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
-    assign IF_PC_invalid = Branch_flush | PF_Instr_Flush;
+    assign IF_PC_invalid = /*Branch_flush | */PF_Instr_Flush;
 
 endmodule
 
@@ -164,6 +164,35 @@ module branch_predict_prep(
 		end
 		else //if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
 			NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
+	end
+
+endmodule
+
+module pre_decode (
+    input [5:0] IF_OP,
+    input [5:0] IF_Funct,
+
+    output reg IF_BJOp
+);
+
+    always @(IF_OP or IF_Funct) begin		
+		 case (IF_OP)
+			6'b000100: IF_BJOp = 1;		/* BEQ */
+			6'b000101: IF_BJOp = 1;		/* BNE */
+			6'b000001: IF_BJOp = 1;		/* BGEZ, BLTZ, BGEZAL, BLTZAL */
+			6'b000111: IF_BJOp = 1;		/* BGTZ */
+			6'b000110: IF_BJOp = 1;		/* BLEZ */
+            6'b010100: IF_BJOp = 1;     /* BEQL */
+            6'b010101: IF_BJOp = 1;		/* BNEl */
+            6'b010111: IF_BJOp = 1;     /* BGTZL */
+            6'b010110: IF_BJOp = 1;     /* BLEZL*/
+			6'b000000:
+			if (IF_Funct == 6'b001000 || IF_Funct == 6'b001001)	/* JR, JALR */
+				IF_BJOp = 1;
+			else
+				IF_BJOp = 0;
+			default:   IF_BJOp = 0;
+		endcase
 	end
 
 endmodule
