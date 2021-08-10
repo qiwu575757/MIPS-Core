@@ -165,17 +165,6 @@ assign data_out =
             the basic company of a cp0 register is the reg field,
             not the whole reg
     */
-    //Index generation
-    always @(posedge clk) begin
-        if ( !rst )
-            Index[31:4] <= 0;
-        else if (CP0WrEn && addr == `Index_index)
-            Index[3:0] <= data_in[3:0];
-        else if ( Index_Wren & s1_found)
-            Index <= Index_in;
-        else if (Index_Wren & !s1_found)
-            Index[31] <= 1'b1;
-    end
 
     //EntryHi generation,consider the priority
     always @(posedge clk) begin
@@ -218,22 +207,34 @@ assign data_out =
             BadVAddr <= MEM1_badvaddr;
     end
 
+    //Index generation
+    always @(posedge clk) begin
+        if ( !rst )
+            Index[31:2] <= 0;
+        else if (CP0WrEn && addr == `Index_index)
+            Index[1:0] <= data_in[1:0];
+        else if ( Index_Wren & s1_found)
+            Index <= Index_in;
+        else if (Index_Wren & !s1_found)
+            Index[31] <= 1'b1;
+    end
+
     //Wired generation
     always @(posedge clk) begin
         if ( !rst )
             Wired <= 32'b0;
-        else if (CP0WrEn && addr == `Wired_index && data_in[3:0] != 4'b1111)//wired's value must be less than 4'b1111
-            Wired[3:0] <= data_in[3:0];
+        else if (CP0WrEn && addr == `Wired_index && data_in[1:0] != 2'b11)//wired's value must be less than 4'b1111
+            Wired[1:0] <= data_in[1:0];
     end
 
     //Random generarion
     always @(posedge clk) begin
-        if ( !rst || Random[3:0] <= Wired[3:0])
-            Random <= {28'b0,4'b1111};
+        if ( !rst || Random[1:0] <= Wired[1:0])
+            Random <= {30'b0,2'b11};
         else if (CP0WrEn && addr == `Wired_index)
-            Random[3:0] <= 4'b1111;
+            Random[1:0] <= 2'b11;
         else if( Random[3:0] > Wired[3:0] )//进行的是无符号的比较，这样写对吗
-            Random[3:0] <= Random[3:0] - 1'b1;
+            Random[1:0] <= Random[1:0] - 1'b1;
     end
 
     //Config generation, 地址映射相关
