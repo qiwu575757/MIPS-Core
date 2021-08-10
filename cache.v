@@ -6,7 +6,8 @@ module icache(       clk, resetn, exception, stall,
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
-            valid_CI, op_CI, index_CI, way_CI, tag_CI
+            valid_CI, op_CI, index_CI, way_CI, tag_CI,
+            cache_sel, uncache_out
         );
 
     //clock and reset
@@ -44,6 +45,9 @@ module icache(       clk, resetn, exception, stall,
     input[5:0] index_CI;
     input way_CI;
     input[19:0] tag_CI;
+
+    input cache_sel;
+    input[31:0] uncache_out;
 
     //Cache RAM
     /*
@@ -231,11 +235,15 @@ module icache(       clk, resetn, exception, stall,
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(way0_hit, rdata_way0, rdata_way1)
-        case(way0_hit)
-            1'b0:   rdata = rdata_way1;
-            default:rdata = rdata_way0;
-        endcase
+    always@(*)
+        if(cache_sel)
+            rdata = uncache_out;
+        else begin
+            case(way0_hit)
+                1'b0:   rdata = rdata_way1;
+                default:rdata = rdata_way0;
+            endcase
+        end
 
     //write from cpu to cache (store)
     always@(ret_data)
@@ -367,7 +375,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
-                valid_CI,op_CI, index_CI, way_CI, tag_CI
+                valid_CI,op_CI, index_CI, way_CI, tag_CI,
+                cache_sel, uncache_out
         );
 
     //clock and reset
@@ -410,6 +419,9 @@ module dcache(       clk, resetn, DMen, stall, exception,
     input[5:0] index_CI;
     input way_CI;
     input[19:0] tag_CI;
+
+    input cache_sel;
+    input[31:0] uncache_out;
     //Cache RAM
     /*
     Basic information:
@@ -509,6 +521,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
     reg[31:0] rdata_way1;
     reg[15:0] byte_write1;
     reg[15:0] byte_write2;
+    wire rdata_sel;
+    wire[31:0] rdata_prior;
 
     integer i;
     wire VTen;
@@ -716,9 +730,13 @@ module dcache(       clk, resetn, DMen, stall, exception,
             4'd14:  rdata_way1 = Data_Way1_out[479:448];
             default:rdata_way1 = Data_Way1_out[511:480];
         endcase
-    always@(way0_hit, rdata_way0, rdata_way1, write_bypass1,wdata_final)
-        if(write_bypass1)
-            rdata = wdata_final;
+
+    assign rdata_sel = (cache_sel | write_bypass1);
+    assign rdata_prior = cache_sel ? uncache_out : wdata_final;
+
+    always@(*)
+        if(rdata_sel)
+            rdata = rdata_prior;
         else
             case(way0_hit)
                 1'b0:   rdata = rdata_way1;

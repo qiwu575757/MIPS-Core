@@ -51,7 +51,7 @@
 	output				TLB_readen,
 	output				TLB_writeen,
 	output  			movz_movn,
-//	output reg 			Branch_flush,
+	output reg 			Branch_flush,
 	output 				LL_signal,
 	output 				SC_signal,
 	output 				ID_WAIT_OP,
@@ -69,7 +69,7 @@
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
-	//reg [2:0]		BLType;
+	reg [2:0]		BLType;
 	reg				B_cmp;
 	reg [2:0] 		B_Type;
 
@@ -859,67 +859,67 @@
 		Execute the delay slot only if the branch is taken
 	*/
 		
-	// always @(OP or rt or CMPOut1 or CMPOut2) begin
-	// 	case (OP)
-	// 		6'b010100: BLType = 3'b000;				/* BEQL */
-	// 		6'b010101: BLType = 3'b001;				/* BNEL */
-	// 		6'b000001:
-	// 			case (rt)
-	// 				5'b00011: BLType = 3'b010;			/* BGEZL */
-	// 				5'b00010: BLType = 3'b011;			/* BLTZL */
-	// 				5'b10011: BLType = 3'b010;			/* BGEZALL */
-	// 				5'b10010: BLType = 3'b011;			/* BLTZALL */
-	// 				default: BLType = 3'b111;
-	// 			endcase
-	// 		6'b010110: 
-	// 			if (rt == 5'd0)
-	// 				BLType = 3'b100;				/* BLEZL */
-	// 			else
-	// 				BLType = 3'b111;
-	// 		6'b010111: 
-	// 			if (rt == 5'd0)
-	// 				BLType = 3'b101;				/* BGTZL */
-	// 			else
-	// 				BLType = 3'b111;
-	// 		default: BLType = 3'b111;
-	// 	endcase
-	// end
+	always @(OP or rt or CMPOut1 or CMPOut2) begin
+		case (OP)
+			6'b010100: BLType = 3'b000;				/* BEQL */
+			6'b010101: BLType = 3'b001;				/* BNEL */
+			6'b000001:
+				case (rt)
+					5'b00011: BLType = 3'b010;			/* BGEZL */
+					5'b00010: BLType = 3'b011;			/* BLTZL */
+					5'b10011: BLType = 3'b010;			/* BGEZALL */
+					5'b10010: BLType = 3'b011;			/* BLTZALL */
+					default: BLType = 3'b111;
+				endcase
+			6'b010110: 
+				if (rt == 5'd0)
+					BLType = 3'b100;				/* BLEZL */
+				else
+					BLType = 3'b111;
+			6'b010111: 
+				if (rt == 5'd0)
+					BLType = 3'b101;				/* BGTZL */
+				else
+					BLType = 3'b111;
+			default: BLType = 3'b111;
+		endcase
+	end
 
-	// always @(BLType or CMPOut1 or CMPOut2) begin
-	// 	case (BLType)
-	// 		3'b000:				/* BEQL */
-	// 			if (CMPOut1 == 0)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		3'b001:				/* BNEL */
-	// 			if (CMPOut1 == 1)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		3'b010:				/* BGEZL, BGEZALL*/
-	// 			if (CMPOut2 != 2'b10)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		3'b011:				/* BLTZL, BLTZALL */
-	// 			if (CMPOut2 == 2'b10)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		3'b100:				/* BLEZL */
-	// 			if(CMPOut2 != 2'b01)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		3'b101:				/* BGTZL */
-	// 			if(CMPOut2 == 2'b01)
-	// 				Branch_flush = 0;
-	// 			else
-	// 				Branch_flush = 1;
-	// 		default: Branch_flush = 0;
-	// 	endcase
-	// end
+	always @(BLType or CMPOut1 or CMPOut2) begin
+		case (BLType)
+			3'b000:				/* BEQL */
+				if (CMPOut1 == 0)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			3'b001:				/* BNEL */
+				if (CMPOut1 == 1)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			3'b010:				/* BGEZL, BGEZALL*/
+				if (CMPOut2 != 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			3'b011:				/* BLTZL, BLTZALL */
+				if (CMPOut2 == 2'b10)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			3'b100:				/* BLEZL */
+				if(CMPOut2 != 2'b01)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			3'b101:				/* BGTZL */
+				if(CMPOut2 == 2'b01)
+					Branch_flush = 0;
+				else
+					Branch_flush = 1;
+			default: Branch_flush = 0;
+		endcase
+	end
 
 	//LL SC signal
 	assign LL_signal = (OP == 6'b110000);
