@@ -192,10 +192,10 @@ module mux12 (
 
 	out
 );
-	input [1:0] index, random;
+	input [3:0] index, random;
 	input MUX12_Sel;
 
-	output [1:0] out;
+	output [3:0] out;
 
 	assign out = MUX12_Sel ? index : random;
 

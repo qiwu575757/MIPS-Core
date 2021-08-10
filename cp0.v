@@ -212,9 +212,9 @@ assign data_out =
     //Index generation
     always @(posedge clk) begin
         if ( !rst )
-            Index[31:2] <= 0;
+            Index[31:4] <= 0;
         else if (CP0WrEn && addr == `Index_index)
-            Index[1:0] <= data_in[1:0];
+            Index[3:0] <= data_in[3:0];
         else if ( Index_Wren & s1_found)
             Index <= Index_in;
         else if (Index_Wren & !s1_found)

@@ -119,6 +119,7 @@ module branch_predict_prep(
     wire[31:0] PF_PC_add4;
     wire branch_signal;
     reg [11:0] offset;
+    //wire npc_condition;
 
     assign IF_PC_add4 = IF_PC + 4;
     assign PF_PC_add4 = PF_PC + 4;
@@ -137,7 +138,7 @@ module branch_predict_prep(
 
     assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
 
-    assign ee = MEM1_ee | WB_TLB_flush | WB_icache_valid_CI;
+    assign ee = MEM1_ee |(WB_TLB_flush | WB_icache_valid_CI);
     // always@(*) begin
 	// 	if (MEM1_Exception)	//use the standard mips structure
 	// 	begin
@@ -197,7 +198,7 @@ module pre_decode (
     output reg IF_BJOp
 );
 
-    always @(IF_OP or IF_Funct) begin
+    always @(IF_OP or IF_Funct) begin		
 		 case (IF_OP)
 			6'b000100: IF_BJOp = 1;		/* BEQ */
 			6'b000101: IF_BJOp = 1;		/* BNE */
@@ -332,7 +333,7 @@ module mem1_cache_prep(
     //dcache sel
     assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
     assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
-    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
+    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011))) 
                         & ~MEM1_dcache_valid_CI;
     //assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
     //assign MEM1_cache_sel = 1'b1;
@@ -350,7 +351,7 @@ module mem1_cache_prep(
     assign valid = MEM1_dcache_en &IF_data_ok;
 	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
 
-    always @(*) begin
+    always @(*) begin  
         if (s1_found && s1_v)
             tlbl = 1'b0;
         else if (data_mapped & !DMWen_dcache)
@@ -359,7 +360,7 @@ module mem1_cache_prep(
             tlbl = 1'b0;
     end
 
-    always @(*) begin
+    always @(*) begin  
         if (s1_found && s1_v)
             tlbs = 1'b0;
         else if (data_mapped & DMWen_dcache)
@@ -368,7 +369,7 @@ module mem1_cache_prep(
             tlbs = 1'b0;
     end
 
-    always @(*) begin
+    always @(*) begin  
         if (!s1_found)
             tlbmod = 1'b0;
         else if (data_mapped & DMWen_dcache & s1_v & !s1_d)
@@ -472,10 +473,10 @@ module mem1_cache_prep(
 
     always@(*)
         case(MEM1_DMSel)
-            4'b0000://SB
+            4'b0000://SB 
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b0001;
-                    2'b01:      MEM1_dCache_wstrb = 4'b0010;
+                    2'b01:      MEM1_dCache_wstrb = 4'b0010;  
                     2'b10:      MEM1_dCache_wstrb = 4'b0100;
                     default:    MEM1_dCache_wstrb = 4'b1000;
                 endcase
@@ -487,14 +488,14 @@ module mem1_cache_prep(
             4'b0011://SWL
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b0001;
-                    2'b01:      MEM1_dCache_wstrb = 4'b0011;
+                    2'b01:      MEM1_dCache_wstrb = 4'b0011;  
                     2'b10:      MEM1_dCache_wstrb = 4'b0111;
                     default:    MEM1_dCache_wstrb = 4'b1111;
                 endcase
             4'b0100://SWR
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b1111;
-                    2'b01:      MEM1_dCache_wstrb = 4'b1110;
+                    2'b01:      MEM1_dCache_wstrb = 4'b1110;  
                     2'b10:      MEM1_dCache_wstrb = 4'b1100;
                     default:    MEM1_dCache_wstrb = 4'b1000;
                 endcase
@@ -504,7 +505,7 @@ module mem1_cache_prep(
 
     always@(*)
         case(MEM1_DMSel)
-            4'b0000://SB
+            4'b0000://SB 
                                 MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
             4'b0001://SH
                                 MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
@@ -526,22 +527,22 @@ module mem1_cache_prep(
                                 MEM1_wdata = MEM1_GPR_RT[31:0];
         endcase
 
-
+            
     always@(*)
         case(MEM1_DMSel)
-            4'b0101://LBU
+            4'b0101://LBU 
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b00000;
-                    2'b01:      MEM1_rstrb = 5'b00001;
+                    2'b01:      MEM1_rstrb = 5'b00001;  
                     2'b10:      MEM1_rstrb = 5'b00010;
-                    default:    MEM1_rstrb = 4'b00011;
+                    default:    MEM1_rstrb = 5'b00011;
                 endcase
-            4'b0110://LB
+            4'b0110://LB 
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b01000;
-                    2'b01:      MEM1_rstrb = 5'b01001;
+                    2'b01:      MEM1_rstrb = 5'b01001;  
                     2'b10:      MEM1_rstrb = 5'b01010;
-                    default:    MEM1_rstrb = 4'b01011;
+                    default:    MEM1_rstrb = 5'b01011;
                 endcase
             4'b0111://LHU
                 case(MEM1_Paddr[1])
@@ -556,14 +557,14 @@ module mem1_cache_prep(
             4'b1001://LWL
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b11000;
-                    2'b01:      MEM1_rstrb = 5'b11100;
+                    2'b01:      MEM1_rstrb = 5'b11100;  
                     2'b10:      MEM1_rstrb = 5'b11110;
                     default:    MEM1_rstrb = 5'b11111;
                 endcase
             4'b1010://LWR
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b11111;
-                    2'b01:      MEM1_rstrb = 5'b10111;
+                    2'b01:      MEM1_rstrb = 5'b10111;  
                     2'b10:      MEM1_rstrb = 5'b10011;
                     default:    MEM1_rstrb = 5'b10001;
                 endcase
@@ -573,7 +574,7 @@ module mem1_cache_prep(
 
         always@(*)
         case(MEM1_DMSel)
-            4'b0000,4'b0101,4'b0110://SB LBU LB
+            4'b0000,4'b0101,4'b0110://SB LBU LB 
                                 MEM1_type = 3'b000;
             4'b0001,4'b0111,4'b1000://SH LHU LH
                                 MEM1_type = 3'b001;
