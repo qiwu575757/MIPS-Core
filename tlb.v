@@ -349,6 +349,7 @@ module dm_tlb(
     input   [ 7:0]  s0_asid,
 
     output          s0_found,
+    output  [1:0]   s0_index,
     output  [19:0]  s0_pfn,
     output  [ 2:0]  s0_c,
     output          s0_d,
@@ -421,6 +422,7 @@ module dm_tlb(
 
     //search port
     assign s0_found = (s0_vpn2==tlb_vpn2[s0_vpn2[1:0]]) && ( (s0_asid==tlb_asid[s0_vpn2[1:0]]) || tlb_g[s0_vpn2[1:0]] );
+    assign s0_index = s0_vpn2[1:0];
     assign s0_pfn   = !s0_odd_page ? tlb_pfn0[s0_vpn2[1:0]] : tlb_pfn1[s0_vpn2[1:0]];
     assign s0_c     = !s0_odd_page ? tlb_c0[s0_vpn2[1:0]] : tlb_c1[s0_vpn2[1:0]];
     assign s0_d     = !s0_odd_page ? tlb_d0[s0_vpn2[1:0]] : tlb_d1[s0_vpn2[1:0]];

@@ -116,6 +116,7 @@ module mips(
     wire            PF_icache_sel;
     wire            PF_icache_valid;
     wire            PF_uncache_valid;
+    wire [1:0]      s0_index;
     wire [18:0]     s0_vpn2;
     wire            s0_odd_page;
     wire [ 7:0]     s0_asid;
@@ -1158,6 +1159,7 @@ dm_tlb U_TLB(
     EntryHi_out[7:0],	//s0_asid
 
     s0_found,
+    s0_index,
     s0_pfn,
     s0_c,
     s0_d,

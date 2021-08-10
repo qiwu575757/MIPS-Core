@@ -348,7 +348,7 @@ module mem1_cache_prep(
     always @(*) begin  
         if (!s1_found)
             tlbmod = 1'b0;
-        else if (data_mapped & !DMWen_dcache & s1_v & !s1_d)
+        else if (data_mapped & DMWen_dcache & s1_v & !s1_d)
             tlbmod = 1'b1;
         else
             tlbmod = 1'b0;
