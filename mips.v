@@ -1149,7 +1149,7 @@ mux10 U_MUX10(
         );
     //-------------ELSE---------------//
 //physical address tranfer
-dm_tlb U_TLB(
+tlb_4 U_TLB(
     clk,
     rst,
 

@@ -402,7 +402,7 @@ assign data_out =
     always @(posedge clk) begin
         if (!rst)
             `cause_ce <= 2'b0;
-        else if (Cause_CE_Wr)
+        else if (MEM1_ExcCode == `Cpu)
              `cause_ce <= 2'b01;
         else if (MEM1_Exception)
             `cause_ce <= 2'b0;

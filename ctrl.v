@@ -941,22 +941,22 @@
 	//Cpu_Op signal
 	always @(*) begin
 		case (OP)
-			6'b010010:
-			//6'b010001,6'b010010:
-				case ( rs )
-					5'b01000:
-						Cpu_Op = 1'b1;
-					default: Cpu_Op = 1'b0;
-				endcase
-			6'b011000,6'b011001:
-				Cpu_Op = 1'b1;
-			6'b000000:
-				if ( Funct == 6'b111111 && rs == 5'b0)
-					Cpu_Op = 1'b1;
-				else if ( Funct == 6'b111111 && shamt == 5'b0)
-					Cpu_Op = 1'b1;
-				else
-					Cpu_Op = 1'b0;
+			// 6'b010010:
+			// //6'b010001,6'b010010:
+			// 	case ( rs )
+			// 		5'b01000:
+			// 			Cpu_Op = 1'b1;
+			// 		default: Cpu_Op = 1'b0;
+			// 	endcase
+			// 6'b011000,6'b011001:
+			// 	Cpu_Op = 1'b1;
+			// 6'b000000:
+			// 	if ( Funct == 6'b111111 && rs == 5'b0)
+			// 		Cpu_Op = 1'b1;
+			// 	else if ( Funct == 6'b111111 && shamt == 5'b0)
+			// 		Cpu_Op = 1'b1;
+			// 	else
+			// 		Cpu_Op = 1'b0;
 			6'b110101,6'b111101,6'b110001,6'b111001,6'b010001:
 			//6'b110101,6'b111101,6'b110001,6'b111001:
 			//LDC1A,SDC1A,LWC1,SWC1,COP1
