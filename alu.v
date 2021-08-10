@@ -31,6 +31,10 @@ module alu1(
 	reg [5:0]       CLO_RESULT;
 	reg [5:0]       CLZ_RESULT;
 
+    reg [31:0] simple_result;
+	reg [2:0] sel1;
+	reg [3:0] sel2;
+
 	assign Less = ((ALU1Op == 5'b01001) && A[31]^B[31]) ? ~(A < B) : (A < B);
     
     /*for trap instruction*/
@@ -53,21 +57,49 @@ module alu1(
 
 	always@(*)
 		case(ALU1Op)
-			5'b00000:	C = add_result;			//add
-			5'b00001:	C = sub_result;			//sub
-			5'b00010:	C = or_result;			//or
-			5'b00011:	C = and_result;			//and
-			5'b00100:	C = nor_result;		//nor
-			5'b00101:	C = xor_result;			//xor
-			5'b00110:	C = sll_result;		//logical left shift
-			5'b00111:	C = srl_result;		//logical right shift
-			5'b01000:	C = sra_result;//arithmetical right shift
-            5'b01100:   C = add_result;			//addui addu
-			5'b01011:	C = A;				//movn, movz
-			5'b01101:	C = clo_result;//clo
-			5'b01110:	C = clz_result;//clz
-            5'b10000:   C = sub_result;			//subu
-			default:	C = cmp_result;//	signed/unsigned compare
+			5'b00010:			sel1 = 3'b000;		//or
+			5'b00011:			sel1 = 3'b001;		//and
+			5'b00100:			sel1 = 3'b010;		//nor
+			5'b00101:			sel1 = 3'b011;		//xor
+            default:            sel1 = 3'b100;      //movn, movz
+		endcase
+
+	always@(*)
+		case(sel1)
+			3'b000:			simple_result = or_result;		//or
+			3'b001:			simple_result = and_result;		//and
+			3'b010:			simple_result = nor_result;		//nor
+            3'b011:         simple_result = xor_result;     //xor
+			default:		simple_result = A;		        //movn, movz
+		endcase
+
+	always@(*)
+		case(ALU1Op)
+			5'b00000, 5'b01100:	sel2 = 4'b0000;		//add/addu
+			5'b00001, 4'b1100:	sel2 = 4'b0001;		//sub/subu
+			5'b00010, 5'b00011, 
+			5'b00100, 5'b00101,
+            5'b01011:	        sel2 = 4'b0010;		//or/and/nor/xor/movn/movz
+			5'b00110:			sel2 = 4'b0011;		//logical left shift
+			5'b00111:			sel2 = 4'b0100;		//logical right shift
+			5'b01000:			sel2 = 4'b0101;		//arithmetical right shift
+            5'b01101:           sel2 = 4'b0110;     //clo
+            5'b01110:           sel2 = 4'b0111;     //clz
+			default:			sel2 = 4'b1000;		//signed/unsigned compare
+		endcase
+		
+
+	always@(*)
+		case(sel2)
+			4'b0000:			C = add_result;		//add/addu
+			4'b0001:			C = sub_result;		//sub/subu
+			4'b0010:			C = simple_result;	//or/and/nor/xor/movn/movz
+			4'b0011:			C = sll_result;		//logical left shift
+			4'b0100:			C = srl_result;		//logical right shift
+		    4'b0101:			C = sra_result;		//arithmetical right shift
+            4'b0110:            C = clo_result;     //clo
+            4'b0111:            C = clz_result;     //clz
+			default:			C = cmp_result;		//signed/unsigned compare
 		endcase
 
 	assign add_overflow = {A[31],B[31],add_result[31]};
