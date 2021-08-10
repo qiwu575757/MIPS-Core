@@ -261,10 +261,10 @@ assign data_out =
             Config1[31]     <= 1'b0;//indicate that don't implement the Config2 reg
             Config1[30:25]  <= 6'h3;
             Config1[24:22]  <= 3'h0;
-            Config1[21:19]  <= 3'h0;//5-->icache
+            Config1[21:19]  <= 3'h5;//5-->icache
             Config1[18:16]  <= 3'h1;
             Config1[15:13]  <= 3'h0;
-            Config1[12:10]  <= 3'h0;//5-->dcache
+            Config1[12:10]  <= 3'h5;//5-->dcache
             Config1[9:7]    <= 3'h1;
             Config1[6:0]    <= 7'b0;//the Config1[3] = 0 indicates that don't implement the Watch reg
         end
