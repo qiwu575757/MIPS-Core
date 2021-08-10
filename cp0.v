@@ -233,7 +233,7 @@ assign data_out =
             Random <= {30'b0,2'b11};
         else if (CP0WrEn && addr == `Wired_index)
             Random[1:0] <= 2'b11;
-        else if( Random[3:0] > Wired[3:0] )//进行的是无符号的比较，这样写对吗
+        else if( Random[1:0] > Wired[1:0] )//进行的是无符号的比较，这样写对吗
             Random[1:0] <= Random[1:0] - 1'b1;
     end
 
