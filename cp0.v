@@ -47,7 +47,7 @@ module CP0(
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
-    Cause_IV
+    Cause_IV,Ebase_out
 );
     input           clk;
     input           rst;
@@ -85,6 +85,7 @@ module CP0(
     output          Status_BEV;
     output          Status_EXL;
     output          Cause_IV;
+    output [31:0]   Ebase_out;
 
     reg [31:0]      Index;
     reg [31:0]      Random;
@@ -123,6 +124,7 @@ assign Config_K0_out = Config[2:0];
 assign Status_BEV = `status_bev;
 assign Status_EXL = `status_exl;
 assign Cause_IV   = `cause_iv;
+assign Ebase_out  = Ebase;
 
 /*
 reg [31:0] count_exc;
@@ -298,6 +300,14 @@ assign data_out =
     always @(posedge clk) begin
         if ( !rst )
             PRID <= 32'h4220;
+    end
+
+    //Ebase generation
+    always @(posedge clk) begin
+        if ( !rst )
+            Ebase <= 32'h80000000;
+        else if (CP0WrEn && addr == `Ebase_index)
+            Ebase[29:12] <= data_in[29:12];
     end
 
     //Count generation
