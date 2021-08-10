@@ -66,8 +66,8 @@ module instr_fetch_pre(
     /*icache sel*/
     assign kseg0 = (PF_PC[31:29] == 3'b100);
     assign kseg1 = (PF_PC[31:29] == 3'b101);
-    assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
-    //assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
+    //assign PF_icache_sel = ~((kseg0 & (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s0_c==3'b011)));
+    assign PF_icache_sel = (PPC[31:16] == 16'h1faf);//used in funct test
     //assign PF_icache_sel = 1'b1;
     /* dcache control signal*/
     assign PF_invalid = PF_Exception | refetch;
@@ -310,9 +310,9 @@ module mem1_cache_prep(
     //dcache sel
     assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
     assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
-    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011))) 
-                        & ~MEM1_dcache_valid_CI;
-    //assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
+    //assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011))) 
+    //                    & ~MEM1_dcache_valid_CI;
+    assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
     //assign MEM1_cache_sel = 1'b1;
 	// 1 表示uncache, 0表示cache
 
@@ -397,7 +397,7 @@ module mem1_cache_prep(
 		end
         else if(Temp_M1_Exception) begin
 		    MEM1_ExcCode = Temp_M1_ExcCode;
-		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�?有关的例外其出错地址�?定为其PC
+		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�??有关的例外其出错地址�??定为其PC
 		end
 		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode = `Ov;

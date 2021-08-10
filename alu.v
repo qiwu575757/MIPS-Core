@@ -76,7 +76,7 @@ module alu1(
 	always@(*)
 		case(ALU1Op)
 			5'b00000, 5'b01100:	sel2 = 4'b0000;		//add/addu
-			5'b00001, 4'b1100:	sel2 = 4'b0001;		//sub/subu
+			5'b00001, 5'b10000:	sel2 = 4'b0001;		//sub/subu
 			5'b00010, 5'b00011, 
 			5'b00100, 5'b00101,
             5'b01011:	        sel2 = 4'b0010;		//or/and/nor/xor/movn/movz

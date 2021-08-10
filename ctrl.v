@@ -84,8 +84,7 @@
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
-		(OP == `cop0) || ID_BJOp || (OP == `j) || (OP == `jal) || Trap_Op || (OP == `pref) || Cpu_Op
-		|| Cache_OP;
+		(OP == `cop0) || isBranch || Trap_Op || (OP == `pref) || Cpu_Op || Cache_OP;
 
 	always @(OP or Funct) begin		/* the generation of eret_flush */
 		if (OP == `cop0 && Funct == `eret)
@@ -939,15 +938,8 @@
 	assign SC_signal = (OP == 6'b111000);
 
 	//Cpu_Op signal
-	always @(*) begin
+	always @( * ) begin
 		case (OP)
-			// 6'b010010:
-			// //6'b010001,6'b010010:
-			// 	case ( rs )
-			// 		5'b01000:
-			// 			Cpu_Op = 1'b1;
-			// 		default: Cpu_Op = 1'b0;
-			// 	endcase
 			// 6'b011000,6'b011001:
 			// 	Cpu_Op = 1'b1;
 			// 6'b000000:
@@ -957,14 +949,40 @@
 			// 		Cpu_Op = 1'b1;
 			// 	else
 			// 		Cpu_Op = 1'b0;
-			6'b110101,6'b111101,6'b110001,6'b111001,6'b010001:
-			//6'b110101,6'b111101,6'b110001,6'b111001:
-			//LDC1A,SDC1A,LWC1,SWC1,COP1
+			6'b110101,6'b111101,6'b110001,6'b111001: //LDC1A,SDC1A,LWC1,SWC1
 				Cpu_Op = 1'b1;
-
+			6'b010001://COP1
+				case ( rs )
+					5'b00000:	Cpu_Op = 1'b1;
+					5'b00010:	Cpu_Op = 1'b1;
+					5'b00100:	Cpu_Op = 1'b1;
+					5'b00110:	Cpu_Op = 1'b1;
+					5'b01000:	Cpu_Op = 1'b1;
+					5'b10000:
+						casez ( Funct )
+							6'b000000:	Cpu_Op = 1'b1;
+							6'b000001:	Cpu_Op = 1'b1;
+							6'b000010:	Cpu_Op = 1'b1;
+							6'b000011:	Cpu_Op = 1'b1;
+							6'b000100:	Cpu_Op = 1'b1;
+							6'b000101:	Cpu_Op = 1'b1;
+							6'b000111:	Cpu_Op = 1'b1;
+							6'b001100:	Cpu_Op = 1'b1;
+							6'b001101:	Cpu_Op = 1'b1;
+							6'b001110:	Cpu_Op = 1'b1;
+							6'b001111:	Cpu_Op = 1'b1;
+							6'b100100:	Cpu_Op = 1'b1;
+							6'b000110:	Cpu_Op = 1'b1;
+							6'b010001:	Cpu_Op = 1'b1;
+							6'b01001?:	Cpu_Op = 1'b1;
+							6'b11????:	Cpu_Op = 1'b1;
+							default : 	Cpu_Op = 1'b0;
+						endcase
+				endcase
 			default: Cpu_Op = 1'b0;
 		endcase
 	end
+
 
 		always@(OP or rt)	//generation of icache_valid_CI
 		if(OP == 6'b101111) begin
