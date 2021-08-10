@@ -226,15 +226,15 @@ module mem1_cache_prep(
     MEM1_DMSel, MEM1_RFWr,MEM1_Overflow, Temp_M1_Exception,
     MEM1_DMRd, Temp_M1_ExcCode,MEM1_PC,s1_found,s1_v,s1_d,
     s1_pfn,s1_c,Temp_MEM1_TLB_Exc,IF_data_ok,
-    Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,MEM1_LoadOp,
-    MEM1_StoreOp,MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
+    Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
+    MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
     MEM1_LL_signal,MEM1_SC_signal,MEM1_icache_valid_CI, MEM1_icache_op_CI,
     MEM1_dcache_valid_CI, MEM1_dcache_op_CI,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid, MEM1_ee
+    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid, MEM1_ee, MEM1_rstrb, MEM1_type
     );
     input           clk;
     input           rst;
@@ -242,7 +242,7 @@ module mem1_cache_prep(
     input           MEM1_eret_flush;
     input [31:0]    MEM1_ALU1Out;
     input           MEM1_DMWr;
-    input [2:0]     MEM1_DMSel;
+    input [3:0]     MEM1_DMSel;
     input           MEM1_Overflow;
     input           Temp_M1_Exception;
     input           MEM1_DMRd;
@@ -257,8 +257,6 @@ module mem1_cache_prep(
     input [19:0]    s1_pfn;
     input           MEM_unCache_data_ok;
     input           MEM1_RFWr;
-    input [1:0]     MEM1_LoadOp;
-    input [1:0]     MEM1_StoreOp;
     input [31:0]    MEM1_GPR_RT;
     input           Interrupt;
     input [2:0]     Config_K0_out;
@@ -275,7 +273,7 @@ module mem1_cache_prep(
     output          MEM1_cache_sel;
     output          MEM1_dcache_valid;
     output          DMWen_dcache;
-    output [3:0]    MEM1_dCache_wstrb;
+    output reg[3:0] MEM1_dCache_wstrb;
     output reg[4:0] MEM1_ExcCode;
     output reg      MEM1_Exception;
     output reg[31:0] MEM1_badvaddr;
@@ -288,6 +286,8 @@ module mem1_cache_prep(
     output          Cause_CE_Wr;
     output          MEM1_invalid;
     output reg      MEM1_ee;
+    output reg[4:0] MEM1_rstrb;
+    output reg[2:0] MEM1_type;
 
     wire data_mapped;
     wire valid;
@@ -365,12 +365,11 @@ module mem1_cache_prep(
 
     //Exception Sel
     assign AdES_sel =
-        MEM1_DMWr &&  (MEM1_LoadOp == 2'b00) && ( MEM1_DMSel == 3'b010
-        && MEM1_ALU1Out[1:0] != 2'b00 || MEM1_DMSel == 3'b001 && MEM1_ALU1Out[0] != 1'b0);
+        MEM1_DMWr && ( MEM1_DMSel == 4'b0010 && MEM1_ALU1Out[1:0] != 2'b00 ||
+         MEM1_DMSel == 4'b0001 && MEM1_ALU1Out[0] != 1'b0);
     assign AdEL_sel =
-        MEM1_RFWr && MEM1_DMRd && (MEM1_LoadOp == 2'b00) &&
-        ( (MEM1_DMSel == 3'b111 && MEM1_ALU1Out[1:0] != 2'b00) ||
-        ( (MEM1_DMSel == 3'b101 || MEM1_DMSel == 3'b110) && MEM1_ALU1Out[0] != 1'b0 ) );
+        MEM1_RFWr && MEM1_DMRd &&( (MEM1_DMSel == 4'b1011 && MEM1_ALU1Out[1:0] != 2'b00) ||
+        ( (MEM1_DMSel == 4'b0111 || MEM1_DMSel == 4'b1000) && MEM1_ALU1Out[0] != 1'b0 ) );
 
     always @(*) begin
         if (MEM1_TLB_Exc_temp)
@@ -397,7 +396,7 @@ module mem1_cache_prep(
 		end
         else if(Temp_M1_Exception) begin
 		    MEM1_ExcCode = Temp_M1_ExcCode;
-		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�??有关的例外其出错地址�??定为其PC
+		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�??有关的例外其出错地址�??定为其PC
 		end
 		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode = `Ov;
@@ -424,8 +423,8 @@ module mem1_cache_prep(
 
     /* dcache control signal*/
     assign DMWen_dcache = MEM1_DMWr & (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
-    assign MEM1_dcache_valid = MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok
-                & ~MEM1_cache_sel&(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
+    assign MEM1_dcache_valid = (MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok
+                &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK))) & ~MEM1_cache_sel;
     assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_ee
                         &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
@@ -448,67 +447,119 @@ module mem1_cache_prep(
     assign MEM1_SCOut = {31'b0,(MEM1_dcache_valid|MEM1_uncache_valid)};
 
 /* set writeen signal and store data */
-    assign MEM1_dCache_wstrb =
-                    (~DMWen_dcache)         ?   4'b0  :
-                        (MEM1_StoreOp == 2'b00)  ?
-                                (
-                                    (MEM1_DMSel==3'b000)    ?
-                                    (
-                                        MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
-                                        MEM1_Paddr[1:0]==2'b01 ? 4'b0010 :
-                                        MEM1_Paddr[1:0]==2'b10 ? 4'b0100 :
-                                                                4'b1000
-                                    ) :
-                                    (MEM1_DMSel==3'b001)    ?   // sh
-                                    (
-                                        MEM1_Paddr[1]==1'b0 ? 4'b0011 :
-                                                    4'b1100
-                                    )   : 4'b1111
-                                )  :    //sw
-                        (MEM1_StoreOp == 2'b10)   ?     //SWL
-                                (
-                                    MEM1_Paddr[1:0]==2'b00 ? 4'b0001 :
-                                    MEM1_Paddr[1:0]==2'b01 ? 4'b0011 :
-                                    MEM1_Paddr[1:0]==2'b10 ? 4'b0111 :
-                                                    4'b1111
-                                ) :                     //SWR
-                                (
-                                    MEM1_Paddr[1:0]==2'b00 ? 4'b1111 :
-                                    MEM1_Paddr[1:0]==2'b01 ? 4'b1110 :
-                                    MEM1_Paddr[1:0]==2'b10 ? 4'b1100 :
-                                                    4'b1000
-                                ) ;
 
-    always @(MEM1_StoreOp,MEM1_dCache_wstrb,MEM1_GPR_RT) begin
-        if ( MEM1_StoreOp == 2'b10)
-        begin
-            case (MEM1_dCache_wstrb)
-                4'b0001 :
-                    MEM1_wdata = {4{MEM1_GPR_RT[31:24]}};
-                4'b0011 :
-                    MEM1_wdata = {2{MEM1_GPR_RT[31:16]}};
-                4'b0111 :
-                    MEM1_wdata = {8'b0,MEM1_GPR_RT[31:8]};
-                default :
-                    MEM1_wdata = MEM1_GPR_RT[31:0];
-            endcase
-        end
-        else if ( MEM1_StoreOp == 2'b11)
-        begin
-            case (MEM1_dCache_wstrb)
-                4'b1000 :
-                    MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
-                4'b1100 :
-                    MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
-                4'b1110 :
-                    MEM1_wdata = {MEM1_GPR_RT[23:0],8'b0};
-                default :
-                    MEM1_wdata = MEM1_GPR_RT[31:0];
-            endcase
-        end
-        else
-            MEM1_wdata = MEM1_GPR_RT[31:0];
-    end
+    always@(*)
+        case(MEM1_DMSel)
+            4'b0000://SB 
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_dCache_wstrb = 4'b0001;
+                    2'b01:      MEM1_dCache_wstrb = 4'b0010;  
+                    2'b10:      MEM1_dCache_wstrb = 4'b0100;
+                    default:    MEM1_dCache_wstrb = 4'b1000;
+                endcase
+            4'b0001://SH
+                case(MEM1_Paddr[1])
+                    1'b0:       MEM1_dCache_wstrb = 4'b0011;
+                    default:    MEM1_dCache_wstrb = 4'b1100;
+                endcase
+            4'b0011://SWL
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_dCache_wstrb = 4'b0001;
+                    2'b01:      MEM1_dCache_wstrb = 4'b0011;  
+                    2'b10:      MEM1_dCache_wstrb = 4'b0111;
+                    default:    MEM1_dCache_wstrb = 4'b1111;
+                endcase
+            4'b0100://SWR
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_dCache_wstrb = 4'b1111;
+                    2'b01:      MEM1_dCache_wstrb = 4'b1110;  
+                    2'b10:      MEM1_dCache_wstrb = 4'b1100;
+                    default:    MEM1_dCache_wstrb = 4'b1000;
+                endcase
+            default://SW SC
+                                MEM1_dCache_wstrb = 4'b1111;
+        endcase
+
+    always@(*)
+        case(MEM1_DMSel)
+            4'b0000://SB 
+                                MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
+            4'b0001://SH
+                                MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
+            4'b0011://SWL
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_wdata = {4{MEM1_GPR_RT[31:24]}};
+                    2'b01:      MEM1_wdata = {2{MEM1_GPR_RT[31:16]}};
+                    2'b10:      MEM1_wdata = {8'b0,MEM1_GPR_RT[31:8]};
+                    default:    MEM1_wdata = MEM1_GPR_RT[31:0];
+                endcase
+            4'b0100://SWR
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_wdata = MEM1_GPR_RT[31:0];
+                    2'b01:      MEM1_wdata = {MEM1_GPR_RT[23:0],8'b0};
+                    2'b10:      MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
+                    default:    MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
+                endcase
+            default://SW SC
+                                MEM1_wdata = MEM1_GPR_RT[31:0];
+        endcase
+
+            
+    always@(*)
+        case(MEM1_DMSel)
+            4'b0101://LBU 
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_rstrb = 5'b00000;
+                    2'b01:      MEM1_rstrb = 5'b00001;  
+                    2'b10:      MEM1_rstrb = 5'b00010;
+                    default:    MEM1_rstrb = 4'b00011;
+                endcase
+            4'b0110://LB 
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_rstrb = 5'b01000;
+                    2'b01:      MEM1_rstrb = 5'b01001;  
+                    2'b10:      MEM1_rstrb = 5'b01010;
+                    default:    MEM1_rstrb = 4'b01011;
+                endcase
+            4'b0111://LHU
+                case(MEM1_Paddr[1])
+                    1'b0:       MEM1_rstrb = 5'b00100;
+                    default:    MEM1_rstrb = 5'b00110;
+                endcase
+            4'b1000://LH
+                case(MEM1_Paddr[1])
+                    1'b0:       MEM1_rstrb = 5'b01100;
+                    default:    MEM1_rstrb = 5'b01110;
+                endcase
+            4'b1001://LWL
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_rstrb = 5'b11000;
+                    2'b01:      MEM1_rstrb = 5'b11100;  
+                    2'b10:      MEM1_rstrb = 5'b11110;
+                    default:    MEM1_rstrb = 5'b11111;
+                endcase
+            4'b1010://LWR
+                case(MEM1_Paddr[1:0])
+                    2'b00:      MEM1_rstrb = 5'b11111;
+                    2'b01:      MEM1_rstrb = 5'b10111;  
+                    2'b10:      MEM1_rstrb = 5'b10011;
+                    default:    MEM1_rstrb = 5'b10001;
+                endcase
+            default://LW LL
+                                MEM1_rstrb = 5'b11111;
+        endcase
+
+        always@(*)
+        case(MEM1_DMSel)
+            4'b0000,4'b0101,4'b0110://SB LBU LB 
+                                MEM1_type = 3'b000;
+            4'b0001,4'b0111,4'b1000://SH LHU LH
+                                MEM1_type = 3'b001;
+            default://SW SC SWL SWR LW LL LWL LWR
+                                MEM1_type = 3'b010;
+        endcase
+
+
 
 endmodule
 

@@ -256,7 +256,7 @@ module ID_EX(
 	input [1:0] 	MUX1Sel,
 	input [3:0] 	ALU2Op,
 	input [2:0] 	MUX2Sel,
-	input [2:0] 	DMSel,
+	input [3:0] 	DMSel,
 	input [4:0] 	ALU1Op,
 	input [4:0] 	RS,
 	input [4:0]		RT,
@@ -278,8 +278,6 @@ module ID_EX(
 	input 			TLB_flush,
 	input 			TLB_writeen,
 	input 			TLB_readen,
-	input [1:0] 	StoreOp,
-	input [1:0] 	LoadOp,
 	input 			LL_signal,
 	input 			SC_signal,
 	input 			icache_valid_CI,
@@ -315,7 +313,7 @@ module ID_EX(
 	output reg [3:0] 	EX_ALU2Op,
 	output reg [1:0] 	EX_MUX1Sel,
 	output reg [1:0] 	EX_RHLSel_Wr,
-	output reg [2:0] 	EX_DMSel,
+	output reg [3:0] 	EX_DMSel,
 	output reg [2:0] 	EX_MUX2Sel,
 	output reg [4:0] 	EX_ALU1Op,
 	output reg [4:0] 	EX_RS,
@@ -338,8 +336,6 @@ module ID_EX(
 	output reg 			EX_TLB_flush,
 	output reg 			EX_TLB_writeen,
 	output reg 			EX_TLB_readen,
-	output reg [1:0]	EX_StoreOp,
-	output reg [1:0]	EX_LoadOp,
 	output reg 			EX_LL_signal,
 	output reg 			EX_SC_signal,
 	output reg 			EX_icache_valid_CI,
@@ -382,7 +378,7 @@ module ID_EX(
 			EX_ALU2Op <= 4'b0;
 			EX_MUX1Sel <= 2'b00;
 			EX_RHLSel_Wr <= 2'b00;
-			EX_DMSel <= 3'b000;
+			EX_DMSel <= 4'b000;
 			EX_MUX2Sel <= 3'b000;
 			EX_ALU1Op <= 5'h0;
 			EX_RS <= 5'd0;
@@ -405,8 +401,6 @@ module ID_EX(
 			EX_TLB_flush <= 1'b0;
 			EX_TLB_writeen <= 1'b0;
 			EX_TLB_readen <= 1'b0;
-			EX_LoadOp <= 2'b00;
-			EX_StoreOp <= 2'b00;
 			EX_LL_signal <= 1'b0;
 			EX_SC_signal <= 1'b0;
 			EX_icache_valid_CI <= 1'b0;
@@ -470,8 +464,6 @@ module ID_EX(
 			EX_TLB_flush <= TLB_flush;
 			EX_TLB_writeen <= TLB_writeen;
 			EX_TLB_readen <= TLB_readen;
-			EX_LoadOp <= LoadOp;
-			EX_StoreOp <= StoreOp;
 			EX_LL_signal <= LL_signal;
 			EX_SC_signal <= SC_signal;
 			EX_icache_valid_CI <= icache_valid_CI;
@@ -513,7 +505,7 @@ module EX_MEM1(
 	input [4:0] 	ExcCode,
 	input 			isBD,
 	input [2:0] 	MUX2Sel,
-	input [2:0] 	DMSel,
+	input [3:0] 	DMSel,
 	input [4:0] 	RD,
 	input [31:0] 	EX_PC,
 	input [31:0] 	MUX13Out,
@@ -530,8 +522,6 @@ module EX_MEM1(
 	input 			EX_TLB_writeen,
 	input 			EX_TLB_readen,
 	input 			EX_MUX12Sel,
-	input [1:0] 	EX_StoreOp,
-	input [1:0] 	EX_LoadOp,
 	input [31:0] 	MULOut,
 	input 			Trap,
 	input	 		EX_LL_signal,
@@ -542,6 +532,7 @@ module EX_MEM1(
 	input [1:0]		EX_dcache_op_CI,
 	input			EX_WAIT_OP,
 	input [18:0]	EX_s1_vpn2,
+	input [3:0]		EX_match1,
 
 	output reg 			MEM1_DMWr,
 	output reg 			MEM1_DMRd,
@@ -552,7 +543,7 @@ module EX_MEM1(
 	output reg [4:0]	MEM1_ExcCode,
 	output reg 			MEM1_isBD,
 	output reg [2:0]	MEM1_MUX2Sel,
-	output reg [2:0]	MEM1_DMSel,
+	output reg [3:0]	MEM1_DMSel,
 	output reg [4:0]	MEM1_RD,
 	output reg [31:0] 	MEM1_PC,
 	output reg [31:0] 	MEM1_MUX13Out,
@@ -570,8 +561,6 @@ module EX_MEM1(
 	output reg			MEM1_TLB_writeen,
 	output reg			MEM1_TLB_readen,
 	output reg 			MEM1_MUX12Sel,
-	output reg [1:0]	MEM1_StoreOp,
-	output reg [1:0]	MEM1_LoadOp,
 	output reg [31:0] 	MEM1_MULOut,
 	output reg 			MEM1_Trap,
 	output reg 			MEM1_LL_signal,
@@ -582,7 +571,8 @@ module EX_MEM1(
 	output reg [1:0]	MEM1_dcache_op_CI,
 	output reg  		MEM1_WAIT_OP,
 	output reg [18:0] 	s1_vpn2,
-	output reg [31:0] 	MEM1_ALU1Out_forExPa
+	output reg [31:0] 	MEM1_ALU1Out_forExPa,
+	output reg [3:0]	match1
 );
 
 	always@(posedge clk)
@@ -594,7 +584,7 @@ module EX_MEM1(
 			MEM1_CP0WrEn <= 1'b0;
 			MEM1_isBD <= 1'b0;
 			MEM1_DMRd <= 1'b0;
-			MEM1_DMSel <= 3'd0;
+			MEM1_DMSel <= 4'd0;
 			MEM1_MUX2Sel <= 3'd0;
 			MEM1_RD <= 5'd0;
 			//MEM1_PC <= 32'd0;
@@ -615,8 +605,6 @@ module EX_MEM1(
 			MEM1_TLB_flush <= 1'b0;
 			MEM1_TLB_writeen <= 1'b0;
 			MEM1_TLB_readen <= 1'b0;
-			MEM1_LoadOp <= 2'b0;
-			MEM1_StoreOp <= 2'b0;
 			MEM1_MULOut <= 32'b0;
 			MEM1_Trap <= 1'b0;
 	 		MEM1_LL_signal <= 1'b0;
@@ -628,6 +616,7 @@ module EX_MEM1(
 			MEM1_WAIT_OP <= 1'b0;
 			s1_vpn2 <= 19'd0;
 			MEM1_ALU1Out_forExPa <= 32'd0;
+			match1 <= 4'd0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -657,8 +646,6 @@ module EX_MEM1(
 			MEM1_TLB_flush <= EX_TLB_flush;
 			MEM1_TLB_writeen <= EX_TLB_writeen;
 			MEM1_TLB_readen <= EX_TLB_readen;
-			MEM1_LoadOp	<= EX_LoadOp;
-			MEM1_StoreOp <= EX_StoreOp;
 			MEM1_MULOut <= MULOut;
 			MEM1_Trap <= Trap;
 			MEM1_LL_signal <= EX_LL_signal;
@@ -670,22 +657,24 @@ module EX_MEM1(
 			MEM1_WAIT_OP <= EX_WAIT_OP;
 			s1_vpn2 <= EX_s1_vpn2;
 			MEM1_ALU1Out_forExPa <= ALU1Out;
+			match1 <= EX_match1;
 		end
 
 endmodule
 
 module MEM1_MEM2(
 		clk,rst,PC,RFWr,MUX2Sel,MUX6Out,ALU1Out,RD,MEM1_Flush,CP0Out,MEM1_MEM2Wr,
-		DMSel,cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
+		cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
 		MEM1_dCache_wstrb,GPR_RT,DMRd,CP0Rd,MEM1_TLB_flush,MEM1_TLB_writeen,
 		MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,MEM1_SCOut, MEM1_icache_valid_CI,
-		MEM1_dcache_en, MEM1_invalid,
+		MEM1_dcache_en, MEM1_invalid, MEM1_rstrb, MEM1_type,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
-        MEM2_DMSel, MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
+         MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
 		MEM2_uncache_valid, MEM2_DMen,MEM2_Paddr, MEM2_unCache_wstrb, MEM2_GPR_RT,
 		MEM2_DMRd, MEM2_CP0Rd,MEM2_TLB_flush,MEM2_TLB_writeen,MEM2_TLB_readen,MEM2_LoadOp,
-		MEM2_wdata,MEM2_SCOut, MEM2_icache_valid_CI, MEM2_dcache_en, MEM2_invalid
+		MEM2_wdata,MEM2_SCOut, MEM2_icache_valid_CI, MEM2_dcache_en, MEM2_invalid,
+		MEM2_rstrb, MEM2_type
 		);
 	input 			clk;
 	input 			rst;
@@ -698,7 +687,6 @@ module MEM1_MEM2(
 	input [31:0] 	ALU1Out;
 	input [4:0] 	RD;
 	input [31:0] 	CP0Out;
-	input [2:0] 	DMSel;
 	input 			cache_sel;
 	input 			DMWen;
 	input 			Exception;
@@ -719,6 +707,8 @@ module MEM1_MEM2(
 	input			MEM1_icache_valid_CI;
 	input			MEM1_dcache_en;
 	input			MEM1_invalid;
+	input [4:0]		MEM1_rstrb;
+	input [2:0]     MEM1_type;
 
 	output reg [31:0] MEM2_PC;
 	output reg 		MEM2_RFWr;
@@ -727,7 +717,6 @@ module MEM1_MEM2(
 	output reg [31:0] MEM2_ALU1Out;
 	output reg [4:0] MEM2_RD;
 	output reg [31:0] MEM2_CP0Out;
-	output reg [2:0] MEM2_DMSel;
 	output reg 		MEM2_cache_sel;
 	output reg 		MEM2_DMWen;
 	output reg 		MEM2_Exception;
@@ -748,6 +737,8 @@ module MEM1_MEM2(
 	output reg		MEM2_icache_valid_CI;
 	output reg 		MEM2_dcache_en;
 	output reg 		MEM2_invalid;
+	output reg[4:0] MEM2_rstrb;
+	output reg[2:0] MEM2_type;
 
 	always@(posedge clk)
 		if(!rst || MEM1_Flush) begin
@@ -758,7 +749,6 @@ module MEM1_MEM2(
 			MEM2_ALU1Out <= 32'd0;
 			MEM2_RD <= 5'd0;
 			MEM2_CP0Out <= 32'd0;
-			MEM2_DMSel <= 3'd0;
 			MEM2_cache_sel <= 1'b0;
 			MEM2_DMWen <= 1'b0;
 			MEM2_Exception <= 1'b0;
@@ -779,6 +769,8 @@ module MEM1_MEM2(
 			MEM2_icache_valid_CI <= 1'b0;
 			MEM2_dcache_en <= 1'b0;
 			MEM2_invalid <= 1'b0;
+			MEM2_rstrb <= 5'd0;
+			MEM2_type <= 3'd0;
 		end
 		else if(MEM1_MEM2Wr) begin
 			MEM2_PC <= PC;
@@ -788,7 +780,6 @@ module MEM1_MEM2(
 			MEM2_ALU1Out <= ALU1Out;
 			MEM2_RD <= RD;
 			MEM2_CP0Out <= CP0Out;
-			MEM2_DMSel <= DMSel;
 			MEM2_cache_sel <= cache_sel;
 			MEM2_DMWen <= DMWen;
 			MEM2_Exception <= Exception;
@@ -809,6 +800,8 @@ module MEM1_MEM2(
 			MEM2_icache_valid_CI <= MEM1_icache_valid_CI;
 			MEM2_dcache_en <= MEM1_dcache_en;
 			MEM2_invalid <= MEM1_invalid;
+			MEM2_rstrb <= MEM1_rstrb;
+			MEM2_type <= MEM1_type;
 		end
 endmodule
 

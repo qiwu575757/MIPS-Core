@@ -801,11 +801,11 @@ module dcache(       clk, resetn, DMen, stall, exception,
         always@(wstrb_WB, rdata_WB, wdata_WB)
         case(wstrb_WB)
             4'b0001:wdata_final = {rdata_WB[31:8],wdata_WB[7:0]};
-            4'b0010:wdata_final = {rdata_WB[31:16],wdata_WB[7:0],rdata_WB[7:0]};
-            4'b0100:wdata_final = {rdata_WB[31:24],wdata_WB[7:0],rdata_WB[15:0]};
-            4'b1000:wdata_final = {wdata_WB[7:0],rdata_WB[23:0]};
+            4'b0010:wdata_final = {rdata_WB[31:16],wdata_WB[15:8],rdata_WB[7:0]};
+            4'b0100:wdata_final = {rdata_WB[31:24],wdata_WB[23:16],rdata_WB[15:0]};
+            4'b1000:wdata_final = {wdata_WB[31:24],rdata_WB[23:0]};
             4'b0011:wdata_final = {rdata_WB[31:16],wdata_WB[15:0]};
-            4'b1100:wdata_final = {wdata_WB[15:0],rdata_WB[15:0]};
+            4'b1100:wdata_final = {wdata_WB[31:16],rdata_WB[15:0]};
             4'b0111:wdata_final = {rdata_WB[31:24],wdata_WB[23:0]};
             4'b1110:wdata_final = {wdata_WB[31:8], rdata_WB[7:0]};
             default:wdata_final = wdata_WB;
@@ -1105,7 +1105,7 @@ module uncache_im(
 endmodule
 
 module uncache_dm(
-        clk, resetn, MEM2_DMSel, wr, exception,
+        clk, resetn, MEM2_type, wr, exception,
         //CPU_Pipeline side
         /*input*/   valid, op, addr, wstrb, wdata,
         /*output*/  data_ok, rdata,
@@ -1116,7 +1116,7 @@ module uncache_dm(
 
     input clk;
     input resetn;
-    input [2:0] MEM2_DMSel;
+    input [2:0] MEM2_type;
     input wr;
     input exception;
 
@@ -1143,7 +1143,7 @@ module uncache_dm(
     output[31:0] rd_addr;
     output[31:0] wr_addr;
     output[3:0] wr_wstrb;
-    output reg[31:0] wr_data;
+    output[31:0] wr_data;
 
     reg[1:0] C_STATE;
     reg[1:0] N_STATE;
@@ -1207,27 +1207,13 @@ module uncache_dm(
             (((C_STATE == IDLE) & load & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
     assign wr_req = !exception&
             (((C_STATE == IDLE) & store & wr_rdy & !done) | (C_STATE == STORE));
-    assign rd_type =
-            ((MEM2_DMSel==3'b011) || (MEM2_DMSel==3'b100)) ?  3'd0 :
-            ((MEM2_DMSel==3'b101) || (MEM2_DMSel==3'b110)) ?  3'd1 :
-                                    3'd2;
-    assign wr_type =
-            (MEM2_DMSel==3'b000)  ?  3'd0 :
-            (MEM2_DMSel==3'b001)  ?  3'd1 :
-                                    3'd2;
+    assign rd_type = MEM2_type;
+    assign wr_type = MEM2_type;
     assign rd_addr = addr;
     assign wr_addr = addr;
     assign wr_wstrb = wstrb;
-    always@(wstrb, wdata)
-        case(wstrb)
-            4'b0001:wr_data = {4{wdata[7:0]}};
-            4'b0010:wr_data = {4{wdata[7:0]}};
-            4'b0100:wr_data = {4{wdata[7:0]}};
-            4'b1000:wr_data = {4{wdata[7:0]}};
-            4'b0011:wr_data = {2{wdata[15:0]}};
-            4'b1100:wr_data = {2{wdata[15:0]}};
-            default:wr_data = wdata;
-        endcase
+    assign wr_data = wdata;
+
 endmodule
 
 module dirty_block(clk, rst, wen, rd_addr, wr_addr, din, dout);

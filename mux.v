@@ -94,18 +94,17 @@ module mux5(
 endmodule
 
 module mux6(
-	ALU1Out, MEM1_MULOut, MUX13Out, MUX6Sel,
+	ALU1Out, MUX13Out, MUX6Sel,
 
 	out
 	);
-	input[31:0] ALU1Out, MUX13Out, MEM1_MULOut;
+	input[31:0] ALU1Out, MUX13Out;
 	input[2:0] MUX6Sel;
 	output reg[31:0] out;
 
 	always@(*)
 		case(MUX6Sel)
 			3'b010:	out = ALU1Out;
-			3'b110: out = MEM1_MULOut;
 			default:out = MUX13Out;
 		endcase
 
@@ -203,20 +202,19 @@ module mux12 (
 endmodule
 
 module mux13(
-	Imm32, PC, RHLOut, EX_MUX2Sel,
-
-	MUX13Out
+	input [31:0] 	Imm32,
+	input [31:0] 	PC,
+	input [31:0] 	RHLOut,
+	input [31:0]	MULOut,
+	input [2:0] 	EX_MUX2Sel,
+	output reg [31:0] MUX13Out
 );
-	input[31:0] Imm32;
-	input[31:0] PC;
-	input[31:0] RHLOut;
-	input[2:0] EX_MUX2Sel;
-	output reg[31:0] MUX13Out;
 
 	always@(*)
 		case(EX_MUX2Sel)
 			3'b000:	MUX13Out = RHLOut;
 			3'b001: MUX13Out = Imm32;
+			3'b110: MUX13Out = MULOut;
 			default:MUX13Out = PC + 8;
 		endcase
 

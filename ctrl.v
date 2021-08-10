@@ -33,7 +33,7 @@
 	output reg 			ALU1Sel,
 	output reg [3:0]	ALU2Op,
 	output reg [1:0]	RHLSel_Wr,
-	output reg [2:0]	DMSel,
+	output reg [3:0]	DMSel,
 	output reg 			eret_flush,
 	output reg 			CP0WrEn,
 	output reg 			CP0Rd,
@@ -50,8 +50,6 @@
 	output 				TLB_flush,
 	output				TLB_readen,
 	output				TLB_writeen,
-	output reg [1:0]	StoreOp,
-	output reg [1:0]	LoadOp,
 	output  			movz_movn,
 //	output reg 			Branch_flush,
 	output 				LL_signal,
@@ -755,17 +753,22 @@
 		endcase
 	end
 
-	always @(OP or Funct) begin		/* the genenration of DMSel */
+	always @(OP) begin		/* the genenration of DMSel */
 		 case (OP)
-			6'b101000: DMSel = 3'b000;		/* SB */
-			6'b101001: DMSel = 3'b001;		/* SH */
-			6'b101011: DMSel = 3'b010;		/* SW */
-			6'b111000: DMSel = 3'b010;		/* SC */
-			6'b100100: DMSel = 3'b011;		/* LBU */
-			6'b100000: DMSel = 3'b100;		/* LB */
-			6'b100101: DMSel = 3'b101;		/* LHU */
-			6'b100001: DMSel = 3'b110;		/* LH */
-			default:   DMSel = 3'b111;		/* LW LWL LWR */
+			6'b101000: DMSel = 4'b0000;		/* SB */
+			6'b101001: DMSel = 4'b0001;		/* SH */
+			6'b101011,6'b111000: 
+					   DMSel = 4'b0010;		/* SW SC */
+			6'b101010: DMSel = 4'b0011;		/* SWL */
+			6'b101110: DMSel = 4'b0100;		/* SWR */		   
+			6'b100100: DMSel = 4'b0101;		/* LBU */
+			6'b100000: DMSel = 4'b0110;		/* LB */
+			6'b100101: DMSel = 4'b0111;		/* LHU */
+			6'b100001: DMSel = 4'b1000;		/* LH */
+			6'b100010: DMSel = 4'b1001;		/* LWL */
+			6'b100110: DMSel = 4'b1010;		/* LWR */
+			default:   
+					   DMSel = 4'b1011;		/* LW LL */
 		endcase
 	end
 
@@ -816,21 +819,6 @@
 
 	assign ID_WAIT_OP	= (OP == `tlb) && (Funct == `WAIT);
 
-	always @( OP ) begin
-		case (OP)
-			6'b100010: LoadOp = 2'b10;			/* LWL */
-			6'b100110: LoadOp = 2'b11;			/* LWR */
-			default :  LoadOp = 2'b0;
-		endcase
-	end
-
-	always @( OP ) begin
-		case (OP)
-			6'b101010: StoreOp = 2'b10;			/* SWL */
-			6'b101110: StoreOp = 2'b11;			/* SWR */
-			default :  StoreOp = 2'b00;
-		endcase
-	end
 
 	/*
 		movz_movn = 1 imply that the instr is movz or movn and the condition is OK or
