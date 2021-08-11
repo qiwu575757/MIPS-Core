@@ -139,55 +139,55 @@ module branch_predict_prep(
     assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
 
     assign ee = MEM1_ee |(WB_TLB_flush | WB_icache_valid_CI);
-    always@(*) begin
-		if (MEM1_Exception)	//use the standard mips structure
-		begin
-			if ( Interrupt )
-				case ({Status_BEV,Status_EXL,Cause_IV})
-					3'b000:		NPC_ee = 32'h8000_0180;
-					3'b001:		NPC_ee = 32'h8000_2000;
-					3'b100:		NPC_ee = 32'hBFC0_0380;
-					3'b101:		NPC_ee = 32'hBFC0_0400;
-					3'b010,3'b011:
-								NPC_ee = 32'h8000_0180;
-					default:	NPC_ee = 32'hBFC0_0380;
-				endcase
-			else if ( MEM1_TLBRill_Exc )
-				case ({Status_BEV,Status_EXL})
-					2'b00:		NPC_ee = 32'h8000_0000;
-					2'b01:		NPC_ee = 32'h8000_0180;
-					2'b10:		NPC_ee = 32'hBFC0_0200;
-					default:	NPC_ee = 32'hBFC0_0380;
-				endcase
-			else
-				if ( ~Status_BEV )
-						NPC_ee = 32'h8000_0180;
-				else
-						NPC_ee = 32'hBFC0_0380;
-		end
-		else //if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
-			NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
-	end
-    // always @( * ) begin
-    //     if ( ~Status_EXL )
-    //         if ( MEM1_TLBRill_Exc && (MEM1_ExcCode==`TLBL || MEM1_ExcCode==`TLBS) )
-    //             offset = 12'h00;
-    //         else if ( MEM1_ExcCode==`Int && Cause_IV )
-    //             offset = 12'h200;
-    //         else
-    //             offset = 12'h180;
-    //     else
-    //             offset = 12'h180;
-    // end
+    // always@(*) begin
+	// 	if (MEM1_Exception)	//use the standard mips structure
+	// 	begin
+	// 		if ( Interrupt )
+	// 			case ({Status_BEV,Status_EXL,Cause_IV})
+	// 				3'b000:		NPC_ee = 32'h8000_0180;
+	// 				3'b001:		NPC_ee = 32'h8000_2000;
+	// 				3'b100:		NPC_ee = 32'hBFC0_0380;
+	// 				3'b101:		NPC_ee = 32'hBFC0_0400;
+	// 				3'b010,3'b011:
+	// 							NPC_ee = 32'h8000_0180;
+	// 				default:	NPC_ee = 32'hBFC0_0380;
+	// 			endcase
+	// 		else if ( MEM1_TLBRill_Exc )
+	// 			case ({Status_BEV,Status_EXL})
+	// 				2'b00:		NPC_ee = 32'h8000_0000;
+	// 				2'b01:		NPC_ee = 32'h8000_0180;
+	// 				2'b10:		NPC_ee = 32'hBFC0_0200;
+	// 				default:	NPC_ee = 32'hBFC0_0380;
+	// 			endcase
+	// 		else
+	// 			if ( ~Status_BEV )
+	// 					NPC_ee = 32'h8000_0180;
+	// 			else
+	// 					NPC_ee = 32'hBFC0_0380;
+	// 	end
+	// 	else //if (WB_TLB_flush | WB_icache_valid_CI)	//TLBWI TLBR clear up
+	// 		NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
+	// end
+    always @( * ) begin
+        if ( ~Status_EXL )
+            if ( MEM1_TLBRill_Exc && (MEM1_ExcCode==`TLBL || MEM1_ExcCode==`TLBS) )
+                offset = 12'h00;
+            else if ( MEM1_ExcCode==`Int && Cause_IV )
+                offset = 12'h200;
+            else
+                offset = 12'h180;
+        else
+                offset = 12'h180;
+    end
 
-    // always @( * ) begin
-    //     if ( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI)//具有优先级
-    //         NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
-    //     else if ( Status_BEV )
-    //         NPC_ee = 32'hbfc00200 + offset;
-    //     else
-    //         NPC_ee = {Ebase_out[31:12],offset};
-    // end
+    always @( * ) begin
+        if ( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI)//具有优先级
+            NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
+        else if ( Status_BEV )
+            NPC_ee = 32'hbfc00200 + offset;
+        else
+            NPC_ee = {Ebase_out[31:12],offset};
+    end
 
 endmodule
 

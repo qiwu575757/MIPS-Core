@@ -212,9 +212,9 @@ assign data_out =
     //Index generation
     always @(posedge clk) begin
         if ( !rst )
-            Index[31:4] <= 0;
+            Index[31:2] <= 0;
         else if (CP0WrEn && addr == `Index_index)
-            Index[3:0] <= data_in[3:0];
+            Index[1:0] <= data_in[1:0];
         else if ( Index_Wren & s1_found)
             Index <= Index_in;
         else if (Index_Wren & !s1_found)
@@ -262,7 +262,7 @@ assign data_out =
         if ( !rst )
         begin
             Config1[31]     <= 1'b0;//indicate that don't implement the Config2 reg
-            Config1[30:25]  <= 6'h15;
+            Config1[30:25]  <= 6'h3;
             Config1[24:22]  <= 3'h0;
             Config1[21:19]  <= 3'h5;//5-->icache
             Config1[18:16]  <= 3'h1;

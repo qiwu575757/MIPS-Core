@@ -115,7 +115,7 @@ module mips(
     wire            PF_icache_sel;
     wire            PF_icache_valid;
     wire            PF_uncache_valid;
-    wire [3:0]      s0_index;
+    wire [ 1:0]      s0_index;
     wire [18:0]     s0_vpn2;
     wire            s0_odd_page;
     wire [ 7:0]     s0_asid;
@@ -396,7 +396,7 @@ module mips(
     wire            s1_odd_page;
     wire [ 7:0]     s1_asid;
     wire            s1_found;
-    wire [ 3:0]     s1_index;
+    wire [ 1:0]     s1_index;
     wire [19:0]     s1_pfn;
     wire [ 2:0]     s1_c;
     wire            s1_d;
@@ -481,7 +481,7 @@ module mips(
     wire [31:0]     WB_DMOut;
     wire [31:0]     MUX10Out;
 	wire            we;//write enable
-    wire [ 3:0]     w_index;
+    wire [ 1:0]     w_index;
     wire [18:0]     w_vpn2;
     wire [ 7:0]     w_asid;
     wire            w_g;
@@ -1018,7 +1018,7 @@ CP0 U_CP0(
 		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
     	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),
         .MEM1_TLB_Exc(MEM1_TLB_Exc),.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),
-        .Index_in({!s1_found,27'b0,s1_index}),.Cause_CE_Wr(Cause_CE_Wr),
+        .Index_in({!s1_found,29'b0,s1_index}),.Cause_CE_Wr(Cause_CE_Wr),
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
 		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),
@@ -1028,7 +1028,7 @@ CP0 U_CP0(
 
 
 mux12 U_MUX12(
-    .index(Index_out[3:0]), .random(Random_out[3:0]), .MUX12_Sel(MEM1_MUX12Sel),
+    .index(Index_out[1:0]), .random(Random_out[1:0]), .MUX12_Sel(MEM1_MUX12Sel),
 
     .out(w_index)
 );
@@ -1157,7 +1157,7 @@ mux10 U_MUX10(
         );
     //-------------ELSE---------------//
 //physical address tranfer
-tlb_16 U_TLB(
+tlb_4 U_TLB(
     clk,
     rst,
 
@@ -1174,7 +1174,7 @@ tlb_16 U_TLB(
     s0_v,
 
     //search port 1
-    s1_vpn2,
+    EX_s1_vpn2,
     MEM1_ALU1Out[12],//s1_odd_page,no use for tlbp
     EntryHi_out[7:0],//s1_asid
 
@@ -1201,7 +1201,7 @@ tlb_16 U_TLB(
     EntryLo1_out[1],		//w_v1,
 
     //read port
-    Index_out[3:0],//r_index
+    Index_out[1:0],//r_index
 
     r_vpn2,
     r_asid,
@@ -1213,7 +1213,10 @@ tlb_16 U_TLB(
     r_pfn1,
     r_c1,
     r_d1,
-    r_v1
+    r_v1,
+
+    match1,
+    EX_match1
 );
 
 npc U_NPC(
