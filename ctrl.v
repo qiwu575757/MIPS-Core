@@ -9,7 +9,7 @@
 	input [4:0] 	rt,
 	input [4:0] 	rd,
 	input 			CMPOut1,
-	input [1:0] 	CMPOut2,
+	input [3:0] 	CMPOut2,
 	input 			EXE_isBranch,
 	input 			Temp_ID_Excetion,
 	input 			IF_Flush,
@@ -656,22 +656,22 @@
 					else 
 						NPCOp = 2'b00;
 				3'b010://BGEZ,BGEZAL
-					if (CMPOut2 != 2'b10)
+					if (CMPOut2[3])
 						NPCOp = 2'b01;
 					else
 						NPCOp = 2'b00;
 				3'b011://BLTZ,BLTZAL
-					if (CMPOut2 == 2'b10)
+					if (CMPOut2[2])
 						NPCOp = 2'b01;
 					else
 						NPCOp = 2'b00;
 				3'b100://BLEZ
-					if(CMPOut2 != 2'b01)
+					if(CMPOut2[0])
 						NPCOp = 2'b01;
 					else
 						NPCOp = 2'b00;
 				default://BGTZ
-					if(CMPOut2 == 2'b01)
+					if(CMPOut2[1])
 						NPCOp = 2'b01;
 					else
 						NPCOp = 2'b00;
@@ -859,7 +859,7 @@
 		Execute the delay slot only if the branch is taken
 	*/
 		
-	always @(OP or rt or CMPOut1 or CMPOut2) begin
+	always @(OP or rt) begin
 		case (OP)
 			6'b010100: BLType = 3'b000;				/* BEQL */
 			6'b010101: BLType = 3'b001;				/* BNEL */
@@ -898,22 +898,22 @@
 				else
 					Branch_flush = 1;
 			3'b010:				/* BGEZL, BGEZALL*/
-				if (CMPOut2 != 2'b10)
+				if (CMPOut2[3])
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
 			3'b011:				/* BLTZL, BLTZALL */
-				if (CMPOut2 == 2'b10)
+				if (CMPOut2[2])
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
 			3'b100:				/* BLEZL */
-				if(CMPOut2 != 2'b01)
+				if(CMPOut2[0])
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;
 			3'b101:				/* BGTZL */
-				if(CMPOut2 == 2'b01)
+				if(CMPOut2[1])
 					Branch_flush = 0;
 				else
 					Branch_flush = 1;

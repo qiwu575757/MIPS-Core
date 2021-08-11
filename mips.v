@@ -226,7 +226,7 @@ module mips(
     wire [1:0]      EXTOp;
     wire [31:0]     Imm32;
     wire            CMPOut1;
-    wire [1:0]      CMPOut2;
+    wire [3:0]      CMPOut2;
     wire [31:0]     MUX8Out;
     wire [31:0]     MUX9Out;
     wire [20:0]      MUX7Out;
