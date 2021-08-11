@@ -216,7 +216,8 @@ module mips(
     wire            branch;
     wire [31:0]     target_addr;
     wire            IF_PC_invalid;
-    wire            IF_BJOp;          
+    wire            IF_BJOp;       
+    wire            refetch;
     //--------------ID----------------//
     wire [31:0]     ID_PC;
     wire [31:0]     ID_Instr;
@@ -531,7 +532,6 @@ module mips(
     wire            MEM1_Flush;
     wire            MEM2_Flush;
     wire            Invalidate_signal;
-    wire            refetch;      
     //d_cache
     wire            MEM_dCache_addr_ok;
     wire            MEM_dCache_data_ok;
@@ -769,11 +769,10 @@ branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
 );
     //--------------ID----------------//
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC),
-        .Instr(Instr), .IF_Exception(IF_Exceptio),
-		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc),
-        .IF_TLB_Exc(IF_TLB_Exc), .IF_BJOp(IF_BJOp),
-        .refetch(refetch), .IF_PC_invalid(IF_PC_invalid), .PF_PC(PF_PC),
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC_invalid ? PF_PC :IF_PC),
+        .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~Invalidate_signal)),
+		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~Invalidate_signal)),
+        .IF_TLB_Exc(IF_TLB_Exc&(~Invalidate_signal)), .IF_BJOp(IF_BJOp & (~Invalidate_signal)),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLBRill_Exc(ID_TLBRill_Exc),.ID_TLB_Exc(ID_TLB_Exc),
@@ -812,9 +811,29 @@ cmp U_CMP(
 	);
 
 mux7 U_MUX7(
-		.WRSign({eret_flush,LL_signal,SC_signal,icache_valid_CI,dcache_valid_CI,ID_WAIT_OP,DMRd,CP0WrEn,
-        ID_Exception,isBD,isBranch,CP0Rd,start,ID_TLB_Exc,TLB_writeen,TLB_readen,ID_tlb_searchen,
-        ID_dcache_en, DMWr, RFWr, RHLWr}), .MUX7Sel(MUX7Sel),
+		.WRSign({
+            eret_flush,         //20
+            LL_signal,          //19
+            SC_signal,          //18
+            icache_valid_CI,    //17
+            dcache_valid_CI,    //16
+            ID_WAIT_OP,         //15
+            DMRd,               //14
+            CP0WrEn,            //13
+            ID_Exception,       //12
+            isBD,               //11
+            isBranch,           //10
+            CP0Rd,              // 9
+            start,              // 8
+            ID_TLB_Exc,         // 7
+            TLB_writeen,        // 6
+            TLB_readen,         // 5
+            ID_tlb_searchen,    // 4
+            ID_dcache_en,       // 3
+            DMWr,               // 2
+            RFWr,               // 1
+            RHLWr               // 0
+            }), .MUX7Sel(MUX7Sel),
 
 		.MUX7Out(MUX7Out)
 	);

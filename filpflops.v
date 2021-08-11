@@ -138,9 +138,6 @@ module IF_ID(
 	input 			IF_TLBRill_Exc,
 	input 			IF_TLB_Exc,
 	input			IF_BJOp,
-	input 			refetch,
-	input 			IF_PC_invalid,
-	input [31:0]	PF_PC,
 
 	output reg [31:0] 	ID_PC,
 	output reg [31:0]	ID_Instr,
@@ -176,64 +173,6 @@ module IF_ID(
 	always@(posedge clk)
 		if(!rst || IF_Flush) begin
 			//ID_PC <= 32'h0000_0000;
-			ID_Instr <= 32'h0000_0000;
-			Temp_ID_Excetion <= 1'b0;
-			Temp_ID_ExcCode <= 5'b0;
-			ID_TLBRill_Exc <= 1'b0;
-			ID_TLB_Exc <= 1'b0;
-			ID_BJOp <= 1'b0;
-			Imm26_forBP <= 26'd0;
-			Imm16_forEXT <= 16'd0;
-			Imm26_forDFF <= 26'd0;
-			op <= 6'd0;
-			func <= 6'd0;
-			shamt <= 5'd0;
-			CP0Addr <= 8'd0;
-			rs_forRF <= 5'd0;
-			rs_forCtrl <= 5'd0;
-			rs_forDFF <= 5'd0;
-			rs_forBypass <= 5'd0;
-			rs_forStall <= 5'd0;
-			rt_forRF <= 5'd0;
-			rt_forCtrl <= 5'd0;
-			rt_forDFF <= 5'd0;
-			rt_forBypass <= 5'd0;
-			rt_forStall <= 5'd0;
-			rt_forMUX1 <= 5'd0;
-			rd_forMUX1 <= 5'd0;
-			rs_forBypass_forCMP <= 5'd0;
-			rt_forBypass_forCMP <= 5'd0;
-		end else if (IF_PC_invalid) begin
-			ID_PC <= PF_PC;
-			ID_Instr <= 32'h0000_0000;
-			Temp_ID_Excetion <= 1'b0;
-			Temp_ID_ExcCode <= 5'b0;
-			ID_TLBRill_Exc <= 1'b0;
-			ID_TLB_Exc <= 1'b0;
-			ID_BJOp <= 1'b0;
-			Imm26_forBP <= 26'd0;
-			Imm16_forEXT <= 16'd0;
-			Imm26_forDFF <= 26'd0;
-			op <= 6'd0;
-			func <= 6'd0;
-			shamt <= 5'd0;
-			CP0Addr <= 8'd0;
-			rs_forRF <= 5'd0;
-			rs_forCtrl <= 5'd0;
-			rs_forDFF <= 5'd0;
-			rs_forBypass <= 5'd0;
-			rs_forStall <= 5'd0;
-			rt_forRF <= 5'd0;
-			rt_forCtrl <= 5'd0;
-			rt_forDFF <= 5'd0;
-			rt_forBypass <= 5'd0;
-			rt_forStall <= 5'd0;
-			rt_forMUX1 <= 5'd0;
-			rd_forMUX1 <= 5'd0;
-			rs_forBypass_forCMP <= 5'd0;
-			rt_forBypass_forCMP <= 5'd0;
-		end else if (refetch) begin
-			ID_PC <= IF_PC;
 			ID_Instr <= 32'h0000_0000;
 			Temp_ID_Excetion <= 1'b0;
 			Temp_ID_ExcCode <= 5'b0;
