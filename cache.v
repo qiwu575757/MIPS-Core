@@ -7,7 +7,7 @@ module icache(       clk, resetn, exception, stall,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
             valid_CI, op_CI, index_CI, way_CI, tag_CI,
-            cache_sel, uncache_out
+            cache_sel, uncache_out, uncache_data_ok, IF_data_ok
         );
 
     //clock and reset
@@ -48,6 +48,8 @@ module icache(       clk, resetn, exception, stall,
 
     input cache_sel;
     input[31:0] uncache_out;
+    input uncache_data_ok;
+    output IF_data_ok;
 
     //Cache RAM
     /*
@@ -138,6 +140,8 @@ module icache(       clk, resetn, exception, stall,
     assign way0_hit_CI = Way0_Valid && (Way0_Tag == tag_CI);
     assign way1_hit_CI = Way1_Valid && (Way1_Tag == tag_CI);
     assign cache_hit_CI = way0_hit_CI || way1_hit_CI;
+
+    assign IF_data_ok = cache_sel ? uncache_data_ok : data_ok;
 
     always@(posedge clk)
         if(!resetn)
@@ -376,7 +380,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
                 valid_CI,op_CI, index_CI, way_CI, tag_CI,
-                cache_sel, uncache_out
+                cache_sel, uncache_out, uncache_data_ok, MEM_data_ok
         );
 
     //clock and reset
@@ -422,6 +426,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
 
     input cache_sel;
     input[31:0] uncache_out;
+    input uncache_data_ok;
+    output MEM_data_ok;
     //Cache RAM
     /*
     Basic information:
@@ -567,7 +573,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
     assign write_bypass1 = (C_STATE_WB == WRITE) && DMen
                             && ~|({tag,index_RB,offset_RB[5:2]}^{tag_WB,index_WB,offset_WB[5:2]});
 
-
+    assign MEM_data_ok = cache_sel ? uncache_data_ok : data_ok;
 
     //assign ok = ((C_STATE == IDLE) & ~write_conflict2) | ((C_STATE == LOOKUP) & ~write_conflict2 & cache_hit);
     assign VTen = ~stall | (C_STATE == REFILL);

@@ -1,4 +1,4 @@
-module tlb(
+module tlb_16(
     input clk,
     input rst,
 
@@ -55,6 +55,7 @@ module tlb(
     output  [ 2:0]  r_c1,
     output          r_d1,
     output          r_v1
+
 );
 
     //TLB
@@ -539,10 +540,7 @@ module tlb_4(
     output  [19:0]  r_pfn1,
     output  [ 2:0]  r_c1,
     output          r_d1,
-    output          r_v1,
-
-    input [3:0]     match1,
-    output [3:0]    EX_match1
+    output          r_v1
 );
 
     //TLB
@@ -568,7 +566,7 @@ module tlb_4(
     reg         tlb_v1      [TLBNUM-1:0];
 
     wire [TLBNUM-1:0]     match0 ;
-
+    wire [TLBNUM-1:0]     match1 ;
     integer i;
 
     assign match0[ 0] = (s0_vpn2==tlb_vpn2[ 0]) && ((s0_asid==tlb_asid[ 0]) || tlb_g[ 0]);
@@ -576,15 +574,11 @@ module tlb_4(
     assign match0[ 2] = (s0_vpn2==tlb_vpn2[ 2]) && ((s0_asid==tlb_asid[ 2]) || tlb_g[ 2]);
     assign match0[ 3] = (s0_vpn2==tlb_vpn2[ 3]) && ((s0_asid==tlb_asid[ 3]) || tlb_g[ 3]);
 
-    // assign match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
-    // assign match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
-    // assign match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
-    // assign match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
+    assign match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
+    assign match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
+    assign match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
+    assign match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
 
-    assign EX_match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
-    assign EX_match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
-    assign EX_match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
-    assign EX_match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
 
     assign s0_found =   (match0[3:0] != 16'b0);
 
@@ -592,12 +586,12 @@ module tlb_4(
 
     //----------search port----------------//
     assign s0_index = 
-            ({4{match0[ 0]}} & 4'd0 ) | ({4{match0[ 1]}} & 4'd1 ) | ({4{match0[ 2]}} & 4'd2 ) |
-            ({4{match0[ 3]}} & 4'd3 ) ;
+            ({2{match0[ 0]}} & 2'd0 ) | ({2{match0[ 1]}} & 2'd1 ) | ({2{match0[ 2]}} & 2'd2 ) |
+            ({2{match0[ 3]}} & 2'd3 ) ;
 
     assign s1_index = 
-            ({4{match1[ 0]}} & 4'd0 ) | ({4{match1[ 1]}} & 4'd1 ) | ({4{match1[ 2]}} & 4'd2 ) |
-            ({4{match1[ 3]}} & 4'd3 ) ;
+            ({2{match1[ 0]}} & 2'd0 ) | ({2{match1[ 1]}} & 2'd1 ) | ({2{match1[ 2]}} & 2'd2 ) |
+            ({2{match1[ 3]}} & 2'd3 ) ;
 
     assign s0_pfn = 
         !s0_odd_page ? 

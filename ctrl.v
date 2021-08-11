@@ -966,6 +966,7 @@
 							6'b11????:	Cpu_Op = 1'b1;
 							default : 	Cpu_Op = 1'b0;
 						endcase
+						default: Cpu_Op = 1'b0;
 				endcase
 			default: Cpu_Op = 1'b0;
 		endcase

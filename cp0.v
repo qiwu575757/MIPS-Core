@@ -262,7 +262,7 @@ assign data_out =
         if ( !rst )
         begin
             Config1[31]     <= 1'b0;//indicate that don't implement the Config2 reg
-            Config1[30:25]  <= 6'h3;
+            Config1[30:25]  <= 6'h15;
             Config1[24:22]  <= 3'h0;
             Config1[21:19]  <= 3'h5;//5-->icache
             Config1[18:16]  <= 3'h1;

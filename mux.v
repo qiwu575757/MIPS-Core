@@ -115,11 +115,11 @@ module mux7(
 
 	MUX7Out
 	);
-	input[3:0] WRSign;
+	input[20:0] WRSign;
 	input MUX7Sel;
-	output[3:0] MUX7Out;
+	output[20:0] MUX7Out;
 
-	assign MUX7Out = MUX7Sel ? 4'b0000 : WRSign;
+	assign MUX7Out = MUX7Sel ? 21'h0 : WRSign;
 
 endmodule
 
@@ -192,10 +192,10 @@ module mux12 (
 
 	out
 );
-	input [1:0] index, random;
+	input [3:0] index, random;
 	input MUX12_Sel;
 
-	output [1:0] out;
+	output [3:0] out;
 
 	assign out = MUX12_Sel ? index : random;
 
