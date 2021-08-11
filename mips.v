@@ -531,6 +531,7 @@ module mips(
     wire            MEM1_Flush;
     wire            MEM2_Flush;
     wire            Invalidate_signal;
+    wire            refetch;      
     //d_cache
     wire            MEM_dCache_addr_ok;
     wire            MEM_dCache_data_ok;
@@ -644,7 +645,7 @@ instr_fetch_pre U_INSTR_FETCH(
 
     PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_invalid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
-    PF_uncache_valid, IF_PC_invalid
+    PF_uncache_valid, IF_PC_invalid, refetch
     );
 
 branch_predict_prep U_BRANCH_PREDICT_PREP(
@@ -768,10 +769,11 @@ branch_target_predictor U_BRANCH_TARGET_PREDICTOR(
 );
     //--------------ID----------------//
 IF_ID U_IF_ID(
-		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC_invalid ? PF_PC :IF_PC),
-        .Instr(Instr&{32{!Invalidate_signal}}), .IF_Exception(IF_Exception&(~Invalidate_signal)),
-		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc&(~Invalidate_signal)),
-        .IF_TLB_Exc(IF_TLB_Exc&(~Invalidate_signal)), .IF_BJOp(IF_BJOp & (~Invalidate_signal)),
+		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),.IF_PC(IF_PC),
+        .Instr(Instr), .IF_Exception(IF_Exceptio),
+		.IF_ExcCode(IF_ExcCode),.IF_TLBRill_Exc(IF_TLBRill_Exc),
+        .IF_TLB_Exc(IF_TLB_Exc), .IF_BJOp(IF_BJOp),
+        .refetch(refetch), .IF_PC_invalid(IF_PC_invalid), .PF_PC(PF_PC),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLBRill_Exc(ID_TLBRill_Exc),.ID_TLB_Exc(ID_TLB_Exc),

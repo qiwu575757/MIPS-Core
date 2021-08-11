@@ -1,53 +1,44 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
-    TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
-    Config_K0_out,Branch_flush,PF_Instr_Flush,
-    icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
-    MEM2_icache_valid_CI, WB_icache_valid_CI,
+    input [31:0]    PF_PC,
+    input           PCWr,
+    input           s0_v,
+    input           s0_found,
+    input [19:0]    s0_pfn,
+    input           isStall,
+    input           TLB_flush,
+    input           EX_TLB_flush,
+    input           MEM1_TLB_flush,
+    input           MEM2_TLB_flush,
+    input           WB_TLB_flush,
+    input           IF_uncache_data_ok,
+    input [2:0]     s0_c,
+    input [2:0]     Config_K0_out,
+    input           Branch_flush,
+    input           PF_Instr_Flush,
+    input           icache_valid_CI,
+    input           EX_icache_valid_CI,
+    input           MEM1_icache_valid_CI,
+    input           MEM2_icache_valid_CI,
+    input           WB_icache_valid_CI,
 
-    PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
-    PF_invalid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
-    PF_uncache_valid, IF_PC_invalid
-    );
-    input [31:0]    PF_PC;
-    input           PCWr;
-    input           s0_v;
-    input           s0_found;
-    input [19:0]    s0_pfn;
-    input           isStall;
-    input           TLB_flush;
-    input           EX_TLB_flush;
-    input           MEM1_TLB_flush;
-    input           MEM2_TLB_flush;
-    input           WB_TLB_flush;
-    input           IF_uncache_data_ok;
-    input [2:0]     s0_c;
-    input [2:0]     Config_K0_out;
-    input           Branch_flush;
-    input           PF_Instr_Flush;
-    input           icache_valid_CI;
-    input           EX_icache_valid_CI;
-    input           MEM1_icache_valid_CI;
-    input           MEM2_icache_valid_CI;
-    input           WB_icache_valid_CI;
-
-    output          PF_TLB_Exc;
-    output          PF_TLBRill_Exc;
-    output          PF_Exception;
-    output [4:0]    PF_ExcCode;
-    output [31:0]   PPC;
-    output          PF_invalid;
-    output          Invalidate_signal;
-    output          PF_icache_sel;
-    output          PF_icache_valid;
-    output          PF_uncache_valid;
-    output          IF_PC_invalid;
+    output          PF_TLB_Exc,
+    output          PF_TLBRill_Exc,
+    output          PF_Exception,
+    output [4:0]    PF_ExcCode,
+    output [31:0]   PPC,
+    output          PF_invalid,
+    output          Invalidate_signal,
+    output          PF_icache_sel,
+    output          PF_icache_valid,
+    output          PF_uncache_valid,
+    output          IF_PC_invalid,
+    output          refetch
+);
 
     wire mapped;
     wire kseg0, kseg1;
-    wire refetch;
     wire PF_AdEL;
     
     /*Exception generation*/
