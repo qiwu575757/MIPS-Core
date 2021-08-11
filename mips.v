@@ -637,7 +637,7 @@ pre_decode U_PRE_DECODE(
 );
 
 instr_fetch_pre U_INSTR_FETCH(
-    PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,
+    PF_PC,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,
     isStall,TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,
     WB_TLB_flush,Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
@@ -867,9 +867,9 @@ mux9 U_MUX9_forCMP(
 	);
 
 ctrl U_CTRL(
-		.clk(clk),.rst(rst),.OP(op),.Funct(func),.rt(rt_forCtrl),.CMPOut1(CMPOut1),
+		.OP(op),.Funct(func),.rt(rt_forCtrl),.CMPOut1(CMPOut1),
 		.CMPOut2(CMPOut2),.rs(rs_forCtrl),.EXE_isBranch(EX_isBranch),.Temp_ID_Excetion(Temp_ID_Excetion),
-        .IF_Flush(IF_Flush),.Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLB_Exc(ID_TLB_Exc),.rd(ID_Instr[15:11]),
+        .Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLB_Exc(ID_TLB_Exc),.rd(ID_Instr[15:11]),
         .CMPOut3(CMPOut3),.shamt(ID_Instr[10:6]), .ID_BJOp(ID_BJOp),
 
 		.MUX1Sel(MUX1Sel),.MUX2Sel(MUX2_6Sel),.MUX3Sel(MUX3Sel),.RFWr(RFWr),.RHLWr(RHLWr),.DMWr(DMWr),.DMRd(DMRd),

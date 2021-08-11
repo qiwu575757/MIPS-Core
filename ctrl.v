@@ -1,8 +1,6 @@
  `include "MacroDef.v"
 
  module ctrl(
-	input 			clk,
-	input 			rst,
 	input [5:0] 	OP,
 	input [5:0] 	Funct,
 	input [4:0] 	rs,
@@ -12,7 +10,6 @@
 	input [3:0] 	CMPOut2,
 	input 			EXE_isBranch,
 	input 			Temp_ID_Excetion,
-	input 			IF_Flush,
 	input [4:0] 	Temp_ID_ExcCode,
 	input 			ID_TLB_Exc,
 	input 			CMPOut3,
@@ -65,7 +62,6 @@
  );
 
 	wire 			ri;			//reserved instr
-	reg 			rst_sign;
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
@@ -73,12 +69,6 @@
 	reg				B_cmp;
 	reg [2:0] 		B_Type;
 
-	always @(posedge clk) begin
-		if (!rst)
-			rst_sign <= 1'b1;
-		else
-			rst_sign <= 1'b0;
-	end
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
@@ -103,11 +93,11 @@
 			ID_Exception = 1'b1;
 			ID_ExcCode = Temp_ID_ExcCode;
 		end
-		else if (Cpu_Op && !IF_Flush) begin
+		else if (Cpu_Op) begin
 			ID_Exception = 1'b1;
 			ID_ExcCode = `Cpu;//对于Cpu异常的理解不够深刻，可能存在其他问题
 		end
-		else if (!ri && !rst_sign && !IF_Flush) begin
+		else if (!ri) begin
 			ID_Exception = 1'b1;
 			ID_ExcCode = `RI;
 		end	

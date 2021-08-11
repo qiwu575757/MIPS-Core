@@ -1,7 +1,7 @@
 `include "MacroDef.v"
 
 module instr_fetch_pre(
-    PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
+    PF_PC,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
     Config_K0_out,Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
@@ -12,7 +12,6 @@ module instr_fetch_pre(
     PF_uncache_valid, IF_PC_invalid, refetch
     );
     input [31:0]    PF_PC;
-    input           PCWr;
     input           s0_v;
     input           s0_found;
     input [19:0]    s0_pfn;
@@ -52,16 +51,15 @@ module instr_fetch_pre(
     
     /*Exception generation*/
     //the tlb exception should influence the cache and uncache valid or not
-    assign mapped = ( ~PF_PC[31] || (PF_PC[31]&PF_PC[30]) ) ? 1 : 0;
+    assign mapped = ( ~PF_PC[31] || (PF_PC[31]&PF_PC[30]) );
     assign PPC =
 		!mapped ? {3'b000,PF_PC[28:0]} : {s0_pfn,PF_PC[11:0]};
 
-    assign PF_AdEL = PF_PC[1:0] != 2'b00 && PCWr;
-    assign PF_TLBRill_Exc	= ~PF_AdEL & mapped & (!s0_found) & PCWr;
+    assign PF_AdEL = (PF_PC[1:0] != 2'b00) ;
+    assign PF_TLBRill_Exc	= ~PF_AdEL & mapped & (!s0_found) ;
     assign PF_TLB_Exc   = mapped & (!s0_found || (s0_found&!s0_v) ) & !PF_AdEL;//tlbl
     assign PF_Exception = PF_AdEL | PF_TLB_Exc;
-    assign PF_ExcCode = 	 PF_AdEL ? `AdEL :
-                            PF_TLB_Exc ? `TLBL : 5'b0;
+    assign PF_ExcCode = 	 PF_AdEL ? `AdEL : PF_TLB_Exc ? `TLBL : 5'b0;
 
     /*icache sel*/
     assign kseg0 = (PF_PC[31:29] == 3'b100);
@@ -383,7 +381,8 @@ module mem1_cache_prep(
     assign MEM1_TLB_ExCode =
                               tlbl      ? `TLBL      :
                               tlbs      ? `TLBS      :
-                                          `TLBMod    ;
+                              tlbmod    ? `TLBMod    : 
+                                            5'b0;
 
 
     //Exception Sel
