@@ -47,7 +47,7 @@ module CP0(
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
-    Cause_IV
+    Cause_IV,Ebase_out
 );
     input           clk;
     input           rst;
@@ -85,6 +85,7 @@ module CP0(
     output          Status_BEV;
     output          Status_EXL;
     output          Cause_IV;
+    output [31:0]   Ebase_out;
 
     reg [31:0]      Index;
     reg [31:0]      Random;
@@ -123,6 +124,7 @@ assign Config_K0_out = Config[2:0];
 assign Status_BEV = `status_bev;
 assign Status_EXL = `status_exl;
 assign Cause_IV   = `cause_iv;
+assign Ebase_out  = Ebase;
 
 /*
 reg [31:0] count_exc;
@@ -165,17 +167,6 @@ assign data_out =
             the basic company of a cp0 register is the reg field,
             not the whole reg
     */
-    //Index generation
-    always @(posedge clk) begin
-        if ( !rst )
-            Index[31:4] <= 0;
-        else if (CP0WrEn && addr == `Index_index)
-            Index[3:0] <= data_in[3:0];
-        else if ( Index_Wren & s1_found)
-            Index <= Index_in;
-        else if (Index_Wren & !s1_found)
-            Index[31] <= 1'b1;
-    end
 
     //EntryHi generation,consider the priority
     always @(posedge clk) begin
@@ -218,22 +209,34 @@ assign data_out =
             BadVAddr <= MEM1_badvaddr;
     end
 
+    //Index generation
+    always @(posedge clk) begin
+        if ( !rst )
+            Index[31:2] <= 0;
+        else if (CP0WrEn && addr == `Index_index)
+            Index[1:0] <= data_in[1:0];
+        else if ( Index_Wren & s1_found)
+            Index <= Index_in;
+        else if (Index_Wren & !s1_found)
+            Index[31] <= 1'b1;
+    end
+
     //Wired generation
     always @(posedge clk) begin
         if ( !rst )
             Wired <= 32'b0;
-        else if (CP0WrEn && addr == `Wired_index && data_in[3:0] != 4'b1111)//wired's value must be less than 4'b1111
-            Wired[3:0] <= data_in[3:0];
+        else if (CP0WrEn && addr == `Wired_index && data_in[1:0] != 2'b11)//wired's value must be less than 4'b1111
+            Wired[1:0] <= data_in[1:0];
     end
 
     //Random generarion
     always @(posedge clk) begin
-        if ( !rst || Random[3:0] <= Wired[3:0])
-            Random <= {28'b0,4'b1111};
+        if ( !rst || Random[1:0] <= Wired[1:0])
+            Random <= {30'b0,2'b11};
         else if (CP0WrEn && addr == `Wired_index)
-            Random[3:0] <= 4'b1111;
-        else if( Random[3:0] > Wired[3:0] )//进行的是无符号的比较，这样写对吗
-            Random[3:0] <= Random[3:0] - 1'b1;
+            Random[1:0] <= 2'b11;
+        else if( Random[1:0] > Wired[1:0] )//进行的是无符号的比较，这样写对吗
+            Random[1:0] <= Random[1:0] - 1'b1;
     end
 
     //Config generation, 地址映射相关
@@ -297,6 +300,14 @@ assign data_out =
     always @(posedge clk) begin
         if ( !rst )
             PRID <= 32'h4220;
+    end
+
+    //Ebase generation
+    always @(posedge clk) begin
+        if ( !rst )
+            Ebase <= 32'h80000000;
+        else if (CP0WrEn && addr == `Ebase_index)
+            Ebase[29:12] <= data_in[29:12];
     end
 
     //Count generation
@@ -402,7 +413,7 @@ assign data_out =
     always @(posedge clk) begin
         if (!rst)
             `cause_ce <= 2'b0;
-        else if (Cause_CE_Wr)
+        else if (MEM1_ExcCode == `Cpu)
              `cause_ce <= 2'b01;
         else if (MEM1_Exception)
             `cause_ce <= 2'b0;

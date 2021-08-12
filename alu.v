@@ -1,30 +1,40 @@
 module alu1(
-	A, B, ALU1Op, ALU1Sel, Shamt,
+	input [31:0]        A,
+    input [31:0]        B,
+	input [4:0]         ALU1Op,
 
-	C,Overflow,Trap
-	);
-	input [31:0]    A;
-    input [31:0]    B;
-	input [4:0]     ALU1Op;
-	input [4:0]     Shamt;
-	input           ALU1Sel;
-
-	output reg       Overflow;
-	output reg [31:0]C;
-    output reg       Trap;
+	output reg          Overflow,
+	output reg [31:0]   C,
+    output reg          Trap,
+    output     [31:0]   add_result
+);
 
 	wire [4:0]      temp;
 	wire            Less;
     wire            Trap_Equal;
     wire            Trap_Less;
-    wire [31:0]     add_result;
     wire [31:0]     sub_result;
+    wire [31:0]     or_result;
+	wire [31:0]     and_result;
+	wire [31:0]     nor_result;
+	wire [31:0]     xor_result;
+	wire [31:0]     sll_result;
+	wire [31:0]     srl_result;
+	wire [31:0]     sra_result;
+	wire [31:0]     cmp_result;
+    wire [31:0]     clo_result;
+    wire [31:0]     clz_result;
+
     wire [2:0]      add_overflow;
-	wire [2:0]      sub_overflow;
+    wire [2:0]      sub_overflow;
+
 	reg [5:0]       CLO_RESULT;
 	reg [5:0]       CLZ_RESULT;
 
-	assign temp = ALU1Sel ? Shamt : A[4:0];
+    reg [31:0] simple_result;
+	reg [2:0] sel1;
+	reg [3:0] sel2;
+
 	assign Less = ((ALU1Op == 5'b01001) && A[31]^B[31]) ? ~(A < B) : (A < B);
     
     /*for trap instruction*/
@@ -34,24 +44,62 @@ module alu1(
 
     assign add_result = A + B;
 	assign sub_result = A - B;
+    assign or_result = A | B;
+	assign and_result = A & B;
+	assign nor_result = ~(A | B);
+	assign xor_result = A ^ B;
+	assign sll_result = B << A[4:0];
+	assign srl_result = B >> A[4:0];
+	assign sra_result = $signed(B) >>> A[4:0];
+	assign cmp_result = {31'd0,Less};
+    assign clo_result = {26'd0,CLO_RESULT};
+    assign clz_result = {26'd0,CLZ_RESULT};
 
-	always@(A, B, ALU1Op, Less, temp, CLO_RESULT, CLZ_RESULT)
+	always@(*)
 		case(ALU1Op)
-			5'b00000:	C = A + B;			//add
-			5'b00001:	C = A - B;			//sub
-			5'b00010:	C = A | B;			//or
-			5'b00011:	C = A & B;			//and
-			5'b00100:	C = ~( A | B );		//nor
-			5'b00101:	C = A ^ B;			//xor
-			5'b00110:	C = B << temp;		//logical left shift
-			5'b00111:	C = B >> temp;		//logical right shift
-			5'b01000:	C = $signed(B) >>> temp;//arithmetical right shift
-            5'b01100:   C = A + B;			//addui addu
-			5'b01011:	C = A;				//movn, movz
-			5'b01101:	C = {26'd0,CLO_RESULT};//clo
-			5'b01110:	C = {26'd0,CLZ_RESULT};//clz
-            5'b10000:   C = A - B;			//subu
-			default:	C = {31'h00000000,Less};//	signed/unsigned compare
+			5'b00010:			sel1 = 3'b000;		//or
+			5'b00011:			sel1 = 3'b001;		//and
+			5'b00100:			sel1 = 3'b010;		//nor
+			5'b00101:			sel1 = 3'b011;		//xor
+            default:            sel1 = 3'b100;      //movn, movz
+		endcase
+
+	always@(*)
+		case(sel1)
+			3'b000:			simple_result = or_result;		//or
+			3'b001:			simple_result = and_result;		//and
+			3'b010:			simple_result = nor_result;		//nor
+            3'b011:         simple_result = xor_result;     //xor
+			default:		simple_result = A;		        //movn, movz
+		endcase
+
+	always@(*)
+		case(ALU1Op)
+			5'b00000, 5'b01100:	sel2 = 4'b0000;		//add/addu
+			5'b00001, 5'b10000:	sel2 = 4'b0001;		//sub/subu
+			5'b00010, 5'b00011, 
+			5'b00100, 5'b00101,
+            5'b01011:	        sel2 = 4'b0010;		//or/and/nor/xor/movn/movz
+			5'b00110:			sel2 = 4'b0011;		//logical left shift
+			5'b00111:			sel2 = 4'b0100;		//logical right shift
+			5'b01000:			sel2 = 4'b0101;		//arithmetical right shift
+            5'b01101:           sel2 = 4'b0110;     //clo
+            5'b01110:           sel2 = 4'b0111;     //clz
+			default:			sel2 = 4'b1000;		//signed/unsigned compare
+		endcase
+		
+
+	always@(*)
+		case(sel2)
+			4'b0000:			C = add_result;		//add/addu
+			4'b0001:			C = sub_result;		//sub/subu
+			4'b0010:			C = simple_result;	//or/and/nor/xor/movn/movz
+			4'b0011:			C = sll_result;		//logical left shift
+			4'b0100:			C = srl_result;		//logical right shift
+		    4'b0101:			C = sra_result;		//arithmetical right shift
+            4'b0110:            C = clo_result;     //clo
+            4'b0111:            C = clz_result;     //clz
+			default:			C = cmp_result;		//signed/unsigned compare
 		endcase
 
 	assign add_overflow = {A[31],B[31],add_result[31]};
