@@ -99,7 +99,8 @@ module stall(
 	EX_SC_signal,MEM1_SC_signal,MEM1_WAIT_OP,Interrupt,
 
 	PCWr, IF_IDWr, MUX7Sel,icache_stall,isStall,
-	dcache_stall,ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr,PF_IFWr
+	dcache_stall,ID_EXWr,EX_MEM1Wr,MEM1_MEM2Wr,MEM2_WBWr,PF_IFWr,
+	data_stall, whole_stall
 );
 	input 			clk;
 	input 			rst;
@@ -156,8 +157,8 @@ module stall(
 	wire 			stall_2;
 	wire 			stall_3;	
 	wire 			stall_4;			
-	wire 			data_stall;
-	wire 			whole_stall;
+	output 			data_stall;
+	output 			whole_stall;
 
 	assign dcache_stall = (~dCache_data_ok |~iCache_data_ok);
 	assign isStall= whole_stall | data_stall;

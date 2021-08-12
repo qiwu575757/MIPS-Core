@@ -7,7 +7,8 @@ module icache(       clk, resetn, exception, stall,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
             valid_CI, op_CI, index_CI, way_CI, tag_CI,
-            cache_sel, uncache_out, uncache_data_ok, IF_data_ok
+            cache_sel, uncache_out, uncache_data_ok, IF_data_ok,
+            C_STATE
         );
 
     //clock and reset
@@ -79,7 +80,7 @@ module icache(       clk, resetn, exception, stall,
     wire[511:0] Data_Way1_out;
 
     //FINITE STATE MACHINE
-    reg[2:0] C_STATE;
+    output reg[2:0] C_STATE;
     reg[2:0] N_STATE;
     parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REFILL = 3'b011, INSTR = 3'b100;
 
@@ -380,7 +381,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
                 valid_CI,op_CI, index_CI, way_CI, tag_CI,
-                cache_sel, uncache_out, uncache_data_ok, MEM_data_ok
+                cache_sel, uncache_out, uncache_data_ok, MEM_data_ok,
+                C_STATE
         );
 
     //clock and reset
@@ -464,7 +466,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
     wire[511:0] Data_Way1_out;
 
     //FINITE STATE MACHINE
-    reg[2:0] C_STATE;
+    output reg[2:0] C_STATE;
     reg[2:0] N_STATE;
     parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010, HOLD = 3'b111,
               MISS = 3'b011, REPLACE = 3'b100, REFILL = 3'b101, INSTR = 3'b110;
@@ -1041,7 +1043,8 @@ module uncache_im(
         /*output*/  data_ok, rdata,
         //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
+        C_STATE
 );
 
     input clk;
@@ -1070,7 +1073,7 @@ module uncache_im(
     output[3:0] wr_wstrb;
     output[31:0] wr_data;
 
-    reg C_STATE;
+    output reg C_STATE;
     reg N_STATE;
     reg done;
     reg[31:0] rdata_reg;
@@ -1135,7 +1138,8 @@ module uncache_dm(
         /*output*/  data_ok, rdata,
         //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
+        C_STATE
 );
 
     input clk;
@@ -1169,7 +1173,7 @@ module uncache_dm(
     output[3:0] wr_wstrb;
     output[31:0] wr_data;
 
-    reg[1:0] C_STATE;
+    output reg[1:0] C_STATE;
     reg[1:0] N_STATE;
     reg done;
     reg[31:0] rdata_reg;
