@@ -356,7 +356,7 @@ module ID_EX(
 	output reg [1:0]	EX_MUX5Sel,
 	output reg [31:0] 	EX_GPR_RS_forALU1,
 	output reg [31:0] 	EX_GPR_RT_forALU1,
-	output reg [1:0]	EX_MUX4Sel_forALU1, 
+	output reg [1:0]	EX_MUX4Sel_forALU1,
 	output reg [1:0]	EX_MUX5Sel_forALU1,
 	output reg [4:0]	EX_MUX1Out,
 	output reg [31:0]	EX_MUX3Out,
@@ -423,8 +423,8 @@ module ID_EX(
 			EX_GPR_RS_forALU1 <= 32'd0;
 			EX_GPR_RT_forALU1 <= 32'd0;
 			EX_MUX4Sel_forALU1 <= 2'b00;
-			EX_MUX5Sel_forALU1 <= 2'b00;	
-			EX_MUX1Out <= 5'd0;		
+			EX_MUX5Sel_forALU1 <= 2'b00;
+			EX_MUX1Out <= 5'd0;
 			EX_MUX3Out <= 32'd0;
 			EX_Instr <= 32'd0;
 		end
@@ -487,12 +487,12 @@ module ID_EX(
 			EX_GPR_RS_forALU1 <= GPR_RS;
 			EX_GPR_RT_forALU1 <= GPR_RT;
 			EX_MUX4Sel_forALU1 <= MUX4Sel_forALU1;
-			EX_MUX5Sel_forALU1 <= MUX5Sel_forALU1;		
-			EX_MUX1Out <= ID_MUX1Out;	
+			EX_MUX5Sel_forALU1 <= MUX5Sel_forALU1;
+			EX_MUX1Out <= ID_MUX1Out;
 			EX_MUX3Out <= ID_MUX3Out;
 			EX_Instr <= ID_Instr;
 		end
-		else 
+		else
 			EX_stall <= 1'b1;
 endmodule
 
@@ -678,7 +678,7 @@ module MEM1_MEM2(
 		cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
 		MEM1_dCache_wstrb,GPR_RT,DMRd,CP0Rd,MEM1_TLB_flush,MEM1_TLB_writeen,
 		MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,MEM1_SCOut, MEM1_icache_valid_CI,
-		MEM1_dcache_en, MEM1_invalid, MEM1_rstrb, MEM1_type, EPC,
+		MEM1_dcache_en, MEM1_invalid, MEM1_rstrb, MEM1_type,EPC,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
          MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,

@@ -173,7 +173,7 @@ module mips(
 	wire [3:0]      IF_icache_wr_wstrb;
 	wire [511:0]    IF_icache_wr_data;
 	wire            IF_icache_wr_rdy;
-    
+
     wire            icache_stall;
 	wire            IF_Exception;
     wire            Temp_IF_Exception;
@@ -216,7 +216,7 @@ module mips(
     wire            branch;
     wire [31:0]     target_addr;
     wire            IF_PC_invalid;
-    wire            IF_BJOp;       
+    wire            IF_BJOp;
     wire            refetch;
     //--------------ID----------------//
     wire [31:0]     ID_PC;
@@ -360,7 +360,7 @@ module mips(
     wire [31:0]     MUX14Out;
 
     wire [3:0]      EX_match1;
-    wire [31:0]     Ebase_out;  
+    wire [31:0]     Ebase_out;
 	//-------------MEM1---------------//
     wire            MEM1_eret_flush;
     wire            MEM1_Exception;
@@ -435,10 +435,10 @@ module mips(
     wire            Cause_IV;
     wire            MEM1_WAIT_OP;
     wire            Cause_CE_Wr;
-    wire            MEM1_invalid;      
-    wire            MEM1_ee;   
+    wire            MEM1_invalid;
+    wire            MEM1_ee;
     wire [4:0]      MEM1_rstrb;
-    wire [2:0]      MEM1_type;   
+    wire [2:0]      MEM1_type;
 
     wire [3:0]      match1;
 	//-------------MEM2---------------//
@@ -472,7 +472,7 @@ module mips(
     wire [31:0]     MEM2_wdata;
     wire [31:0]     MEM2_SCOut;
     wire            MEM2_icache_valid_CI;
-    wire            MEM2_invalid;  
+    wire            MEM2_invalid;
     //--------------WB----------------//
     wire [31:0]     WB_PC;
 	wire [31:0]     WB_MUX2Out;
@@ -614,7 +614,7 @@ module mips(
     wire [1:0]      MUX9Sel_forCMP;
     wire [31:0]     MUX9Out_forCMP;
 
-/**************ILA DEBUG***************/
+/************** ILA DEBUG ***************/
     wire[31:0] EX_Instr;
     wire[31:0] MEM1_Instr;
     wire[31:0]	zero;
@@ -660,24 +660,25 @@ module mips(
     wire[1:0]   d_uncache_state;
     wire[2:0]   d_cache_state  ;
 
+
 // ILA_0 U_ILA_0(
 //         .clk(clk),
 //         //register
-//         .probe0(zero), .probe1(at), .probe2(v0), .probe3(v1), 
+//         .probe0(MEM2_PC), .probe1(at), .probe2(v0), .probe3(v1),
 //         .probe4(a0), .probe5(a1), .probe6(a2), .probe7(a3),
-//         .probe8(t0), .probe9(t1), .probe10(t2), .probe11(t3), 
-//         .probe12(t4), .probe13(t5), .probe14(t6), .probe15(t7), 
-//         .probe16(s0), .probe17(s1), .probe18(s2), .probe19(s3), 
+//         .probe8(t0), .probe9(t1), .probe10(t2), .probe11(t3),
+//         .probe12(t4), .probe13(t5), .probe14(t6), .probe15(t7),
+//         .probe16(s0), .probe17(s1), .probe18(s2), .probe19(s3),
 //         .probe20(s4), .probe21(s5), .probe22(s6), .probe23(s7),
-// 	    .probe24(t8), .probe25(t9), .probe26(k0), .probe27(k1), 
+// 	    .probe24(t8), .probe25(t9), .probe26(k0), .probe27(k1),
 //         .probe28(gp), .probe29(sp), .probe30(fp), .probe31(ra),
 //         //PC Instr
 //         .probe32(MEM1_PC), .probe33(MEM1_Instr),
 //         //exception
-//         .probe34(MEM1_Exception), .probe35(MEM1_ExcCode), .probe36(EPCOut), 
+//         .probe34(MEM1_Exception), .probe35(MEM1_ExcCode), .probe36(EPCOut),
 //         .probe37(Status_out), .probe38(Cause_out),
 //         //axi
-//         .probe39(arvalid), .probe40(arready), .probe41(araddr), 
+//         .probe39(arvalid), .probe40(arready), .probe41(araddr),
 //         .probe42(arburst), .probe43(arlen), .probe44(arsize),
 //         .probe45(rvalid), .probe46(rready), .probe47(rdata), .probe48(rlast),
 //         .probe49(awvalid), .probe50(awready), .probe51(awaddr),
@@ -692,9 +693,9 @@ module mips(
 //         .probe0(MEM1_PC), .probe1(MEM1_Instr),
 //         //new bridge
 //         .probe2(state_i_uncache_0), .probe3(state_i_cache_1),
-//         .probe4(state_d_uncache_2), .probe5(state_d_cache_3),  
+//         .probe4(state_d_uncache_2), .probe5(state_d_cache_3),
 //         //cache
-//         .probe6(i_uncache_state), .probe7(i_cache_state), 
+//         .probe6(i_uncache_state), .probe7(i_cache_state),
 //         .probe8(d_uncache_state), .probe9(d_cache_state),
 //         .probe10(IF_uncache_data_ok), .probe11(IF_iCache_data_ok),
 //         .probe12(MEM_unCache_data_ok), .probe13(MEM_dCache_data_ok),
@@ -703,7 +704,9 @@ module mips(
 //         .probe17(MEM2_PC), .probe18(MEM2_Paddr), .probe19(MEM2_cache_sel),
 //         //stall flush
 //         .probe20(refetch), .probe21(IF_PC_invalid),
-//         .probe22(data_stall), .probe23(whole_stall)
+//         .probe22(data_stall), .probe23(whole_stall),
+//         .probe24(Cause_out), .probe25(MEM1_Exception), .probe26(MEM1_eret_flush),
+//         .probe27(MEM1_ALU1Out)
 //     );
 
 /**************DATA PATH***************/
@@ -795,7 +798,7 @@ icache U_ICACHE(
 	.wr_wstrb(IF_icache_wr_wstrb), .wr_data(IF_icache_wr_data),
     .valid_CI(MEM1_icache_valid_CI), .op_CI(MEM1_icache_op_CI), .index_CI(MEM1_ALU1Out[11:6]),
     .way_CI(MEM1_ALU1Out[12]), .tag_CI(MEM2_Paddr[31:12]),
-    .cache_sel(IF_icache_sel), .uncache_out(IF_uncache_rdata), 
+    .cache_sel(IF_icache_sel), .uncache_out(IF_uncache_rdata),
     .uncache_data_ok(IF_uncache_data_ok), .IF_data_ok(IF_data_ok),
     .C_STATE(i_cache_state)
 	);
@@ -877,7 +880,7 @@ IF_ID U_IF_ID(
         .op(op), .func(func), .shamt(shamt), .CP0Addr(CP0Addr), .rs_forRF(rs_forRF), .rs_forCtrl(rs_forCtrl),
         .rs_forDFF(rs_forDFF), .rs_forBypass(rs_forBypass), .rs_forStall(rs_forStall), .rt_forRF(rt_forRF),
         .rt_forCtrl(rt_forCtrl), .rt_forDFF(rt_forDFF), .rt_forBypass(rt_forBypass), .rt_forStall(rt_forStall),
-        .rt_forMUX1(rt_forMUX1), .rd_forMUX1(rd_forMUX1),.ID_BJOp(ID_BJOp), 
+        .rt_forMUX1(rt_forMUX1), .rd_forMUX1(rd_forMUX1),.ID_BJOp(ID_BJOp),
         .rs_forBypass_forCMP(rs_forBypass_forCMP), .rt_forBypass_forCMP(rt_forBypass_forCMP)
 	);
 
@@ -931,7 +934,7 @@ mux3 U_MUX3(
 
 		.B(ID_MUX3Out)
 	);
-    
+
 cmp U_CMP(
 		.GPR_RS(MUX8Out_forCMP), .GPR_RT(MUX9Out_forCMP),
 
@@ -974,7 +977,7 @@ mux8 U_MUX8(
 	);
 
 mux8 U_MUX8_forCMP(
-		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+		.GPR_RS(GPR_RS), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out),
         .MUX8Sel(MUX8Sel_forCMP), .WD(MUX10Out),
 
 		.out(MUX8Out_forCMP)
@@ -988,7 +991,7 @@ mux9 U_MUX9(
 	);
 
 mux9 U_MUX9_forCMP(
-		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out), 
+		.GPR_RT(GPR_RT), .data_MEM1(MUX6Out), .data_MEM2(MUX2Out),
         .MUX9Sel(MUX9Sel_forCMP), .WD(MUX10Out),
 
 		.out(MUX9Out_forCMP)
@@ -1027,9 +1030,9 @@ ID_EX U_ID_EX(
         .LL_signal(MUX7Out[19]),.SC_signal(MUX7Out[18]), .icache_valid_CI(MUX7Out[17]),
         .icache_op_CI(icache_op_CI),.dcache_valid_CI(MUX7Out[16]), .dcache_op_CI(dcache_op_CI),
         .ID_WAIT_OP(MUX7Out[15]), .ID_BrType(ID_BrType), .ID_JType(ID_JType), .MUX7Sel(MUX7Sel), .ID_Imm26(Imm26_forDFF),
-        .ID_NPCOp(NPCOp), .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel), 
+        .ID_NPCOp(NPCOp), .MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
         .MUX4Sel_forALU1(MUX4Sel_forALU1), .MUX5Sel_forALU1(MUX5Sel_forALU1),
-        .ID_MUX1Out(ID_MUX1Out), .ID_MUX3Out(ID_MUX3Out), .ID_Instr(ID_Instr), .EPC(EPCOut),
+        .ID_MUX1Out(ID_MUX1Out), .ID_MUX3Out(ID_MUX3Out), .ID_Instr(ID_Instr),.EPC(EPCOut),
 
 		.EX_eret_flush(EX_eret_flush), .EX_CP0WrEn(EX_CP0WrEn), .EX_Exception(EX_Exception),
 		.EX_ExcCode(EX_ExcCode), .EX_isBD(EX_isBD), .EX_isBranch(EX_isBranch), .EX_RHLSel_Rd(EX_RHLSel_Rd),
@@ -1073,7 +1076,7 @@ mux5 U_MUX5(
 	);
 
 mux4 U_MUX4_forALU1(
-		.GPR_RS(MUX14Out), .data_EX(MUX6Out), .data_MEM1(MUX2Out), 
+		.GPR_RS(MUX14Out), .data_EX(MUX6Out), .data_MEM1(MUX2Out),
         .data_MEM2(MUX10Out), .MUX4Sel(EX_MUX4Sel_forALU1),
 
 		.out(MUX4Out_forALU1)
@@ -1124,8 +1127,8 @@ mux13 U_MUX13(
 );
 
 mux14 U_MUX14(
-	    .RD1(EX_GPR_RS_forALU1), .shamt(EX_shamt), .ALU1Sel(EX_ALU1Sel), 
-	
+	    .RD1(EX_GPR_RS_forALU1), .shamt(EX_shamt), .ALU1Sel(EX_ALU1Sel),
+
 	    .A(MUX14Out)
 	);
 
@@ -1142,14 +1145,14 @@ EX_MEM1 U_EX_MEM1(
         .Trap(Trap),.EX_LL_signal(EX_LL_signal),.EX_SC_signal(EX_SC_signal),
         .EX_icache_valid_CI(EX_icache_valid_CI), .EX_icache_op_CI(EX_icache_op_CI),
         .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),.EX_WAIT_OP(EX_WAIT_OP),
-        .EX_s1_vpn2(EX_s1_vpn2), .EX_match1(EX_match1), .EX_Instr(EX_Instr), .EPC(EPCOut),
+        .EX_s1_vpn2(EX_s1_vpn2), .EX_match1(EX_match1), .EX_Instr(EX_Instr),.EPC(EPCOut),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode),
         .MEM1_isBD(MEM1_isBD),.MEM1_DMSel(MEM1_DMSel), .MEM1_MUX2Sel(MEM1_MUX2Sel), .MEM1_RD(MEM1_RD),
         .MEM1_PC(MEM1_PC), .MEM1_MUX13Out(MEM1_MUX13Out), .MEM1_ALU1Out(MEM1_ALU1Out), .MEM1_GPR_RT(MEM1_GPR_RT),
         .MEM1_CP0Addr(MEM1_CP0Addr), .MEM1_CP0Rd(MEM1_CP0Rd), .MEM1_dcache_en(MEM1_dcache_en),
-        .MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc), 
+        .MEM1_Overflow(MEM1_Overflow),.MEM1_TLBRill_Exc(Temp_MEM1_TLBRill_Exc),
         .MEM1_tlb_searchen(MEM1_tlb_searchen),.MEM1_MUX11Sel(MEM1_MUX11Sel),.MEM1_MUX12Sel(MEM1_MUX12Sel),
         .MEM1_TLB_Exc(Temp_MEM1_TLB_Exc),.MEM1_TLB_flush(MEM1_TLB_flush),.MEM1_TLB_writeen(MEM1_TLB_writeen),
         .MEM1_TLB_readen(MEM1_TLB_readen),.MEM1_MULOut(MEM1_MULOut),
@@ -1167,7 +1170,8 @@ CP0 U_CP0(
 		.EntryLo1_Wren(MEM1_TLB_readen),.Index_Wren(MEM1_tlb_searchen),.s1_found(s1_found),
     	.EntryHi_in({r_vpn2,5'b0,r_asid}),.EntryLo0_in({6'b0,r_pfn0,r_c0,r_d0,r_v0,r_g}),
         .MEM1_TLB_Exc(MEM1_TLB_Exc),.EntryLo1_in({6'b0,r_pfn1,r_c1,r_d1,r_v1,r_g}),
-        .Index_in({!s1_found,29'b0,s1_index}),.Cause_CE_Wr(Cause_CE_Wr), .dcache_stall(dcache_stall),
+        .Index_in({!s1_found,29'b0,s1_index}),.Cause_CE_Wr(Cause_CE_Wr),
+        .dcache_stall(dcache_stall),
 
 		.data_out(CP0Out), .EPC_out(EPCOut), .Interrupt(Interrupt),.EntryHi_out(EntryHi_out),
 		.Index_out(Index_out),.EntryLo0_out(EntryLo0_out),.EntryLo1_out(EntryLo1_out),
@@ -1206,7 +1210,7 @@ mem1_cache_prep U_MEM1_CACHE_PREP(
 	);
 
 dcache U_DCACHE(
-    .clk(clk), .resetn(rst), .DMen(MEM2_dcache_en), 
+    .clk(clk), .resetn(rst), .DMen(MEM2_dcache_en),
     .stall(~(IF_data_ok&MEM_unCache_data_ok)), .exception(MEM2_invalid),
 	// cpu && cache
   	.valid(MEM1_dcache_valid), .op(DMWen_dcache), .index(MEM1_ALU1Out[11:6]),
@@ -1384,7 +1388,7 @@ npc U_NPC(
 
 flush U_FLUSH(
         .MEM1_ee(MEM1_ee),
-        .can_go(MEM_data_ok), 
+        .can_go(MEM_data_ok),
 
         .PC_Flush(PC_Flush),.PF_Flush(PF_Flush),.IF_Flush(IF_Flush),
         .ID_Flush(ID_Flush),.EX_Flush(EX_Flush),.MEM1_Flush(MEM1_Flush),
@@ -1400,7 +1404,7 @@ bypass U_BYPASS(
 
 		.MUX4Sel(MUX4Sel), .MUX5Sel(MUX5Sel),
 		.MUX8Sel(MUX8Sel), .MUX9Sel(MUX9Sel),
-        .MUX8Sel_forCMP(MUX8Sel_forCMP), .MUX9Sel_forCMP(MUX9Sel_forCMP), 
+        .MUX8Sel_forCMP(MUX8Sel_forCMP), .MUX9Sel_forCMP(MUX9Sel_forCMP),
         .MUX5Sel_forALU1(MUX5Sel_forALU1), .MUX4Sel_forALU1(MUX4Sel_forALU1)
 	);
 
@@ -1611,7 +1615,7 @@ new_bridge U_AXI_SRAM_BRIDGE(
     state_i_uncache_0,
     state_i_cache_1  ,
     state_d_uncache_2,
-    state_d_cache_3  
+    state_d_cache_3
 
 );
 

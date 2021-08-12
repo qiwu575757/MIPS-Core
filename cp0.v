@@ -132,6 +132,17 @@ assign Ebase_out  = Ebase;
 assign Status_out = Status;
 assign Cause_out = Cause;
 
+/*
+reg [31:0] count_exc;
+
+always @(posedge clk) begin
+    if ( !rst )
+        count_exc <= 32'b0;
+    else if (MEM1_Exception)
+        count_exc <= count_exc + 32'b1;
+end
+*/
+
 assign Interrupt_temp =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
 
@@ -145,18 +156,6 @@ always@(posedge clk) begin
     else if(~dcache_stall)
         Interrupt_reg <= 1'b0;
 end
-
-
-/*
-reg [31:0] count_exc;
-
-always @(posedge clk) begin
-    if ( !rst )
-        count_exc <= 32'b0;
-    else if (MEM1_Exception)
-        count_exc <= count_exc + 32'b1;
-end
-*/
 
     //MFC0 read CP0
 assign data_out =
