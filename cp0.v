@@ -44,6 +44,7 @@ module CP0(
     MEM1_isBD,ext_int_in, MEM1_ExcCode, MEM1_PC,EntryLo0_Wren,
     EntryLo1_Wren,Index_Wren,MEM1_TLB_Exc,MEM1_badvaddr,EntryLo0_in,
     EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,Cause_CE_Wr,
+    dcache_stall,
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
@@ -72,6 +73,7 @@ module CP0(
     input [31:0]    EntryLo1_in;
     input [31:0]    Index_in;
     input           Cause_CE_Wr;
+    input           dcache_stall;
 
     output [31:0]   data_out;
     output [31:0]   EPC_out;
@@ -109,11 +111,11 @@ module CP0(
     reg [31:0]      TagHi;
     reg             tick;
     wire    count_eq_compare;       //Count == Compare
+    wire    Interrupt_temp;
+    reg     Interrupt_reg;
 
 
 assign count_eq_compare = (Compare == Count);
-assign Interrupt =
-        ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
 assign EPC_out = EPC;
 assign EntryLo1_out = EntryLo1;
 assign EntryLo0_out = EntryLo0;
@@ -125,6 +127,20 @@ assign Status_BEV = `status_bev;
 assign Status_EXL = `status_exl;
 assign Cause_IV   = `cause_iv;
 assign Ebase_out  = Ebase;
+
+assign Interrupt_temp =
+        ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
+
+assign Interrupt = (Interrupt_temp | Interrupt_reg) & ~dcache_stall;
+
+always@(posedge clk) begin
+    if(!rst)
+        Interrupt_reg <= 1'b0;
+    else if(Interrupt_temp & dcache_stall)
+        Interrupt_reg <= 1'b1;
+    else if(~dcache_stall)
+        Interrupt_reg <= 1'b0;
+end
 
 /*
 reg [31:0] count_exc;

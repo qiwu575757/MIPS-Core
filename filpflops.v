@@ -138,6 +138,7 @@ module IF_ID(
 	input 			IF_TLBRill_Exc,
 	input 			IF_TLB_Exc,
 	input			IF_BJOp,
+	input [31:0]	EPC,
 
 	output reg [31:0] 	ID_PC,
 	output reg [31:0]	ID_Instr,
@@ -172,7 +173,7 @@ module IF_ID(
 
 	always@(posedge clk)
 		if(!rst || IF_Flush) begin
-			//ID_PC <= 32'h0000_0000;
+			ID_PC <= EPC;
 			ID_Instr <= 32'h0000_0000;
 			Temp_ID_Excetion <= 1'b0;
 			Temp_ID_ExcCode <= 5'b0;
@@ -298,6 +299,7 @@ module ID_EX(
 	input [31:0]	ID_MUX3Out,
 	input  			Branch_flush,
 	input 			ID_isBL,
+	input [31:0]	EPC,
 
 	output reg 			EX_eret_flush,
 	output reg 			EX_CP0WrEn,
@@ -389,7 +391,7 @@ module ID_EX(
 			EX_RT <= 5'd0;
 			EX_RD <= 5'd0;
 			EX_shamt <= 5'd0;
-			//EX_PC <= 32'd0;
+			EX_PC <= EPC;
 			EX_GPR_RS <= 32'd0;
 			EX_GPR_RT <= 32'd0;
 			EX_Imm32 <= 32'd0;
@@ -541,6 +543,7 @@ module EX_MEM1(
 	input			EX_WAIT_OP,
 	input [18:0]	EX_s1_vpn2,
 	input [3:0]		EX_match1,
+	input [31:0]	EPC,
 
 	output reg 			MEM1_DMWr,
 	output reg 			MEM1_DMRd,
@@ -595,7 +598,7 @@ module EX_MEM1(
 			MEM1_DMSel <= 4'd0;
 			MEM1_MUX2Sel <= 3'd0;
 			MEM1_RD <= 5'd0;
-			//MEM1_PC <= 32'd0;
+			MEM1_PC <= EPC;
 			MEM1_MUX13Out <= 32'd0;
 			MEM1_ALU1Out <= 32'd0;
 			MEM1_GPR_RT <= 32'd0;
@@ -675,7 +678,7 @@ module MEM1_MEM2(
 		cache_sel,DMWen, Exception,eret_flush,uncache_valid,DMen,Paddr,
 		MEM1_dCache_wstrb,GPR_RT,DMRd,CP0Rd,MEM1_TLB_flush,MEM1_TLB_writeen,
 		MEM1_TLB_readen,MEM1_LoadOp,MEM1_wdata,MEM1_SCOut, MEM1_icache_valid_CI,
-		MEM1_dcache_en, MEM1_invalid, MEM1_rstrb, MEM1_type,
+		MEM1_dcache_en, MEM1_invalid, MEM1_rstrb, MEM1_type, EPC,
 
 		MEM2_RFWr,MEM2_MUX2Sel, MEM2_RD, MEM2_PC, MEM2_ALU1Out, MEM2_MUX6Out, MEM2_CP0Out,
          MEM2_cache_sel, MEM2_DMWen, MEM2_Exception, MEM2_eret_flush,
@@ -717,6 +720,7 @@ module MEM1_MEM2(
 	input			MEM1_invalid;
 	input [4:0]		MEM1_rstrb;
 	input [2:0]     MEM1_type;
+	input [31:0]	EPC;
 
 	output reg [31:0] MEM2_PC;
 	output reg 		MEM2_RFWr;
@@ -750,7 +754,7 @@ module MEM1_MEM2(
 
 	always@(posedge clk)
 		if(!rst || MEM1_Flush) begin
-			//MEM2_PC <= 32'd0;
+			MEM2_PC <= EPC;
 			MEM2_RFWr <= 1'b0;
 			MEM2_MUX2Sel <= 3'd0;
 			MEM2_MUX6Out <= 32'd0;
@@ -848,7 +852,7 @@ module MEM2_WB(
 
 	always@(posedge clk)
 		if(!rst || MEM2_Flush) begin
-			//WB_PC <= 32'd0;
+			WB_PC <= 32'd0;
 			WB_MUX2Out <= 32'd0;
 			WB_MUX2Sel <= 3'd0;
 			WB_RD <= 5'd0;

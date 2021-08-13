@@ -138,7 +138,9 @@ module stall(
 	output reg 		EX_MEM1Wr,
 	output reg 		MEM1_MEM2Wr,
 	output reg 		MEM2_WBWr,
-	output reg 		PF_IFWr
+	output reg 		PF_IFWr,
+	output 			data_stall,
+	output 			whole_stall
 );
 
 	wire 			addr_ok;
@@ -147,8 +149,7 @@ module stall(
 	wire 			stall_2;
 	wire 			stall_3;	
 	wire 			stall_4;			
-	wire 			data_stall;
-	wire 			whole_stall;
+
 
 	assign dcache_stall = (~dCache_data_ok |~iCache_data_ok);
 	assign isStall= whole_stall | data_stall | ID_isBL;
