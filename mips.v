@@ -221,6 +221,12 @@ module mips(
     wire            refetch;
     wire            refetch_delay;
     wire [31:0]     IF_PC_final;
+    wire [31:0]     Instr_final;
+    wire            IF_Exception_final;
+    wire [4:0]      IF_ExcCode_final;
+    wire            IF_TLBRill_Exc_final;
+    wire            IF_TLB_Exc_final;
+    wire            IF_BJOp_final;
     //--------------ID----------------//
     wire [31:0]     ID_PC;
     wire [31:0]     ID_Instr;
@@ -674,53 +680,53 @@ module mips(
     wire[2:0]   d_cache_state  ;
 
 
-ILA_0 U_ILA_0(
-        .clk(clk),
-        //register
-        .probe0(MEM2_PC), .probe1(at), .probe2(v0), .probe3(v1),
-        .probe4(a0), .probe5(a1), .probe6(a2), .probe7(a3),
-        .probe8(t0), .probe9(t1), .probe10(t2), .probe11(t3),
-        .probe12(t4), .probe13(t5), .probe14(t6), .probe15(t7),
-        .probe16(s0), .probe17(s1), .probe18(s2), .probe19(s3),
-        .probe20(s4), .probe21(s5), .probe22(s6), .probe23(s7),
-	    .probe24(t8), .probe25(t9), .probe26(k0), .probe27(k1),
-        .probe28(gp), .probe29(sp), .probe30(fp), .probe31(ra),
-        //PC Instr
-        .probe32(MEM1_PC), .probe33(MEM1_Instr),
-        //exception
-        .probe34(MEM1_Exception), .probe35(MEM1_ExcCode), .probe36(EPCOut),
-        .probe37(Status_out), .probe38(Cause_out),
-        //axi
-        .probe39(arvalid), .probe40(arready), .probe41(araddr),
-        .probe42(arburst), .probe43(arlen), .probe44(arsize),
-        .probe45(rvalid), .probe46(rready), .probe47(rdata), .probe48(rlast),
-        .probe49(awvalid), .probe50(awready), .probe51(awaddr),
-        .probe52(awburst), .probe53(awlen), .probe54(awsize),
-        .probe55(wvalid), .probe56(wready), .probe57(wdata), .probe58(wstrb),
-        .probe59(bvalid), .probe60(bready)
-    );
+// ILA_0 U_ILA_0(
+//         .clk(clk),
+//         //register
+//         .probe0(MEM2_PC), .probe1(at), .probe2(v0), .probe3(v1),
+//         .probe4(a0), .probe5(a1), .probe6(a2), .probe7(a3),
+//         .probe8(t0), .probe9(t1), .probe10(t2), .probe11(t3),
+//         .probe12(t4), .probe13(t5), .probe14(t6), .probe15(t7),
+//         .probe16(s0), .probe17(s1), .probe18(s2), .probe19(s3),
+//         .probe20(s4), .probe21(s5), .probe22(s6), .probe23(s7),
+// 	    .probe24(t8), .probe25(t9), .probe26(k0), .probe27(k1),
+//         .probe28(gp), .probe29(sp), .probe30(fp), .probe31(ra),
+//         //PC Instr
+//         .probe32(MEM1_PC), .probe33(MEM1_Instr),
+//         //exception
+//         .probe34(MEM1_Exception), .probe35(MEM1_ExcCode), .probe36(EPCOut),
+//         .probe37(Status_out), .probe38(Cause_out),
+//         //axi
+//         .probe39(arvalid), .probe40(arready), .probe41(araddr),
+//         .probe42(arburst), .probe43(arlen), .probe44(arsize),
+//         .probe45(rvalid), .probe46(rready), .probe47(rdata), .probe48(rlast),
+//         .probe49(awvalid), .probe50(awready), .probe51(awaddr),
+//         .probe52(awburst), .probe53(awlen), .probe54(awsize),
+//         .probe55(wvalid), .probe56(wready), .probe57(wdata), .probe58(wstrb),
+//         .probe59(bvalid), .probe60(bready)
+//     );
 
-ILA_1 U_ILA_1(
-        .clk(clk),
-        //synchronic
-        .probe0(MEM1_PC), .probe1(MEM1_Instr),
-        //new bridge
-        .probe2(state_i_uncache_0), .probe3(state_i_cache_1),
-        .probe4(state_d_uncache_2), .probe5(state_d_cache_3),
-        //cache
-        .probe6(i_uncache_state), .probe7(i_cache_state),
-        .probe8(d_uncache_state), .probe9(d_cache_state),
-        .probe10(IF_uncache_data_ok), .probe11(IF_iCache_data_ok),
-        .probe12(MEM_unCache_data_ok), .probe13(MEM_dCache_data_ok),
-        //IF MEM2
-        .probe14(IF_PC), .probe15(IF_PPC), .probe16(IF_icache_sel),
-        .probe17(MEM2_PC), .probe18(MEM2_Paddr), .probe19(MEM2_cache_sel),
-        //stall flush
-        .probe20(refetch), .probe21(IF_PC_invalid),
-        .probe22(data_stall), .probe23(whole_stall),
-        .probe24(Cause_out), .probe25(MEM1_Exception), .probe26(MEM1_eret_flush),
-        .probe27(MEM1_ALU1Out)
-    );
+// ILA_1 U_ILA_1(
+//         .clk(clk),
+//         //synchronic
+//         .probe0(MEM1_PC), .probe1(MEM1_Instr),
+//         //new bridge
+//         .probe2(state_i_uncache_0), .probe3(state_i_cache_1),
+//         .probe4(state_d_uncache_2), .probe5(state_d_cache_3),
+//         //cache
+//         .probe6(i_uncache_state), .probe7(i_cache_state),
+//         .probe8(d_uncache_state), .probe9(d_cache_state),
+//         .probe10(IF_uncache_data_ok), .probe11(IF_iCache_data_ok),
+//         .probe12(MEM_unCache_data_ok), .probe13(MEM_dCache_data_ok),
+//         //IF MEM2
+//         .probe14(IF_PC), .probe15(IF_PPC), .probe16(IF_icache_sel),
+//         .probe17(MEM2_PC), .probe18(MEM2_Paddr), .probe19(MEM2_cache_sel),
+//         //stall flush
+//         .probe20(refetch), .probe21(IF_PC_invalid),
+//         .probe22(data_stall), .probe23(whole_stall),
+//         .probe24(Cause_out), .probe25(MEM1_Exception), .probe26(MEM1_eret_flush),
+//         .probe27(MEM1_ALU1Out)
+//     );
 
 
 /**************DATA PATH***************/
@@ -890,23 +896,30 @@ pc_flush U_PC_FLUSH(
     .IF_PC(IF_PC),
     .ID_PC(ID_PC),
 
-    .IF_PC_final(IF_PC_final)
+    .Instr(Instr),
+    .IF_Exception(IF_Exception),
+    .IF_ExcCode(IF_ExcCode),
+    .IF_TLBRill_Exc(IF_TLBRill_Exc),
+    .IF_TLB_Exc(IF_TLB_Exc),
+    .IF_BJOp(IF_BJOp),
+
+    .IF_PC_final(IF_PC_final),
+    .Instr_final(Instr_final),
+    .IF_Exception_final(IF_Exception_final),
+    .IF_ExcCode_final(IF_ExcCode_final),
+    .IF_TLBRill_Exc_final(IF_TLBRill_Exc_final),
+    .IF_TLB_Exc_final(IF_TLB_Exc_final),
+    .IF_BJOp_final(IF_BJOp_final)
 );
     //--------------ID----------------//
 IF_ID U_IF_ID(
 		.clk(clk), .rst(rst),.IF_IDWr(IF_IDWr),.IF_Flush(IF_Flush),
-        .IF_PC(IF_PC_final),
-        .Instr(EX_Branch_flush ? 32'd0: Instr & {32{!(IF_Instr_Flush | refetch)}}),
-        .IF_Exception(EX_Branch_flush ? 1'b0: IF_Exception & !(IF_Instr_Flush | refetch)),
-		.IF_ExcCode(IF_ExcCode),
-        .IF_TLBRill_Exc(EX_Branch_flush ? 1'b0: IF_TLBRill_Exc & !(IF_Instr_Flush | refetch)),
-        .IF_TLB_Exc(EX_Branch_flush ? 1'b0: IF_TLB_Exc & !(IF_Instr_Flush | refetch)),
-        .IF_BJOp(EX_Branch_flush ? 1'b0: IF_BJOp & !(IF_Instr_Flush | refetch)),
-        .EPC(EPCOut),
+        .IF_PC(IF_PC_final), .Instr(Instr_final), .IF_Exception(IF_Exception_final),
+		.IF_ExcCode(IF_ExcCode_final), .IF_TLBRill_Exc(IF_TLBRill_Exc_final),
+        .IF_TLB_Exc(IF_TLB_Exc_final), .IF_BJOp(IF_BJOp_final),.EPC(EPCOut),
 
 		.ID_PC(ID_PC), .ID_Instr(ID_Instr),.Temp_ID_Excetion(Temp_ID_Excetion),
 		.Temp_ID_ExcCode(Temp_ID_ExcCode),.ID_TLBRill_Exc(ID_TLBRill_Exc),.ID_TLB_Exc(ID_TLB_Exc),
-
         .Imm26_forBP(Imm26_forBP), .Imm16_forEXT(Imm16_forEXT), .Imm26_forDFF(Imm26_forDFF),
         .op(op), .func(func), .shamt(shamt), .CP0Addr(CP0Addr), .rs_forRF(rs_forRF), .rs_forCtrl(rs_forCtrl),
         .rs_forDFF(rs_forDFF), .rs_forBypass(rs_forBypass), .rs_forStall(rs_forStall), .rt_forRF(rt_forRF),
@@ -1354,7 +1367,7 @@ mux10 U_MUX10(
         );
     //-------------ELSE---------------//
 //physical address tranfer
-tlb_16 U_TLB(
+tlb_4 U_TLB(
     clk,
     rst,
 

@@ -94,8 +94,22 @@ module pc_flush(
     input [31:0] IF_PC,
     input [31:0] ID_PC,
 
-    output reg[31:0] IF_PC_final
+    input [31:0] Instr,
+    input        IF_Exception,
+    input [4:0]  IF_ExcCode,
+    input        IF_TLBRill_Exc,
+    input        IF_TLB_Exc,
+    input        IF_BJOp,
+
+    output reg [31:0]   IF_PC_final,
+    output reg [31:0]   Instr_final,
+    output reg          IF_Exception_final,
+    output reg [4:0]    IF_ExcCode_final,
+    output reg          IF_TLBRill_Exc_final,
+    output reg          IF_TLB_Exc_final,
+    output reg          IF_BJOp_final
 );
+
     always@(*)
         if(refetch_delay)           //TLB refetch, ICACHE refetch
             IF_PC_final = ID_PC;
@@ -105,6 +119,24 @@ module pc_flush(
             IF_PC_final = PF_PC;
         else
             IF_PC_final = IF_PC;
+
+    always@(*)
+        if(refetch_delay | EX_Branch_flush | IF_Instr_Flush) begin
+            Instr_final <= 32'd0;
+            IF_Exception_final <= 1'b0;
+            IF_ExcCode_final <= 5'd0;
+            IF_TLBRill_Exc_final <= 1'b0;
+            IF_TLB_Exc_final <= 1'b0;
+            IF_BJOp_final <= 1'b0;
+        end
+        else begin
+            Instr_final <= Instr;
+            IF_Exception_final <= IF_Exception;
+            IF_ExcCode_final <= IF_ExcCode;
+            IF_TLBRill_Exc_final <= IF_TLBRill_Exc;
+            IF_TLB_Exc_final <= IF_TLB_Exc;
+            IF_BJOp_final <= IF_BJOp;
+        end
 
 
 endmodule

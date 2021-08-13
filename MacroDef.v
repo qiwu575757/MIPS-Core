@@ -195,7 +195,7 @@
 `define Trap    5'd13
 
 //TLB log
-`define TLBlog 4
-`define TLBNum 16
-`define TLBpatch 27'b0
-`define TLBbits 4'b1111
+`define TLBlog 2
+`define TLBNum 4
+`define TLBpatch 29'b0
+`define TLBbits 2'b11
