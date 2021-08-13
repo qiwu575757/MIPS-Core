@@ -54,8 +54,10 @@ module tlb_16(
     output  [19:0]  r_pfn1,
     output  [ 2:0]  r_c1,
     output          r_d1,
-    output          r_v1
+    output          r_v1,
 
+    input  [15:0]    match1,
+    output [15:0]    EX_match1
 );
 
     //TLB
@@ -81,7 +83,7 @@ module tlb_16(
     reg         tlb_v1      [TLBNUM-1:0];
 
     wire [15:0]     match0 ;
-    wire [15:0]     match1 ;
+    //wire [15:0]     match1 ;
 
     integer i;
 
@@ -102,22 +104,39 @@ module tlb_16(
     assign match0[14] = (s0_vpn2==tlb_vpn2[14]) && ((s0_asid==tlb_asid[14]) || tlb_g[14]);
     assign match0[15] = (s0_vpn2==tlb_vpn2[15]) && ((s0_asid==tlb_asid[15]) || tlb_g[15]);
 
-    assign match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
-    assign match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
-    assign match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
-    assign match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
-    assign match1[ 4] = (s1_vpn2==tlb_vpn2[ 4]) && ((s1_asid==tlb_asid[ 4]) || tlb_g[ 4]);
-    assign match1[ 5] = (s1_vpn2==tlb_vpn2[ 5]) && ((s1_asid==tlb_asid[ 5]) || tlb_g[ 5]);
-    assign match1[ 6] = (s1_vpn2==tlb_vpn2[ 6]) && ((s1_asid==tlb_asid[ 6]) || tlb_g[ 6]);
-    assign match1[ 7] = (s1_vpn2==tlb_vpn2[ 7]) && ((s1_asid==tlb_asid[ 7]) || tlb_g[ 7]);
-    assign match1[ 8] = (s1_vpn2==tlb_vpn2[ 8]) && ((s1_asid==tlb_asid[ 8]) || tlb_g[ 8]);
-    assign match1[ 9] = (s1_vpn2==tlb_vpn2[ 9]) && ((s1_asid==tlb_asid[ 9]) || tlb_g[ 9]);
-    assign match1[10] = (s1_vpn2==tlb_vpn2[10]) && ((s1_asid==tlb_asid[10]) || tlb_g[10]);
-    assign match1[11] = (s1_vpn2==tlb_vpn2[11]) && ((s1_asid==tlb_asid[11]) || tlb_g[11]);
-    assign match1[12] = (s1_vpn2==tlb_vpn2[12]) && ((s1_asid==tlb_asid[12]) || tlb_g[12]);
-    assign match1[13] = (s1_vpn2==tlb_vpn2[13]) && ((s1_asid==tlb_asid[13]) || tlb_g[13]);
-    assign match1[14] = (s1_vpn2==tlb_vpn2[14]) && ((s1_asid==tlb_asid[14]) || tlb_g[14]);
-    assign match1[15] = (s1_vpn2==tlb_vpn2[15]) && ((s1_asid==tlb_asid[15]) || tlb_g[15]);
+    // assign match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
+    // assign match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
+    // assign match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
+    // assign match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
+    // assign match1[ 4] = (s1_vpn2==tlb_vpn2[ 4]) && ((s1_asid==tlb_asid[ 4]) || tlb_g[ 4]);
+    // assign match1[ 5] = (s1_vpn2==tlb_vpn2[ 5]) && ((s1_asid==tlb_asid[ 5]) || tlb_g[ 5]);
+    // assign match1[ 6] = (s1_vpn2==tlb_vpn2[ 6]) && ((s1_asid==tlb_asid[ 6]) || tlb_g[ 6]);
+    // assign match1[ 7] = (s1_vpn2==tlb_vpn2[ 7]) && ((s1_asid==tlb_asid[ 7]) || tlb_g[ 7]);
+    // assign match1[ 8] = (s1_vpn2==tlb_vpn2[ 8]) && ((s1_asid==tlb_asid[ 8]) || tlb_g[ 8]);
+    // assign match1[ 9] = (s1_vpn2==tlb_vpn2[ 9]) && ((s1_asid==tlb_asid[ 9]) || tlb_g[ 9]);
+    // assign match1[10] = (s1_vpn2==tlb_vpn2[10]) && ((s1_asid==tlb_asid[10]) || tlb_g[10]);
+    // assign match1[11] = (s1_vpn2==tlb_vpn2[11]) && ((s1_asid==tlb_asid[11]) || tlb_g[11]);
+    // assign match1[12] = (s1_vpn2==tlb_vpn2[12]) && ((s1_asid==tlb_asid[12]) || tlb_g[12]);
+    // assign match1[13] = (s1_vpn2==tlb_vpn2[13]) && ((s1_asid==tlb_asid[13]) || tlb_g[13]);
+    // assign match1[14] = (s1_vpn2==tlb_vpn2[14]) && ((s1_asid==tlb_asid[14]) || tlb_g[14]);
+    // assign match1[15] = (s1_vpn2==tlb_vpn2[15]) && ((s1_asid==tlb_asid[15]) || tlb_g[15]);
+
+    assign EX_match1[ 0] = (s1_vpn2==tlb_vpn2[ 0]) && ((s1_asid==tlb_asid[ 0]) || tlb_g[ 0]);
+    assign EX_match1[ 1] = (s1_vpn2==tlb_vpn2[ 1]) && ((s1_asid==tlb_asid[ 1]) || tlb_g[ 1]);
+    assign EX_match1[ 2] = (s1_vpn2==tlb_vpn2[ 2]) && ((s1_asid==tlb_asid[ 2]) || tlb_g[ 2]);
+    assign EX_match1[ 3] = (s1_vpn2==tlb_vpn2[ 3]) && ((s1_asid==tlb_asid[ 3]) || tlb_g[ 3]);
+    assign EX_match1[ 4] = (s1_vpn2==tlb_vpn2[ 4]) && ((s1_asid==tlb_asid[ 4]) || tlb_g[ 4]);
+    assign EX_match1[ 5] = (s1_vpn2==tlb_vpn2[ 5]) && ((s1_asid==tlb_asid[ 5]) || tlb_g[ 5]);
+    assign EX_match1[ 6] = (s1_vpn2==tlb_vpn2[ 6]) && ((s1_asid==tlb_asid[ 6]) || tlb_g[ 6]);
+    assign EX_match1[ 7] = (s1_vpn2==tlb_vpn2[ 7]) && ((s1_asid==tlb_asid[ 7]) || tlb_g[ 7]);
+    assign EX_match1[ 8] = (s1_vpn2==tlb_vpn2[ 8]) && ((s1_asid==tlb_asid[ 8]) || tlb_g[ 8]);
+    assign EX_match1[ 9] = (s1_vpn2==tlb_vpn2[ 9]) && ((s1_asid==tlb_asid[ 9]) || tlb_g[ 9]);
+    assign EX_match1[10] = (s1_vpn2==tlb_vpn2[10]) && ((s1_asid==tlb_asid[10]) || tlb_g[10]);
+    assign EX_match1[11] = (s1_vpn2==tlb_vpn2[11]) && ((s1_asid==tlb_asid[11]) || tlb_g[11]);
+    assign EX_match1[12] = (s1_vpn2==tlb_vpn2[12]) && ((s1_asid==tlb_asid[12]) || tlb_g[12]);
+    assign EX_match1[13] = (s1_vpn2==tlb_vpn2[13]) && ((s1_asid==tlb_asid[13]) || tlb_g[13]);
+    assign EX_match1[14] = (s1_vpn2==tlb_vpn2[14]) && ((s1_asid==tlb_asid[14]) || tlb_g[14]);
+    assign EX_match1[15] = (s1_vpn2==tlb_vpn2[15]) && ((s1_asid==tlb_asid[15]) || tlb_g[15]);
 
     assign s0_found =   (match0[15:0] != 16'b0);
 

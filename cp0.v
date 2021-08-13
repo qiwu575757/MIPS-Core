@@ -39,6 +39,7 @@
 `define cause_excode        Cause[6:2]     //例外编码
 
 
+
 module CP0(
     clk, rst, CP0WrEn, addr, data_in, MEM1_Exception, MEM1_eret_flush,
     MEM1_isBD,ext_int_in, MEM1_ExcCode, MEM1_PC,EntryLo0_Wren,
@@ -232,9 +233,9 @@ assign data_out =
     //Index generation
     always @(posedge clk) begin
         if ( !rst )
-            Index[31:2] <= 0;
+            Index[31:`TLBlog] <= 0;
         else if (CP0WrEn && addr == `Index_index)
-            Index[1:0] <= data_in[1:0];
+            Index[`TLBlog - 1:0] <= data_in[`TLBlog - 1:0];
         else if ( Index_Wren & s1_found)
             Index <= Index_in;
         else if (Index_Wren & !s1_found)
@@ -245,18 +246,18 @@ assign data_out =
     always @(posedge clk) begin
         if ( !rst )
             Wired <= 32'b0;
-        else if (CP0WrEn && addr == `Wired_index && data_in[1:0] != 2'b11)//wired's value must be less than 4'b1111
-            Wired[1:0] <= data_in[1:0];
+        else if (CP0WrEn && addr == `Wired_index && data_in[`TLBlog - 1:0] != `TLBbits)//wired's value must be less than 4'b1111
+            Wired[`TLBlog - 1:0] <= data_in[`TLBlog - 1:0];
     end
 
     //Random generarion
     always @(posedge clk) begin
-        if ( !rst || Random[1:0] <= Wired[1:0])
-            Random <= {30'b0,2'b11};
+        if ( !rst || Random[`TLBlog - 1:0] <= Wired[`TLBlog - 1:0])
+            Random <= {1'b0,`TLBpatch,`TLBbits};
         else if (CP0WrEn && addr == `Wired_index)
-            Random[1:0] <= 2'b11;
-        else if( Random[1:0] > Wired[1:0] )//进行的是无符号的比较，这样写对吗
-            Random[1:0] <= Random[1:0] - 1'b1;
+            Random[`TLBlog - 1:0] <= `TLBbits;
+        else if( Random[`TLBlog - 1:0] > Wired[`TLBlog - 1:0] )//进行的是无符号的比较，这样写对吗
+            Random[`TLBlog - 1:0] <= Random[`TLBlog - 1:0] - 1'b1;
     end
 
     //Config generation, 地址映射相关
@@ -282,7 +283,7 @@ assign data_out =
         if ( !rst )
         begin
             Config1[31]     <= 1'b0;//indicate that don't implement the Config2 reg
-            Config1[30:25]  <= 6'h3;
+            Config1[30:25]  <= `TLBNum - 1;
             Config1[24:22]  <= 3'h0;
             Config1[21:19]  <= 3'h5;//5-->icache
             Config1[18:16]  <= 3'h1;

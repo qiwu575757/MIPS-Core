@@ -1,3 +1,4 @@
+`include "MacroDef.v"
 module mux1(
 	RT, RD, MUX1Sel,
 
@@ -188,10 +189,10 @@ module mux12 (
 
 	out
 );
-	input [1:0] index, random;
+	input [`TLBlog - 1:0] index, random;
 	input MUX12_Sel;
 
-	output [1:0] out;
+	output [`TLBlog - 1:0] out;
 
 	assign out = MUX12_Sel ? index : random;
 

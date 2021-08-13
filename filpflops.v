@@ -546,7 +546,7 @@ module EX_MEM1(
 	input [1:0]		EX_dcache_op_CI,
 	input			EX_WAIT_OP,
 	input [18:0]	EX_s1_vpn2,
-	input [3:0]		EX_match1,
+	input [`TLBNum - 1:0]		EX_match1,
 	input [31:0]	EPC,
 	input 			EX_MUX6Sel,
 	input 			EX_MUX10Sel,
@@ -590,7 +590,7 @@ module EX_MEM1(
 	output reg  		MEM1_WAIT_OP,
 	output reg [18:0] 	s1_vpn2,
 	output reg [31:0] 	MEM1_ALU1Out_forExPa,
-	output reg [3:0]	match1,
+	output reg [`TLBNum - 1:0]	match1,
 	output reg 			MEM1_MUX6Sel,
 	output reg   		MEM1_MUX10Sel,
 	output reg [31:0]	MEM1_Instr	
@@ -637,7 +637,7 @@ module EX_MEM1(
 			MEM1_WAIT_OP <= 1'b0;
 			s1_vpn2 <= 19'd0;
 			MEM1_ALU1Out_forExPa <= 32'd0;
-			match1 <= 4'd0;
+			match1 <= `TLBNum'd0;
 			MEM1_MUX6Sel <= 1'b0;
 			MEM1_MUX10Sel <= 1'b0;
 			MEM1_Instr <= 32'd0;

@@ -193,3 +193,9 @@
 `define Cpu     5'd11
 `define Ov      5'd12
 `define Trap    5'd13
+
+//TLB log
+`define TLBlog 4
+`define TLBNum 16
+`define TLBpatch 27'b0
+`define TLBbits 4'b1111
