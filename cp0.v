@@ -246,7 +246,7 @@ assign data_out =
     always @(posedge clk) begin
         if ( !rst )
             Wired <= 32'b0;
-        else if (CP0WrEn && addr == `Wired_index && data_in[`TLBlog - 1:0] != `TLBbits)//wired's value must be less than 4'b1111
+        else if (CP0WrEn && addr == `Wired_index )//wired's value must be less than 4'b1111
             Wired[`TLBlog - 1:0] <= data_in[`TLBlog - 1:0];
     end
 
@@ -308,7 +308,7 @@ assign data_out =
     //Pagemask generation,
     always @(posedge clk) begin
         if ( !rst )//fixed page, 4 kb
-            PageMask <= 32'b0;  //{19'b0,2'b11,11'b0};not sure
+            PageMask <= 32'h1fff_f000;
     end
 
     //TagLo generarion,虽然实现了,但是似乎cache指令用不到

@@ -3,7 +3,7 @@
 module instr_fetch_pre(
     PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
-    Config_K0_out,EX_Branch_flush,PF_Instr_Flush,
+    Config_K0_out,EX_Branch_flush,IF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
     MEM2_icache_valid_CI, WB_icache_valid_CI,
 
@@ -26,7 +26,7 @@ module instr_fetch_pre(
     input [2:0]     s0_c;
     input [2:0]     Config_K0_out;
     input           EX_Branch_flush;
-    input           PF_Instr_Flush;
+    input           IF_Instr_Flush;
     input           icache_valid_CI;
     input           EX_icache_valid_CI;
     input           MEM1_icache_valid_CI;
@@ -50,7 +50,7 @@ module instr_fetch_pre(
     wire mapped;
     wire kseg0, kseg1;
     wire PF_AdEL;
-    
+
     /*Exception generation*/
     //the tlb exception should influence the cache and uncache valid or not
     assign mapped = ( ~PF_PC[31] || (PF_PC[31]&PF_PC[30]) ) ? 1 : 0;
@@ -74,14 +74,38 @@ module instr_fetch_pre(
     assign PF_invalid = PF_Exception | refetch;
     assign PF_icache_valid = !isStall & ~PF_icache_sel;
     assign PF_uncache_valid = !isStall & PF_icache_sel;
-    assign Invalidate_signal = EX_Branch_flush | (PF_Instr_Flush | refetch);
+    assign Invalidate_signal = EX_Branch_flush | (IF_Instr_Flush | refetch);
 
     assign refetch =  TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
     assign refetch_delay = EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
         EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
-    assign IF_PC_invalid = EX_Branch_flush | PF_Instr_Flush;
+    assign IF_PC_invalid = EX_Branch_flush | IF_Instr_Flush;
+
+endmodule
+
+module pc_flush(
+    input refetch_delay,
+    input EX_Branch_flush,
+    input IF_Instr_Flush,
+
+    input [31:0] PF_PC,
+    input [31:0] IF_PC,
+    input [31:0] ID_PC,
+
+    output reg[31:0] IF_PC_final
+);
+    always@(*)
+        if(refetch_delay)           //TLB refetch, ICACHE refetch
+            IF_PC_final = ID_PC;
+        else if(EX_Branch_flush)    //Branchlikely
+            IF_PC_final = IF_PC + 4;
+        else if(IF_Instr_Flush)     //BranchPredict Wrong, Exception, eret
+            IF_PC_final = PF_PC;
+        else
+            IF_PC_final = IF_PC;
+
 
 endmodule
 
@@ -89,7 +113,7 @@ module branch_predict_prep(
     input [31:0]    IF_PC,
     input [31:0]    PF_PC,
     input [25:0]    Imm,
-    input           PF_Instr_Flush,
+    input           IF_Instr_Flush,
     input [31:0]    ret_addr,
     input           branch,
     input [31:0]    target_addr,
@@ -133,12 +157,12 @@ module branch_predict_prep(
 
     //assign npc_condition = (PF_predict && PF_PC != IF_PC_add4);
 
-    assign flush_condition_00 = (NPC_op00 != PF_PC) && !PF_Instr_Flush;
-    assign flush_condition_01 = (NPC_op01 != PF_PC) && !PF_Instr_Flush;
-    assign flush_condition_10 = (NPC_op10 != PF_PC) && !PF_Instr_Flush;
-    assign flush_condition_11 = (ret_addr != PF_PC) && !PF_Instr_Flush;
+    assign flush_condition_00 = (NPC_op00 != PF_PC) && !IF_Instr_Flush;
+    assign flush_condition_01 = (NPC_op01 != PF_PC) && !IF_Instr_Flush;
+    assign flush_condition_10 = (NPC_op10 != PF_PC) && !IF_Instr_Flush;
+    assign flush_condition_11 = (ret_addr != PF_PC) && !IF_Instr_Flush;
 
-    assign branch_signal = (branch && !PF_Instr_Flush);
+    assign branch_signal = (branch && !IF_Instr_Flush);
 
     assign target_addr_final = branch_signal ? target_addr : PF_PC_add4;
 
@@ -165,7 +189,7 @@ module branch_predict_prep(
     // end
 
     always @( * ) begin
-        if ((MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI) & ~Interrupt)//具有优先�?
+        if ((MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI) & ~Interrupt)//具有优先�?
             NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
         else if ( Status_BEV )
             NPC_ee = 32'hbfc00200 + offset;
@@ -182,7 +206,7 @@ module pre_decode (
     output reg IF_BJOp
 );
 
-    always @(IF_OP or IF_Funct) begin		
+    always @(IF_OP or IF_Funct) begin
 		 case (IF_OP)
 			6'b000100: IF_BJOp = 1;		/* BEQ */
 			6'b000101: IF_BJOp = 1;		/* BNE */
@@ -322,7 +346,7 @@ module mem1_cache_prep(
     //dcache sel
     assign kseg0 = (MEM1_ALU1Out[31:29] == 3'b100);
     assign kseg1 = (MEM1_ALU1Out[31:29] == 3'b101);
-    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011))) 
+    assign MEM1_cache_sel = ~((kseg0& (Config_K0_out==3'b011)) || (!kseg0 & !kseg1 & (s1_c==3'b011)))
                         & ~MEM1_dcache_valid_CI;
     //assign MEM1_cache_sel = (MEM1_Paddr[31:16] == 16'h1faf);
     //assign MEM1_cache_sel = 1'b1;
@@ -340,7 +364,7 @@ module mem1_cache_prep(
     assign valid = MEM1_dcache_en &IF_data_ok;
 	assign 	MEM1_TLBRill_Exc	= (!Temp_M1_Exception & data_mapped & (!s1_found) & valid) | Temp_MEM1_TLBRill_Exc;
 
-    always @(*) begin  
+    always @(*) begin
         if (s1_found && s1_v)
             tlbl = 1'b0;
         else if (data_mapped & !DMWen_dcache)
@@ -349,7 +373,7 @@ module mem1_cache_prep(
             tlbl = 1'b0;
     end
 
-    always @(*) begin  
+    always @(*) begin
         if (s1_found && s1_v)
             tlbs = 1'b0;
         else if (data_mapped & DMWen_dcache)
@@ -358,7 +382,7 @@ module mem1_cache_prep(
             tlbs = 1'b0;
     end
 
-    always @(*) begin  
+    always @(*) begin
         if (!s1_found)
             tlbmod = 1'b0;
         else if (data_mapped & DMWen_dcache & s1_v & !s1_d)
@@ -408,7 +432,7 @@ module mem1_cache_prep(
 		end
         else if(Temp_M1_Exception) begin
 		    MEM1_ExcCode = Temp_M1_ExcCode;
-		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�???有关的例外其出错地址�???定为其PC
+		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�???有关的例外其出错地址�???定为其PC
 		end
 		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode = `Ov;
@@ -462,10 +486,10 @@ module mem1_cache_prep(
 
     always@(*)
         case(MEM1_DMSel)
-            4'b0000://SB 
+            4'b0000://SB
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b0001;
-                    2'b01:      MEM1_dCache_wstrb = 4'b0010;  
+                    2'b01:      MEM1_dCache_wstrb = 4'b0010;
                     2'b10:      MEM1_dCache_wstrb = 4'b0100;
                     default:    MEM1_dCache_wstrb = 4'b1000;
                 endcase
@@ -477,14 +501,14 @@ module mem1_cache_prep(
             4'b0011://SWL
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b0001;
-                    2'b01:      MEM1_dCache_wstrb = 4'b0011;  
+                    2'b01:      MEM1_dCache_wstrb = 4'b0011;
                     2'b10:      MEM1_dCache_wstrb = 4'b0111;
                     default:    MEM1_dCache_wstrb = 4'b1111;
                 endcase
             4'b0100://SWR
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_dCache_wstrb = 4'b1111;
-                    2'b01:      MEM1_dCache_wstrb = 4'b1110;  
+                    2'b01:      MEM1_dCache_wstrb = 4'b1110;
                     2'b10:      MEM1_dCache_wstrb = 4'b1100;
                     default:    MEM1_dCache_wstrb = 4'b1000;
                 endcase
@@ -494,7 +518,7 @@ module mem1_cache_prep(
 
     always@(*)
         case(MEM1_DMSel)
-            4'b0000://SB 
+            4'b0000://SB
                                 MEM1_wdata = {4{MEM1_GPR_RT[7:0]}};
             4'b0001://SH
                                 MEM1_wdata = {2{MEM1_GPR_RT[15:0]}};
@@ -516,20 +540,20 @@ module mem1_cache_prep(
                                 MEM1_wdata = MEM1_GPR_RT[31:0];
         endcase
 
-            
+
     always@(*)
         case(MEM1_DMSel)
-            4'b0101://LBU 
+            4'b0101://LBU
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b00000;
-                    2'b01:      MEM1_rstrb = 5'b00001;  
+                    2'b01:      MEM1_rstrb = 5'b00001;
                     2'b10:      MEM1_rstrb = 5'b00010;
                     default:    MEM1_rstrb = 5'b00011;
                 endcase
-            4'b0110://LB 
+            4'b0110://LB
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b01000;
-                    2'b01:      MEM1_rstrb = 5'b01001;  
+                    2'b01:      MEM1_rstrb = 5'b01001;
                     2'b10:      MEM1_rstrb = 5'b01010;
                     default:    MEM1_rstrb = 5'b01011;
                 endcase
@@ -546,14 +570,14 @@ module mem1_cache_prep(
             4'b1001://LWL
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b11000;
-                    2'b01:      MEM1_rstrb = 5'b11100;  
+                    2'b01:      MEM1_rstrb = 5'b11100;
                     2'b10:      MEM1_rstrb = 5'b11110;
                     default:    MEM1_rstrb = 5'b11111;
                 endcase
             4'b1010://LWR
                 case(MEM1_Paddr[1:0])
                     2'b00:      MEM1_rstrb = 5'b11111;
-                    2'b01:      MEM1_rstrb = 5'b10111;  
+                    2'b01:      MEM1_rstrb = 5'b10111;
                     2'b10:      MEM1_rstrb = 5'b10011;
                     default:    MEM1_rstrb = 5'b10001;
                 endcase
@@ -563,7 +587,7 @@ module mem1_cache_prep(
 
         always@(*)
         case(MEM1_DMSel)
-            4'b0000,4'b0101,4'b0110://SB LBU LB 
+            4'b0000,4'b0101,4'b0110://SB LBU LB
                                 MEM1_type = 3'b000;
             4'b0001,4'b0111,4'b1000://SH LHU LH
                                 MEM1_type = 3'b001;
