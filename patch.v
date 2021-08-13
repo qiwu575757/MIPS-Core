@@ -3,13 +3,13 @@
 module instr_fetch_pre(
     PF_PC,PCWr,s0_found,s0_v,s0_pfn,s0_c,IF_uncache_data_ok,isStall,
     TLB_flush,EX_TLB_flush,MEM1_TLB_flush,MEM2_TLB_flush,WB_TLB_flush,
-    Config_K0_out,Branch_flush,PF_Instr_Flush,
+    Config_K0_out,EX_Branch_flush,PF_Instr_Flush,
     icache_valid_CI, EX_icache_valid_CI, MEM1_icache_valid_CI,
     MEM2_icache_valid_CI, WB_icache_valid_CI,
 
     PF_TLB_Exc,PF_ExcCode,PF_TLBRill_Exc,PF_Exception,PPC,
     PF_invalid,Invalidate_signal,PF_icache_sel,PF_icache_valid,
-    PF_uncache_valid, IF_PC_invalid, refetch
+    PF_uncache_valid, IF_PC_invalid, refetch, refetch_delay
     );
     input [31:0]    PF_PC;
     input           PCWr;
@@ -25,7 +25,7 @@ module instr_fetch_pre(
     input           IF_uncache_data_ok;
     input [2:0]     s0_c;
     input [2:0]     Config_K0_out;
-    input           Branch_flush;
+    input           EX_Branch_flush;
     input           PF_Instr_Flush;
     input           icache_valid_CI;
     input           EX_icache_valid_CI;
@@ -45,6 +45,7 @@ module instr_fetch_pre(
     output          PF_uncache_valid;
     output          IF_PC_invalid;
     output          refetch;
+    output          refetch_delay;
 
     wire mapped;
     wire kseg0, kseg1;
@@ -73,11 +74,14 @@ module instr_fetch_pre(
     assign PF_invalid = PF_Exception | refetch;
     assign PF_icache_valid = !isStall & ~PF_icache_sel;
     assign PF_uncache_valid = !isStall & PF_icache_sel;
-    assign Invalidate_signal = Branch_flush ? 1 : (PF_Instr_Flush | refetch);
+    assign Invalidate_signal = EX_Branch_flush | (PF_Instr_Flush | refetch);
+
     assign refetch =  TLB_flush | EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
     icache_valid_CI | EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
+    assign refetch_delay = EX_TLB_flush | MEM1_TLB_flush | MEM2_TLB_flush | WB_TLB_flush |
+        EX_icache_valid_CI | MEM1_icache_valid_CI | MEM2_icache_valid_CI | WB_icache_valid_CI;
 
-    assign IF_PC_invalid = Branch_flush | PF_Instr_Flush;
+    assign IF_PC_invalid = EX_Branch_flush | PF_Instr_Flush;
 
 endmodule
 
@@ -161,7 +165,7 @@ module branch_predict_prep(
     // end
 
     always @( * ) begin
-        if ( MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI)//具有优先级
+        if ((MEM1_eret_flush | WB_TLB_flush | WB_icache_valid_CI) & ~Interrupt)//具有优先�?
             NPC_ee = MEM1_eret_flush ? EPC : MEM2_PC;
         else if ( Status_BEV )
             NPC_ee = 32'hbfc00200 + offset;
@@ -404,7 +408,7 @@ module mem1_cache_prep(
 		end
         else if(Temp_M1_Exception) begin
 		    MEM1_ExcCode = Temp_M1_ExcCode;
-		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�??有关的例外其出错地址�??定为其PC
+		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�???有关的例外其出错地址�???定为其PC
 		end
 		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode = `Ov;
