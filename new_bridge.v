@@ -105,7 +105,12 @@ module new_bridge(
 	MEM_uncache_wr_addr,
 	MEM_uncache_wr_wstrb,
 	MEM_uncache_wr_data,
-	MEM_uncache_wr_rdy
+	MEM_uncache_wr_rdy,
+
+    state_i_uncache_0,
+    state_i_cache_1,
+    state_d_uncache_2,
+    state_d_cache_3
 
 );
 	input dcache_sel;
@@ -224,10 +229,10 @@ parameter state_wr_data = 4'd4;
 parameter state_wr_res  = 4'd5;
 parameter state_number  = 4;
 
-reg [state_number-1:0] state_i_uncache_0;
-reg [state_number-1:0] state_i_cache_1  ;
-reg [state_number-1:0] state_d_uncache_2;
-reg [state_number-1:0] state_d_cache_3  ;
+output reg [state_number-1:0] state_i_uncache_0;
+output reg [state_number-1:0] state_i_cache_1  ;
+output reg [state_number-1:0] state_d_uncache_2;
+output reg [state_number-1:0] state_d_cache_3  ;
 
 reg [state_number-1:0] next_state_i_uncache_0;
 reg [state_number-1:0] next_state_i_cache_1  ;

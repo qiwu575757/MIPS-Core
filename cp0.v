@@ -48,7 +48,7 @@ module CP0(
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
-    Cause_IV,Ebase_out
+    Cause_IV,Ebase_out, Status_out, Cause_out
 );
     input           clk;
     input           rst;
@@ -88,6 +88,8 @@ module CP0(
     output          Status_EXL;
     output          Cause_IV;
     output [31:0]   Ebase_out;
+    output [31:0]   Status_out;
+    output [31:0]   Cause_out;
 
     reg [31:0]      Index;
     reg [31:0]      Random;
@@ -127,6 +129,8 @@ assign Status_BEV = `status_bev;
 assign Status_EXL = `status_exl;
 assign Cause_IV   = `cause_iv;
 assign Ebase_out  = Ebase;
+assign Status_out = Status;
+assign Cause_out = Cause;
 
 assign Interrupt_temp =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
@@ -267,7 +271,7 @@ assign data_out =
             Config[12:10]   <= 3'b0;
             Config[9:7]     <= 3'h1;//表示MMU采用标准的TLB(直接映射)
             Config[6:3]     <= 4'b0;
-            Config[2:0]     <= 3'h2;//K0,2 --> uncache
+            Config[2:0]     <= 3'h3;//K0,3 --> cache
         end
         else if (CP0WrEn && addr == `Config_index)
             Config[2:0] <= data_in[2:0];

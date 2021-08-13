@@ -7,7 +7,8 @@ module icache(       clk, resetn, exception, stall,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
             valid_CI, op_CI, index_CI, way_CI, tag_CI,
-            cache_sel, uncache_out, uncache_data_ok, IF_data_ok
+            cache_sel, uncache_out, uncache_data_ok, IF_data_ok,
+            C_STATE
         );
 
     //clock and reset
@@ -79,7 +80,7 @@ module icache(       clk, resetn, exception, stall,
     wire[511:0] Data_Way1_out;
 
     //FINITE STATE MACHINE
-    reg[2:0] C_STATE;
+    output reg[2:0] C_STATE;
     reg[2:0] N_STATE;
     parameter IDLE = 3'b000, LOOKUP = 3'b001, MISS = 3'b010, REFILL = 3'b011, INSTR = 3'b100;
 
@@ -380,7 +381,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
         /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
         //CACHE Instruction
                 valid_CI,op_CI, index_CI, way_CI, tag_CI,
-                cache_sel, uncache_out, uncache_data_ok, MEM_data_ok
+                cache_sel, uncache_out, uncache_data_ok, MEM_data_ok,
+                C_STATE
         );
 
     //clock and reset
@@ -464,9 +466,9 @@ module dcache(       clk, resetn, DMen, stall, exception,
     wire[511:0] Data_Way1_out;
 
     //FINITE STATE MACHINE
-    reg[2:0] C_STATE;
+    output reg[2:0] C_STATE;
     reg[2:0] N_STATE;
-    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010, HOLD = 3'b111,
+    parameter IDLE = 3'b000, LOOKUP = 3'b001,  SELECT = 3'b010,
               MISS = 3'b011, REPLACE = 3'b100, REFILL = 3'b101, INSTR = 3'b110;
 
     reg C_STATE_WB;
@@ -926,7 +928,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
                     else
                         N_STATE = IDLE;
             MISS:   if(!replace_Valid_MB || !replace_Dirty_MB) begin           //data is not dirty
-                        N_STATE = HOLD;
+                        N_STATE = REFILL;
                     end
                     else if(!wr_rdy)                                    //data is dirty
                         N_STATE = MISS;
@@ -935,8 +937,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
             REPLACE:if(valid_CI_RB)
                         N_STATE = INSTR;
                     else
-                        N_STATE = HOLD;
-            HOLD:       N_STATE = REFILL;
+                        N_STATE = REFILL;
             REFILL: if(ret_valid && ret_last)
                         N_STATE = LOOKUP;
                     else
@@ -963,8 +964,11 @@ module dcache(       clk, resetn, DMen, stall, exception,
     //output signals
     assign addr_ok = 1'b1;
     assign data_ok = (C_STATE == IDLE) || ((C_STATE == LOOKUP) && (cache_hit | exception));
-    assign rd_req = (C_STATE == HOLD) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
-    assign wr_req = (((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) | ((C_STATE == REPLACE) & valid_CI_RB));
+    assign rd_req = ((C_STATE == MISS) & ~(replace_Valid_MB & replace_Dirty_MB)) |
+                    ((C_STATE == REPLACE) & ~valid_CI_RB) |
+                    ((C_STATE == REFILL) & ~(ret_valid & ret_last));
+    assign wr_req = (((C_STATE == MISS) & replace_Valid_MB & replace_Dirty_MB & wr_rdy) 
+                    | ((C_STATE == REPLACE) & valid_CI_RB));
 
     always@(*)
         case(op_CI_RB)
@@ -1041,7 +1045,8 @@ module uncache_im(
         /*output*/  data_ok, rdata,
         //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
+        C_STATE
 );
 
     input clk;
@@ -1070,7 +1075,7 @@ module uncache_im(
     output[3:0] wr_wstrb;
     output[31:0] wr_data;
 
-    reg C_STATE;
+    output reg C_STATE;
     reg N_STATE;
     reg done;
     reg[31:0] rdata_reg;
@@ -1135,7 +1140,8 @@ module uncache_dm(
         /*output*/  data_ok, rdata,
         //AXI-Bus side
         /*input*/   rd_rdy, wr_rdy, ret_valid, ret_last, ret_data, wr_valid,
-        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data
+        /*output*/  rd_req, wr_req, rd_type, wr_type, rd_addr, wr_addr, wr_wstrb, wr_data,
+        C_STATE
 );
 
     input clk;
@@ -1169,14 +1175,13 @@ module uncache_dm(
     output[3:0] wr_wstrb;
     output[31:0] wr_data;
 
-    reg[1:0] C_STATE;
-    reg[1:0] N_STATE;
+    output reg C_STATE;
+    reg N_STATE;
     reg done;
     reg[31:0] rdata_reg;
 
-    parameter IDLE = 2'b00;
-    parameter LOAD    = 2'b01;
-    parameter STORE   = 2'b10;
+    parameter IDLE = 1'b0;
+    parameter LOAD    = 1'b1;
 
     wire load;
     wire store;
@@ -1196,15 +1201,12 @@ module uncache_dm(
                         N_STATE = IDLE; 
                     else if(load & !done)
                             N_STATE = LOAD;
-                    else if(store & wr_rdy & !done)
-                            N_STATE = STORE;
                     else
                             N_STATE = IDLE;
             LOAD:   if(ret_valid && ret_last)
                             N_STATE = IDLE;
                     else
                             N_STATE = LOAD;
-            STORE:      N_STATE = IDLE;
             default:    N_STATE = IDLE;
         endcase
 
@@ -1216,9 +1218,9 @@ module uncache_dm(
             done <= 1'b0;
         else if(wr)
             done <= 1'b0;
-        else if((C_STATE == LOAD) && ret_valid && ret_last)
+        else if((C_STATE == LOAD) & ret_valid & ret_last)
             done <= 1'b1;
-        else if(C_STATE == STORE)
+        else if((C_STATE == IDLE) & store & wr_rdy)
             done <= 1'b1;
 
     always@(posedge clk)
@@ -1230,7 +1232,7 @@ module uncache_dm(
     assign rd_req = !exception&
             (((C_STATE == IDLE) & load & !done) | ((C_STATE == LOAD) & !(ret_valid & ret_last)));
     assign wr_req = !exception&
-            (((C_STATE == IDLE) & store & wr_rdy & !done) | (C_STATE == STORE));
+            ((C_STATE == IDLE) & store & wr_rdy & !done);
     assign rd_type = MEM2_type;
     assign wr_type = MEM2_type;
     assign rd_addr = addr;

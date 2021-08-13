@@ -300,6 +300,7 @@ module ID_EX(
 	input  			Branch_flush,
 	input 			ID_isBL,
 	input [31:0]	EPC,
+	input [31:0]	ID_Instr,
 
 	output reg 			EX_eret_flush,
 	output reg 			EX_CP0WrEn,
@@ -362,7 +363,8 @@ module ID_EX(
 	output reg [4:0]	EX_MUX1Out,
 	output reg [31:0]	EX_MUX3Out,
 	output reg  		EX_Branch_flush,
-	output reg  		EX_isBL
+	output reg  		EX_isBL,
+	output reg [31:0]	EX_Instr
 );
 
 
@@ -430,6 +432,7 @@ module ID_EX(
 			EX_MUX3Out <= 32'd0;
 			EX_Branch_flush <= 1'b0;
 			EX_isBL <= 1'b0;
+			EX_Instr <= 32'd0;
 		end
 		else if(ID_EXWr)
 		begin
@@ -495,6 +498,7 @@ module ID_EX(
 			EX_MUX3Out <= ID_MUX3Out;
 			EX_Branch_flush <= Branch_flush;
 			EX_isBL <= ID_isBL;
+			EX_Instr <= ID_Instr;
 		end
 		else 
 			EX_stall <= 1'b1;
@@ -546,6 +550,7 @@ module EX_MEM1(
 	input [31:0]	EPC,
 	input 			EX_MUX6Sel,
 	input 			EX_MUX10Sel,
+	input [31:0]	EX_Instr,
 
 	output reg 			MEM1_DMWr,
 	output reg 			MEM1_DMRd,
@@ -587,7 +592,8 @@ module EX_MEM1(
 	output reg [31:0] 	MEM1_ALU1Out_forExPa,
 	output reg [3:0]	match1,
 	output reg 			MEM1_MUX6Sel,
-	output reg   		MEM1_MUX10Sel		
+	output reg   		MEM1_MUX10Sel,
+	output reg [31:0]	MEM1_Instr	
 );
 
 	always@(posedge clk)
@@ -634,6 +640,7 @@ module EX_MEM1(
 			match1 <= 4'd0;
 			MEM1_MUX6Sel <= 1'b0;
 			MEM1_MUX10Sel <= 1'b0;
+			MEM1_Instr <= 32'd0;
 		end
 		else if (EX_MEM1Wr) begin
 			MEM1_DMWr <= DMWr;
@@ -677,6 +684,7 @@ module EX_MEM1(
 			match1 <= EX_match1;
 			MEM1_MUX6Sel <= EX_MUX6Sel;
 			MEM1_MUX10Sel <= EX_MUX10Sel;
+			MEM1_Instr <= EX_Instr;
 		end
 
 endmodule
