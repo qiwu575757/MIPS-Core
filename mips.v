@@ -363,7 +363,9 @@ module mips(
     wire [3:0]      EX_match1;
     wire [31:0]     Ebase_out;  
     wire            EX_Branch_flush;
-    wire            EX_isBL;      
+    wire            EX_isBL;
+    wire            EX_MUX6Sel; 
+    wire            EX_MUX10Sel;     
 	//-------------MEM1---------------//
     wire            MEM1_eret_flush;
     wire            MEM1_Exception;
@@ -444,6 +446,8 @@ module mips(
     wire [2:0]      MEM1_type;   
 
     wire [3:0]      match1;
+    wire            MEM1_MUX6Sel;
+    wire            MEM1_MUX10Sel;
 	//-------------MEM2---------------//
     wire            MEM2_RFWr;
     wire [4:0]      MEM2_RD;
@@ -476,6 +480,7 @@ module mips(
     wire [31:0]     MEM2_SCOut;
     wire            MEM2_icache_valid_CI;
     wire            MEM2_invalid;  
+    wire            MEM2_MUX10Sel;
     //--------------WB----------------//
     wire [31:0]     WB_PC;
 	wire [31:0]     WB_MUX2Out;
@@ -514,6 +519,7 @@ module mips(
 	wire            WB_TLB_writeen;
 	wire            WB_TLB_readen;
     wire            WB_icache_valid_CI;
+    wire            WB_MUX10Sel;
     //-------------ELSE---------------//
     wire            isStall;
     wire            dcache_stall;
@@ -992,8 +998,11 @@ ex_prep U_EX_PREP(
     .EX_Imm26(EX_Imm26),
     .ID_PC(ID_PC),
     .return_addr(EX_GPR_RS),
+    .EX_MUX2Sel(EX_MUX2Sel),
 
-    .EX_address(EX_address)
+    .EX_address(EX_address),
+    .EX_MUX6Sel(EX_MUX6Sel),
+    .EX_MUX10Sel(EX_MUX10Sel)
 );
 
 mux11 U_MUX11(
@@ -1028,7 +1037,7 @@ EX_MEM1 U_EX_MEM1(
         .Trap(Trap),.EX_LL_signal(EX_LL_signal),.EX_SC_signal(EX_SC_signal),
         .EX_icache_valid_CI(EX_icache_valid_CI), .EX_icache_op_CI(EX_icache_op_CI),
         .EX_dcache_valid_CI(EX_dcache_valid_CI), .EX_dcache_op_CI(EX_dcache_op_CI),.EX_WAIT_OP(EX_WAIT_OP),
-        .EX_s1_vpn2(EX_s1_vpn2), .EX_match1(EX_match1), .EPC(EPCOut),
+        .EX_s1_vpn2(EX_s1_vpn2), .EX_match1(EX_match1), .EPC(EPCOut), .EX_MUX6Sel(EX_MUX6Sel), .EX_MUX10Sel(EX_MUX10Sel),
 
 		.MEM1_DMWr(MEM1_DMWr), .MEM1_DMRd(MEM1_DMRd), .MEM1_RFWr(MEM1_RFWr),.MEM1_eret_flush(MEM1_eret_flush),
         .MEM1_CP0WrEn(MEM1_CP0WrEn), .MEM1_Exception(Temp_M1_Exception), .MEM1_ExcCode(Temp_M1_ExcCode),
@@ -1042,7 +1051,7 @@ EX_MEM1 U_EX_MEM1(
         .MEM1_Trap(MEM1_Trap),.MEM1_LL_signal(MEM1_LL_signal),.MEM1_SC_signal(MEM1_SC_signal),
         .MEM1_icache_valid_CI(MEM1_icache_valid_CI), .MEM1_icache_op_CI(MEM1_icache_op_CI),
         .MEM1_dcache_valid_CI(MEM1_dcache_valid_CI), .MEM1_dcache_op_CI(MEM1_dcache_op_CI),.MEM1_WAIT_OP(MEM1_WAIT_OP),
-        .s1_vpn2(s1_vpn2), .MEM1_ALU1Out_forExPa(MEM1_ALU1Out_forExPa), .match1(match1)
+        .s1_vpn2(s1_vpn2), .MEM1_ALU1Out_forExPa(MEM1_ALU1Out_forExPa), .match1(match1), .MEM1_MUX6Sel(MEM1_MUX6Sel), .MEM1_MUX10Sel(MEM1_MUX10Sel)
 	);
 
 CP0 U_CP0(
@@ -1070,7 +1079,7 @@ mux12 U_MUX12(
 
 mux6 U_MUX6(
 		.ALU1Out(MEM1_ALU1Out), .MUX13Out(MEM1_MUX13Out),
-        .MUX6Sel(MEM1_MUX2Sel),
+        .MUX6Sel(MEM1_MUX6Sel),
 
 		.out(MUX6Out)
 	);
@@ -1121,7 +1130,7 @@ MEM1_MEM2 U_MEM1_MEM2(
         .MEM1_LoadOp(MEM1_LoadOp),.MEM1_wdata(MEM1_wdata),.MEM1_SCOut(MEM1_SCOut),
         .MEM1_icache_valid_CI(MEM1_icache_valid_CI), .MEM1_dcache_en(MEM1_dcache_en),
         .MEM1_invalid(MEM1_invalid), .MEM1_rstrb(MEM1_rstrb), .MEM1_type(MEM1_type),
-        .EPC(EPCOut),
+        .EPC(EPCOut), .MEM1_MUX10Sel(MEM1_MUX10Sel),
 
 		.MEM2_RFWr(MEM2_RFWr),.MEM2_MUX2Sel(MEM2_MUX2Sel),.MEM2_RD(MEM2_RD),
         .MEM2_PC(MEM2_PC), .MEM2_ALU1Out(MEM2_ALU1Out),.MEM2_MUX6Out(MEM2_MUX6Out),
@@ -1133,7 +1142,7 @@ MEM1_MEM2 U_MEM1_MEM2(
         .MEM2_TLB_readen(MEM2_TLB_readen),.MEM2_LoadOp(MEM2_LoadOp),.MEM2_wdata(MEM2_wdata),
         .MEM2_SCOut(MEM2_SCOut), .MEM2_icache_valid_CI(MEM2_icache_valid_CI),
         .MEM2_dcache_en(MEM2_dcache_en), .MEM2_invalid(MEM2_invalid),
-        .MEM2_rstrb(MEM2_rstrb), .MEM2_type(MEM2_type)
+        .MEM2_rstrb(MEM2_rstrb), .MEM2_type(MEM2_type), .MEM2_MUX10Sel(MEM2_MUX10Sel)
 	);
 
 mux2 U_MUX2(
@@ -1179,15 +1188,16 @@ MEM2_WB U_MEM2_WB(
         .MUX2Out(MUX2Out),.MUX2Sel(MEM2_MUX2Sel),.RD(MEM2_RD),.RFWr(MEM2_RFWr),.DMOut(DMOut),
         .MEM2_TLB_flush(MEM2_TLB_flush),.MEM2_TLB_writeen(MEM2_TLB_writeen),
         .MEM2_TLB_readen(MEM2_TLB_readen), .MEM2_icache_valid_CI(MEM2_icache_valid_CI),
+        .MEM2_MUX10Sel(MEM2_MUX10Sel),
 
 		.WB_PC(WB_PC),.WB_MUX2Out(WB_MUX2Out),.WB_MUX2Sel(WB_MUX2Sel),
         .WB_RD(WB_RD),.WB_RFWr(WB_RFWr),.WB_DMOut(WB_DMOut),.WB_TLB_flush(WB_TLB_flush),
         .WB_TLB_writeen(WB_TLB_writeen),.WB_TLB_readen(WB_TLB_readen),
-        .WB_icache_valid_CI(WB_icache_valid_CI)
+        .WB_icache_valid_CI(WB_icache_valid_CI), .WB_MUX10Sel(WB_MUX10Sel)
         );
 
 mux10 U_MUX10(
-        .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX2Sel),
+        .WB_MUX2Out(WB_MUX2Out), .WB_DMOut(WB_DMOut), .WB_MUX2Sel(WB_MUX10Sel),
 
         .MUX10Out(MUX10Out)
         );

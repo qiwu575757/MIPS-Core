@@ -205,8 +205,11 @@ module ex_prep(
     input [25:0]    EX_Imm26,
     input [31:0]    ID_PC,
     input [31:0]    return_addr,
+    input [2:0]     EX_MUX2Sel,
 
-    output reg [31:0] EX_address
+    output reg [31:0]   EX_address,
+    output              EX_MUX6Sel,
+    output              EX_MUX10Sel
 );
 
     always @(EX_NPCOp, EX_Imm26, ID_PC, return_addr) begin
@@ -221,6 +224,8 @@ module ex_prep(
 			endcase
     end
 
+    assign EX_MUX6Sel = (EX_MUX2Sel == 3'b010);
+    assign EX_MUX10Sel = (EX_MUX2Sel == 3'b100);
 endmodule
 
 

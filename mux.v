@@ -99,14 +99,10 @@ module mux6(
 	out
 	);
 	input[31:0] ALU1Out, MUX13Out;
-	input[2:0] MUX6Sel;
-	output reg[31:0] out;
+	input 		MUX6Sel;
+	output [31:0] 	out;
 
-	always@(*)
-		case(MUX6Sel)
-			3'b010:	out = ALU1Out;
-			default:out = MUX13Out;
-		endcase
+	assign out = MUX6Sel ? ALU1Out: MUX13Out;
 
 endmodule
 
@@ -168,10 +164,10 @@ endmodule
 module mux10(WB_MUX2Out, WB_DMOut, WB_MUX2Sel, MUX10Out);
 	input[31:0] WB_MUX2Out;
 	input[31:0] WB_DMOut;
-	input[2:0] WB_MUX2Sel;
+	input		WB_MUX2Sel;
 	output[31:0] MUX10Out;
 
-	assign MUX10Out = (WB_MUX2Sel == 3'b100) ? WB_DMOut : WB_MUX2Out;
+	assign MUX10Out = WB_MUX2Sel? WB_DMOut : WB_MUX2Out;
 endmodule
 
 module mux11(
