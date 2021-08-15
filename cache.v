@@ -8,7 +8,7 @@ module icache(       clk, resetn, exception, stall,
         //CACHE Instruction
             valid_CI, op_CI, index_CI, way_CI, tag_CI,
             cache_sel, uncache_out, uncache_data_ok, IF_data_ok,
-            C_STATE
+            C_STATE, invalid
         );
 
     //clock and reset
@@ -115,7 +115,7 @@ module icache(       clk, resetn, exception, stall,
     reg[15:0] byte_write;
     wire RBWr;
     wire VTen;
-    wire invalid;
+    output invalid;
 
     integer i;
 
@@ -334,20 +334,20 @@ module icache(       clk, resetn, exception, stall,
             C_STATE <= N_STATE;
     always@(C_STATE, valid, cache_hit, valid_CI, ret_valid, ret_last, exception)
         case(C_STATE)
-            IDLE:   if(valid)
-                        N_STATE = LOOKUP;
-                    else if(valid_CI)
+            IDLE:   if(valid_CI)
                         N_STATE = INSTR;
+                    else if(valid)
+                        N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
             LOOKUP: if(exception)
                         N_STATE = IDLE;
                     else if(!cache_hit)
                         N_STATE = MISS;
-                    else if(valid)
-                        N_STATE = LOOKUP;
                     else if(valid_CI)
                         N_STATE = INSTR;
+                    else if(valid)
+                        N_STATE = LOOKUP;
                     else
                         N_STATE = IDLE;
             MISS:       N_STATE = REFILL;
@@ -366,7 +366,7 @@ module icache(       clk, resetn, exception, stall,
     assign rd_req = (C_STATE == MISS) | ((C_STATE == REFILL) & ~(ret_valid & ret_last));
     assign wr_req = 1'b0 ;
 
-    assign RBWr = (valid | valid_CI)& data_ok;
+    assign RBWr = (valid | valid_CI);
     assign VTen = ~stall | (C_STATE == REFILL);
     assign invalid = (C_STATE == INSTR) & (op_CI_RB | cache_hit_CI);
 
@@ -382,7 +382,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
         //CACHE Instruction
                 valid_CI,op_CI, index_CI, way_CI, tag_CI,
                 cache_sel, uncache_out, uncache_data_ok, MEM_data_ok,
-                C_STATE
+                C_STATE, invalid, ok_CI
         );
 
     //clock and reset
@@ -535,11 +535,16 @@ module dcache(       clk, resetn, DMen, stall, exception,
     integer i;
     wire VTen;
     reg[31:0] wdata_final;
-    reg invalid;
-    reg ok_CI;
+    output reg invalid;
+    output reg ok_CI;
     wire way_CI_sel;
     reg already_writeback;
+    wire valid_and_dirty;
 
+    wire Way0_Dirty_bypass;
+    wire Way1_Dirty_bypass;
+    reg [511:0] Way0_Data_bypass;
+    reg [511:0] Way1_Data_bypass;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -629,7 +634,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
             index_CI_RB <= 6'd0;
             way_CI_RB <= 1'b0;
         end
-        else if((valid | valid_CI) && data_ok) begin
+        else if(valid | valid_CI) begin
             op_RB <= op;
             index_RB <= index;
             offset_RB <= offset;
@@ -663,7 +668,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
         end
         else if(C_STATE == INSTR) begin
             replace_way_MB <= way_CI_sel;
-            replace_data_MB <= way_CI_sel ? Data_Way1_out : Data_Way0_out;
+            replace_data_MB <= way_CI_sel ? Way1_Data_bypass : Way0_Data_bypass;
             replace_Valid_MB <= way_CI_sel ? Way1_Valid : Way0_Valid;
             replace_Dirty_MB <= way_CI_sel ? Way1_Dirty : Way0_Dirty;
             replace_index_MB <= index_CI_RB;
@@ -860,6 +865,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
     always@(*)
         if(C_STATE == REFILL)
             Data_addr_rd = index_RB;
+        else if(C_STATE == INSTR)
+            Data_addr_rd = index_CI_RB;
         else if(valid_CI)
             Data_addr_rd = index_CI;
         else
@@ -872,7 +879,9 @@ module dcache(       clk, resetn, DMen, stall, exception,
             Data_addr_wr = replace_index_MB;
 
     always@(*)
-        if(valid_CI)
+        if(C_STATE == INSTR)
+            D_addr_rd = index_CI_RB;
+        else if(valid_CI)
             D_addr_rd = index_CI;
         else
             D_addr_rd = index;
@@ -886,6 +895,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
     always@(*)
         if(C_STATE == REFILL)
             VT_addr_rd = replace_index_MB;
+        else if(C_STATE == INSTR)
+            VT_addr_rd = index_CI_RB;
         else if(valid_CI)
             VT_addr_rd = index_CI;
         else
@@ -944,6 +955,8 @@ module dcache(       clk, resetn, DMen, stall, exception,
                         N_STATE = REFILL;
             INSTR:  if(ok_CI)
                         N_STATE = IDLE;
+                    else if(!wr_rdy)
+                        N_STATE = INSTR;
                     else
                         N_STATE = REPLACE;
             default: N_STATE = IDLE;
@@ -975,7 +988,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
             2'b10://index writeback invalid
                     if(already_writeback)
                         invalid = 1'b1;
-                    else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                    else if(~valid_and_dirty)
                         invalid = 1'b1;
                     else
                         invalid = 1'b0;
@@ -988,7 +1001,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
                     if(cache_hit_CI) begin
                         if(already_writeback)
                             invalid = 1'b1;
-                        else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                        else if(~valid_and_dirty)
                             invalid = 1'b1;
                         else
                             invalid = 1'b0;
@@ -1003,7 +1016,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
             2'b10://index writeback invalid
                     if(already_writeback)
                         ok_CI = 1'b1;
-                    else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                    else if(~valid_and_dirty)
                         ok_CI = 1'b1;
                     else
                         ok_CI = 1'b0;
@@ -1013,7 +1026,7 @@ module dcache(       clk, resetn, DMen, stall, exception,
                     if(cache_hit_CI) begin
                         if(already_writeback)
                             ok_CI = 1'b1;
-                        else if(~(way_CI_sel ? Way1_Valid&Way1_Dirty : Way0_Valid&Way0_Dirty))
+                        else if(~valid_and_dirty)
                             ok_CI = 1'b1;
                         else
                             ok_CI = 1'b0;
@@ -1024,7 +1037,59 @@ module dcache(       clk, resetn, DMen, stall, exception,
         endcase
 
     assign way_CI_sel = op_CI_RB[0] ? way1_hit_CI : way_CI_RB;
+    assign valid_and_dirty = (way_CI_sel ? Way1_Valid&Way1_Dirty_bypass : Way0_Valid&Way0_Dirty_bypass);
 
+    assign Way0_Dirty_bypass = 
+        (way_WB == 1'b0)&(index_WB == index_CI_RB) ? 1'b1 : Way0_Dirty;
+    assign Way1_Dirty_bypass = 
+        (way_WB == 1'b1)&(index_WB == index_CI_RB) ? 1'b1 : Way1_Dirty;
+
+    always@(*)
+        if((way_WB == 1'b0)&(index_WB == index_CI_RB))
+            case(offset_WB[5:2])
+                4'd0:   Way0_Data_bypass = {Data_Way0_out[511: 32], wdata_final};
+                4'd1:   Way0_Data_bypass = {Data_Way0_out[511: 64], wdata_final, Data_Way0_out[ 31:  0]};
+                4'd2:   Way0_Data_bypass = {Data_Way0_out[511: 96], wdata_final, Data_Way0_out[ 63:  0]};
+                4'd3:   Way0_Data_bypass = {Data_Way0_out[511:128], wdata_final, Data_Way0_out[ 95:  0]};
+                4'd4:   Way0_Data_bypass = {Data_Way0_out[511:160], wdata_final, Data_Way0_out[127:  0]};
+                4'd5:   Way0_Data_bypass = {Data_Way0_out[511:192], wdata_final, Data_Way0_out[159:  0]};
+                4'd6:   Way0_Data_bypass = {Data_Way0_out[511:224], wdata_final, Data_Way0_out[191:  0]};
+                4'd7:   Way0_Data_bypass = {Data_Way0_out[511:256], wdata_final, Data_Way0_out[223:  0]};
+                4'd8:   Way0_Data_bypass = {Data_Way0_out[511:288], wdata_final, Data_Way0_out[255:  0]};
+                4'd9:   Way0_Data_bypass = {Data_Way0_out[511:320], wdata_final, Data_Way0_out[287:  0]};
+                4'd10:  Way0_Data_bypass = {Data_Way0_out[511:352], wdata_final, Data_Way0_out[319:  0]};
+                4'd11:  Way0_Data_bypass = {Data_Way0_out[511:384], wdata_final, Data_Way0_out[351:  0]};
+                4'd12:  Way0_Data_bypass = {Data_Way0_out[511:416], wdata_final, Data_Way0_out[383:  0]};
+                4'd13:  Way0_Data_bypass = {Data_Way0_out[511:448], wdata_final, Data_Way0_out[415:  0]};
+                4'd14:  Way0_Data_bypass = {Data_Way0_out[511:480], wdata_final, Data_Way0_out[447:  0]};
+                default:Way0_Data_bypass = {wdata_final, Data_Way0_out[479:  0]};
+            endcase
+        else
+            Way0_Data_bypass = Data_Way0_out;
+
+
+    always@(*)
+        if((way_WB == 1'b1)&(index_WB == index_CI_RB))
+            case(offset_WB[5:2])
+                4'd0:   Way1_Data_bypass = {Data_Way1_out[511: 32], wdata_final};
+                4'd1:   Way1_Data_bypass = {Data_Way1_out[511: 64], wdata_final, Data_Way1_out[ 31:  0]};
+                4'd2:   Way1_Data_bypass = {Data_Way1_out[511: 96], wdata_final, Data_Way1_out[ 63:  0]};
+                4'd3:   Way1_Data_bypass = {Data_Way1_out[511:128], wdata_final, Data_Way1_out[ 95:  0]};
+                4'd4:   Way1_Data_bypass = {Data_Way1_out[511:160], wdata_final, Data_Way1_out[127:  0]};
+                4'd5:   Way1_Data_bypass = {Data_Way1_out[511:192], wdata_final, Data_Way1_out[159:  0]};
+                4'd6:   Way1_Data_bypass = {Data_Way1_out[511:224], wdata_final, Data_Way1_out[191:  0]};
+                4'd7:   Way1_Data_bypass = {Data_Way1_out[511:256], wdata_final, Data_Way1_out[223:  0]};
+                4'd8:   Way1_Data_bypass = {Data_Way1_out[511:288], wdata_final, Data_Way1_out[255:  0]};
+                4'd9:   Way1_Data_bypass = {Data_Way1_out[511:320], wdata_final, Data_Way1_out[287:  0]};
+                4'd10:  Way1_Data_bypass = {Data_Way1_out[511:352], wdata_final, Data_Way1_out[319:  0]};
+                4'd11:  Way1_Data_bypass = {Data_Way1_out[511:384], wdata_final, Data_Way1_out[351:  0]};
+                4'd12:  Way1_Data_bypass = {Data_Way1_out[511:416], wdata_final, Data_Way1_out[383:  0]};
+                4'd13:  Way1_Data_bypass = {Data_Way1_out[511:448], wdata_final, Data_Way1_out[415:  0]};
+                4'd14:  Way1_Data_bypass = {Data_Way1_out[511:480], wdata_final, Data_Way1_out[447:  0]};
+                default:Way1_Data_bypass = {wdata_final, Data_Way1_out[479:  0]};
+            endcase
+        else
+            Way1_Data_bypass = Data_Way1_out;
 
     always@(posedge clk)
         if(!resetn)
@@ -1305,8 +1370,8 @@ Tag_Distributed U_ValidTag(
             tout <= 20'd0;
         end
         else if(en) begin
-            vout <= vout_temp;
-            tout <= tout_temp;
+            vout <= (wen & (rd_addr == wr_addr)) ? vin : vout_temp;
+            tout <= (wen & (rd_addr == wr_addr)) ? tin : tout_temp;
         end
 
 

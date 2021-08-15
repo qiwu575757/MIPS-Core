@@ -312,7 +312,7 @@ assign data_out =
     //Pagemask generation,
     always @(posedge clk) begin
         if ( !rst )//fixed page, 4 kb
-            PageMask <= 32'h1fff_f000;
+            PageMask <= 32'h0;
     end
 
     //TagLo generarion,虽然实现了,但是似乎cache指令用不到

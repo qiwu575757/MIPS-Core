@@ -89,6 +89,7 @@ module pc_flush(
     input refetch_delay,
     input EX_Branch_flush,
     input IF_Instr_Flush,
+    input refetch,
 
     input [31:0] PF_PC,
     input [31:0] IF_PC,
@@ -123,7 +124,7 @@ module pc_flush(
             IF_PC_final = IF_PC;
 
     always@(*)
-        if(refetch_delay | EX_Branch_flush | IF_Instr_Flush) begin
+        if(refetch | EX_Branch_flush | IF_Instr_Flush) begin
             Instr_final <= 32'd0;
             IF_Exception_final <= 1'b0;
             IF_ExcCode_final <= 5'd0;
@@ -166,7 +167,7 @@ module branch_predict_prep(
     input           WB_icache_valid_CI,
     input [31:0]    MEM2_PC,
     input [31:0]    Ebase_out,
-    input [31:0]    MEM1_ExcCode,
+    input [4:0]     MEM1_ExcCode,
 
     output [31:0]   NPC_op00,
     output [31:0]   NPC_op01,
@@ -206,8 +207,8 @@ module branch_predict_prep(
 
     always @( * ) begin
         if ( ~Status_EXL )
-            if ( MEM1_TLBRill_Exc )
-                offset = 12'h00;
+            if ( (MEM1_ExcCode == `TLBS || MEM1_ExcCode == `TLBL)&MEM1_TLBRill_Exc)
+                offset = 12'h000;
             else if ( Interrupt && Cause_IV )
                 offset = 12'h200;
             else
@@ -306,6 +307,7 @@ module mem1_cache_prep(
     MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
     MEM1_LL_signal,MEM1_SC_signal,MEM1_icache_valid_CI, MEM1_icache_op_CI,
     MEM1_dcache_valid_CI, MEM1_dcache_op_CI, MEM1_cp0_inst, MEM1_cp0_avail,
+    whole_stall,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
@@ -346,6 +348,7 @@ module mem1_cache_prep(
 	input [1:0] 	MEM1_dcache_op_CI;
     input           MEM1_cp0_inst;
     input           MEM1_cp0_avail;
+    input           whole_stall;
 
     output [31:0]   MEM1_Paddr;
     output          MEM1_cache_sel;
@@ -377,12 +380,14 @@ module mem1_cache_prep(
     reg  LLbit;
     reg [31:0] LL_addr;
     wire MEM1_TLB_Exc_temp;
+    wire CACHE_mapped;
 
     assign cp0u = MEM1_cp0_inst & !MEM1_cp0_avail;
 
     assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30]))
-                        & (MEM1_dcache_en | MEM1_icache_valid_CI&~MEM1_icache_op_CI
-                        | MEM1_dcache_valid_CI&MEM1_dcache_op_CI[0]);//load or store or CACHE
+                        & (MEM1_dcache_en | CACHE_mapped);//load or store or CACHE
+    assign CACHE_mapped = MEM1_icache_valid_CI&~MEM1_icache_op_CI | MEM1_dcache_valid_CI&MEM1_dcache_op_CI[0];
+
     assign MEM1_Paddr =
 		        !data_mapped ? {3'b000,MEM1_ALU1Out[28:0]} :
                 {s1_pfn,MEM1_ALU1Out[11:0]} ;
@@ -436,7 +441,7 @@ module mem1_cache_prep(
     end
 
     assign MEM1_TLB_Exc = (MEM1_TLB_Exc_temp&!Temp_M1_Exception) | Temp_MEM1_TLB_Exc;//include tlb rill,tlb invaild
-    assign MEM1_TLB_Exc_temp = tlbl | tlbs | tlbmod;
+    assign MEM1_TLB_Exc_temp = (tlbl | tlbs | tlbmod);
     assign MEM1_TLB_ExCode =
                               tlbl      ? `TLBL      :
                               tlbs      ? `TLBS      :
@@ -454,7 +459,8 @@ module mem1_cache_prep(
     always @(*) begin
         if (MEM1_TLB_Exc_temp)
             MEM1_Exception = 1'b1;
-        else if (Interrupt | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  | Temp_M1_Exception)
+        else if (Interrupt | cp0u | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  
+                    | Temp_M1_Exception)
             MEM1_Exception = 1'b1;
         else
             MEM1_Exception = 1'b0;
@@ -507,7 +513,7 @@ module mem1_cache_prep(
 
     /* dcache control signal*/
     assign DMWen_dcache = MEM1_DMWr & (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store
-    assign MEM1_dcache_valid = (MEM1_dcache_en & IF_data_ok & MEM_unCache_data_ok
+    assign MEM1_dcache_valid = (MEM1_dcache_en & ~whole_stall
                 &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK))) & ~MEM1_cache_sel;
     assign MEM1_uncache_valid =MEM1_dcache_en & MEM1_cache_sel & &(!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));
     assign MEM1_DMen = (MEM1_dcache_en | MEM1_dcache_valid_CI)&!MEM1_ee
@@ -641,6 +647,7 @@ module mem1_cache_prep(
                                 MEM1_type = 3'b001;
             default://SW SC SWL SWR LW LL LWL LWR
                                 MEM1_type = 3'b010;
+
         endcase
 
 
