@@ -102,6 +102,7 @@ wire 			m_axis_dout_tvalid_sign;
 wire 			m_axis_dout_tvalid_unsign;
 wire 			multiplier_signed_valid;
 wire 			multiplier_unsigned_valid;
+wire [31:0]		MULOut_temp;
 
 reg  [63:0] 	RHL;
 reg [3:0] 		Temp_ALU2Op;
@@ -113,6 +114,7 @@ reg 			present_state_multu;
 reg 			next_state_multu;
 reg [2:0] 		counter;
 reg 			valid;
+reg [31:0]		MULOut_reg;
 
 /*
 	Control signals:
@@ -133,7 +135,16 @@ parameter state_free = 1'b0 ;
 parameter state_busy = 1'b1 ;
 
 assign RHLOut = EX_RHLSel_Rd ? RHL[63:32] : RHL[31:0];
-assign MULOut = multi_sign_out[31:0];//mul 可能会往目标寄存器写好几�??
+assign MULOut_temp = multi_sign_out[31:0];//mul 可能会往目标寄存器写好几�??
+
+assign MULOut = (counter == 3'd4) ? MULOut_temp : MULOut_reg;
+
+always@(posedge aclk) begin
+    if(!aresetn)
+        MULOut_reg <= 32'd0;
+    else if(counter == 3'd4)
+        MULOut_reg <= MULOut_temp;
+end
 //assign isBusy= next_state_div | next_state_mult | next_state_multu;
 
 assign isBusy = present_state_div&!m_axis_dout_tvalid_sign&!m_axis_dout_tvalid_unsign |

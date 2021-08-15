@@ -66,7 +66,8 @@ module branch_predictor(
     end
 
     assign branch = counter[index][1];
-
+    //assign branch = 1'b0;
+    
 endmodule
 
 

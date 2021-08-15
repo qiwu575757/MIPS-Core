@@ -1,8 +1,6 @@
  `include "MacroDef.v"
 
  module ctrl(
-	input 			clk,
-	input 			rst,
 	input [5:0] 	OP,
 	input [5:0] 	Funct,
 	input [4:0] 	rs,
@@ -10,9 +8,7 @@
 	input [4:0] 	rd,
 	input 			CMPOut1,
 	input [3:0] 	CMPOut2,
-	input 			EXE_isBranch,
 	input 			Temp_ID_Excetion,
-	input 			IF_Flush,
 	input [4:0] 	Temp_ID_ExcCode,
 	input 			ID_TLB_Exc,
 	input 			CMPOut3,
@@ -40,7 +36,6 @@
 	output reg 			CP0Rd,
 	output reg 			ID_Exception,
 	output reg [4:0]	ID_ExcCode,
-	output 				isBD,
 	output reg 			isBranch,
 	output reg 			start,
 	output reg 			RHL_visit,
@@ -63,11 +58,12 @@
 	output reg [1:0]	dcache_op_CI,
 	output reg [1:0]	ID_BrType,
 	output reg [1:0]	ID_JType,
-	output reg 			isBL	
+	output reg 			isBL,
+	output 				cp0_inst,
+	output				movz_movn_sign	
  );
 
 	wire 			ri;			//reserved instr
-	reg 			rst_sign;
 	reg 			Trap_Op;
 	reg 			Cpu_Op;
 	reg 			Cache_OP;
@@ -75,12 +71,9 @@
 	reg [2:0] 		B_Type;
 	reg [2:0]		BLType;
 
-	always @(posedge clk) begin
-		if (!rst)
-			rst_sign <= 1'b1;
-		else
-			rst_sign <= 1'b0;
-	end
+	assign cp0_inst = CP0Rd | CP0WrEn | TLB_writeen | TLB_readen | ID_tlb_searchen |
+				eret_flush | ID_WAIT_OP | Cache_OP;
+
 
 	assign ri =
 		RFWr || RHLWr || DMWr || (OP == `R_type && (Funct == `break || Funct == `syscall || Funct == `sync)) ||
@@ -105,11 +98,11 @@
 			ID_Exception = 1'b1;
 			ID_ExcCode = Temp_ID_ExcCode;
 		end
-		else if (Cpu_Op && !IF_Flush) begin
+		else if (Cpu_Op) begin
 			ID_Exception = 1'b1;
 			ID_ExcCode = `Cpu;//对于Cpu异常的理解不够深刻，可能存在其他问题
 		end
-		else if (!ri && !rst_sign && !IF_Flush) begin
+		else if (!ri) begin
 			ID_Exception = 1'b1;
 			ID_ExcCode = `RI;
 		end	
@@ -176,9 +169,6 @@
 			default: isBranch = 0;
 		endcase
 	end
-
-	assign isBD = EXE_isBranch;		/* the generation of isBD */
-
 
 
 	always @(OP or Funct) begin								/* the generation of ID_JType */
@@ -827,7 +817,7 @@
 		the instr is not the movn or movz
 	*/
 	assign movz_movn = ~( (OP == 6'b0) && ((Funct==`movn&&CMPOut3) || (Funct==`movz&&!CMPOut3)) );
-
+	assign movz_movn_sign = (OP == 6'b0) && ((Funct==`movn) || (Funct==`movz));
 	//Trap instr
 	always @(OP or Funct or rt) begin
 		case (OP)
@@ -979,13 +969,18 @@
 						endcase
 						default: Cpu_Op = 1'b0;
 				endcase
+			6'b000000://movft
+				if((shamt == 5'd0) && (Funct == 6'd1))
+					 Cpu_Op = 1'b1;
+				else 
+					 Cpu_Op = 1'b0;
 			default: Cpu_Op = 1'b0;
 		endcase
 	end
 
 
 		always@(OP or rt)	//generation of icache_valid_CI
-		if(OP == 6'b101111) begin
+		if(OP == `cache) begin
 			case(rt)
 				5'b00000: icache_valid_CI = 1'b1;	/* Index Invalid */
 				5'b10000: icache_valid_CI = 1'b1;	/* Hit Invalid */
@@ -996,13 +991,13 @@
 			icache_valid_CI = 1'b0;
 
 	always@(OP or rt)		//generation of icache_op_CI
-		if(OP == 6'b101111 && rt == 5'b00000)
+		if(OP == `cache && rt == 5'b00000)
 			icache_op_CI = 1'b1;	/* Index Invalid */
 		else
 			icache_op_CI = 1'b0;	/* Hit Invalid */
 
 	always@(OP or rt)		//generation of dcache_valid_CI
-		if(OP == 6'b101111) begin
+		if(OP == `cache) begin
 			case(rt)
 				5'b00001: dcache_valid_CI = 1'b1;	/* Index Writeback Invalid */
 				5'b10001: dcache_valid_CI = 1'b1;	/* Hit Invalid */
@@ -1014,7 +1009,7 @@
 			dcache_valid_CI = 1'b0;
 
 	always@(OP or rt)		//generation of dcache_op_CI
-		if(OP == 6'b101111) begin
+		if(OP == `cache) begin
 			case(rt)
 				5'b00001: dcache_op_CI = 2'b10;	/* Index Writeback Invalid */
 				5'b10001: dcache_op_CI = 2'b01;	/* Hit Invalid */

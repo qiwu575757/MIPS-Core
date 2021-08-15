@@ -100,6 +100,7 @@ module pc_flush(
     input        IF_TLBRill_Exc,
     input        IF_TLB_Exc,
     input        IF_BJOp,
+    input        IF_isBD,
 
     output reg [31:0]   IF_PC_final,
     output reg [31:0]   Instr_final,
@@ -107,7 +108,8 @@ module pc_flush(
     output reg [4:0]    IF_ExcCode_final,
     output reg          IF_TLBRill_Exc_final,
     output reg          IF_TLB_Exc_final,
-    output reg          IF_BJOp_final
+    output reg          IF_BJOp_final,
+    output reg          IF_isBD_final    
 );
 
     always@(*)
@@ -128,6 +130,7 @@ module pc_flush(
             IF_TLBRill_Exc_final <= 1'b0;
             IF_TLB_Exc_final <= 1'b0;
             IF_BJOp_final <= 1'b0;
+            IF_isBD_final <= 1'b0;
         end
         else begin
             Instr_final <= Instr;
@@ -136,6 +139,7 @@ module pc_flush(
             IF_TLBRill_Exc_final <= IF_TLBRill_Exc;
             IF_TLB_Exc_final <= IF_TLB_Exc;
             IF_BJOp_final <= IF_BJOp;
+            IF_isBD_final <= IF_isBD;
         end
 
 
@@ -234,8 +238,10 @@ endmodule
 module pre_decode (
     input [5:0] IF_OP,
     input [5:0] IF_Funct,
+    input       ID_isBranch,
 
-    output reg IF_BJOp
+    output reg IF_BJOp,
+    output     IF_isBD
 );
 
     always @(IF_OP or IF_Funct) begin
@@ -257,6 +263,8 @@ module pre_decode (
 			default:   IF_BJOp = 0;
 		endcase
 	end
+
+    assign IF_isBD = ID_isBranch;
 
 endmodule
 
@@ -297,12 +305,12 @@ module mem1_cache_prep(
     Temp_MEM1_TLBRill_Exc, MEM_unCache_data_ok,
     MEM1_GPR_RT,Interrupt,Config_K0_out,MEM1_Trap,
     MEM1_LL_signal,MEM1_SC_signal,MEM1_icache_valid_CI, MEM1_icache_op_CI,
-    MEM1_dcache_valid_CI, MEM1_dcache_op_CI,
+    MEM1_dcache_valid_CI, MEM1_dcache_op_CI, MEM1_cp0_inst, MEM1_cp0_avail,
 
     MEM1_Paddr, MEM1_cache_sel, MEM1_dcache_valid,DMWen_dcache,
     MEM1_dCache_wstrb,MEM1_ExcCode,MEM1_Exception,MEM1_badvaddr,
     MEM1_TLBRill_Exc,MEM1_TLB_Exc,MEM1_uncache_valid,MEM1_DMen,
-    MEM1_wdata,MEM1_SCOut,Cause_CE_Wr, MEM1_invalid, MEM1_ee, MEM1_rstrb, MEM1_type
+    MEM1_wdata,MEM1_SCOut,cp0u, MEM1_invalid, MEM1_ee, MEM1_rstrb, MEM1_type
     );
     input           clk;
     input           rst;
@@ -336,6 +344,8 @@ module mem1_cache_prep(
 	input 			MEM1_icache_op_CI;
 	input 			MEM1_dcache_valid_CI;
 	input [1:0] 	MEM1_dcache_op_CI;
+    input           MEM1_cp0_inst;
+    input           MEM1_cp0_avail;
 
     output [31:0]   MEM1_Paddr;
     output          MEM1_cache_sel;
@@ -351,7 +361,7 @@ module mem1_cache_prep(
     output          MEM1_DMen;
     output reg [31:0] MEM1_wdata;
     output [31:0]   MEM1_SCOut;
-    output          Cause_CE_Wr;
+    output          cp0u;
     output          MEM1_invalid;
     output reg      MEM1_ee;
     output reg[4:0] MEM1_rstrb;
@@ -367,6 +377,8 @@ module mem1_cache_prep(
     reg  LLbit;
     reg [31:0] LL_addr;
     wire MEM1_TLB_Exc_temp;
+
+    assign cp0u = MEM1_cp0_inst & !MEM1_cp0_avail;
 
     assign data_mapped = (~MEM1_ALU1Out[31] || (MEM1_ALU1Out[31]&&MEM1_ALU1Out[30]))
                         & (MEM1_dcache_en | MEM1_icache_valid_CI&~MEM1_icache_op_CI
@@ -451,7 +463,8 @@ module mem1_cache_prep(
     always @(*) begin
         if (MEM1_TLB_Exc_temp)
             MEM1_ee = 1'b1;
-        else if (Interrupt | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  | Temp_M1_Exception | MEM1_eret_flush)
+        else if (Interrupt | cp0u | MEM1_Overflow | MEM1_Trap | AdES_sel | AdEL_sel  
+                    | Temp_M1_Exception | MEM1_eret_flush)
             MEM1_ee = 1'b1;
         else
             MEM1_ee = 1'b0;
@@ -465,6 +478,10 @@ module mem1_cache_prep(
         else if(Temp_M1_Exception) begin
 		    MEM1_ExcCode = Temp_M1_ExcCode;
 		    MEM1_badvaddr = MEM1_PC;//在此流水级之前产生的与地�???有关的例外其出错地址�???定为其PC
+		end
+        else if(cp0u) begin
+		    MEM1_ExcCode = `Cpu;
+		    MEM1_badvaddr = 32'd0;
 		end
 		else if (MEM1_Overflow) begin
 		    MEM1_ExcCode = `Ov;
@@ -487,7 +504,6 @@ module mem1_cache_prep(
 		    MEM1_badvaddr = MEM1_ALU1Out;
         end
 
-    assign Cause_CE_Wr = MEM1_ExcCode==`Cpu;
 
     /* dcache control signal*/
     assign DMWen_dcache = MEM1_DMWr & (!MEM1_SC_signal | (MEM1_SC_signal&SC_OK));//0->load,1->store

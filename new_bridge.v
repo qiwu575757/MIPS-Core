@@ -561,6 +561,13 @@ wire [1:0]    bresp_3     ;
 wire          bvalid_3    ;
 wire          bready_3    ;
 
+wire          conflict0_2;
+wire          conflict0_3;
+wire          conflict1_2;
+wire          conflict1_3;
+wire          conflict2_3;
+wire          conflict3_2;
+
 always@(posedge clk)begin
     if(!rst)
     begin
@@ -584,7 +591,7 @@ begin
     case(state_i_uncache_0)
         state_free:
         begin
-            if(IF_uncache_rd_req & icache_sel)
+            if(IF_uncache_rd_req & icache_sel & ~conflict0_2 & ~conflict0_3)
                 next_state_i_uncache_0 = state_rd_req;
             else if(IF_uncache_wr_req & icache_sel)
                 next_state_i_uncache_0 = state_wr_req;
@@ -636,7 +643,7 @@ begin
     case(state_i_cache_1)
         state_free:
         begin
-            if(IF_icache_rd_req & ~icache_sel)
+            if(IF_icache_rd_req & ~icache_sel & ~conflict1_2 & ~conflict1_3)
                 next_state_i_cache_1 = state_rd_req;
             else if(IF_icache_wr_req & ~icache_sel)
                 next_state_i_cache_1 = state_wr_req;
@@ -688,7 +695,7 @@ begin
     case(state_d_uncache_2)
         state_free:
         begin
-            if(MEM_uncache_rd_req & dcache_sel)
+            if(MEM_uncache_rd_req & dcache_sel & ~conflict2_3)
                 next_state_d_uncache_2 = state_rd_req;
             else if(MEM_uncache_wr_req & dcache_sel)
                 next_state_d_uncache_2 = state_wr_req;
@@ -740,7 +747,7 @@ begin
     case(state_d_cache_3)
         state_free:
         begin
-            if(MEM_dcache_rd_req & ~dcache_sel)
+            if(MEM_dcache_rd_req & ~dcache_sel & ~conflict3_2)
                 next_state_d_cache_3 = state_rd_req;
             else if(MEM_dcache_wr_req & ~dcache_sel)
                 next_state_d_cache_3 = state_wr_req;
@@ -1092,4 +1099,24 @@ assign IF_uncache_ret_valid = (rvalid_0) & (rid_0==4'b00)&(state_i_uncache_0 == 
 assign IF_uncache_ret_last = rlast_0 & (rid_0==4'b00)&(state_i_uncache_0 == state_rd_res);
 assign IF_uncache_ret_data = rdata_0;
 assign IF_uncache_wr_rdy = state_i_uncache_0 == state_free;
+
+assign conflict0_2 = (araddr_0[31:2] == awaddr_2[31:2]) & 
+    (state_d_uncache_2 == state_wr_req || state_d_uncache_2 == state_wr_data 
+    || state_d_uncache_2 == state_wr_res);//i_uncache read, d_uncache write
+assign conflict1_2 = (araddr_1[31:6] == awaddr_2[31:6]) & 
+    (state_d_uncache_2 == state_wr_req || state_d_uncache_2 == state_wr_data 
+    || state_d_uncache_2 == state_wr_res);//i_cache read,   d_uncache write
+assign conflict3_2 = (araddr_3[31:6] == awaddr_2[31:6]) & 
+    (state_d_uncache_2 == state_wr_req || state_d_uncache_2 == state_wr_data 
+    || state_d_uncache_2 == state_wr_res);//d_cache read,   d_uncache write
+assign conflict0_3 = (araddr_0[31:6] == awaddr_3[31:6]) & 
+    (state_d_cache_3 == state_wr_req || state_d_cache_3 == state_wr_data 
+    || state_d_cache_3 == state_wr_res);//i_uncache_read, d_cache_write
+assign conflict1_3 = (araddr_1[31:6] == awaddr_3[31:6]) & 
+    (state_d_cache_3 == state_wr_req || state_d_cache_3 == state_wr_data 
+    || state_d_cache_3 == state_wr_res);//i_cache_read,   d_cache_write
+assign conflict2_3 = (araddr_2[31:6] == awaddr_3[31:6]) & 
+    (state_d_cache_3 == state_wr_req || state_d_cache_3 == state_wr_data 
+    || state_d_cache_3 == state_wr_res);//d_uncache_read, d_cache_write
+
 endmodule

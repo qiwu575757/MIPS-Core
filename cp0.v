@@ -44,12 +44,12 @@ module CP0(
     clk, rst, CP0WrEn, addr, data_in, MEM1_Exception, MEM1_eret_flush,
     MEM1_isBD,ext_int_in, MEM1_ExcCode, MEM1_PC,EntryLo0_Wren,
     EntryLo1_Wren,Index_Wren,MEM1_TLB_Exc,MEM1_badvaddr,EntryLo0_in,
-    EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,Cause_CE_Wr,
+    EntryLo1_in,Index_in,s1_found,EntryHi_Wren,EntryHi_in,cp0u,
     dcache_stall,
 
     data_out, EPC_out, Interrupt,EntryHi_out,Index_out,EntryLo0_out,
     EntryLo1_out, Random_out, Config_K0_out, Status_BEV,Status_EXL,
-    Cause_IV,Ebase_out, Status_out, Cause_out
+    Cause_IV,Ebase_out, Status_out, Cause_out, MEM1_cp0_avail
 );
     input           clk;
     input           rst;
@@ -73,7 +73,7 @@ module CP0(
     input [31:0]    EntryLo0_in;
     input [31:0]    EntryLo1_in;
     input [31:0]    Index_in;
-    input           Cause_CE_Wr;
+    input           cp0u;
     input           dcache_stall;
 
     output [31:0]   data_out;
@@ -91,6 +91,7 @@ module CP0(
     output [31:0]   Ebase_out;
     output [31:0]   Status_out;
     output [31:0]   Cause_out;
+    output          MEM1_cp0_avail;
 
     reg [31:0]      Index;
     reg [31:0]      Random;
@@ -132,6 +133,8 @@ assign Cause_IV   = `cause_iv;
 assign Ebase_out  = Ebase;
 assign Status_out = Status;
 assign Cause_out = Cause;
+
+assign MEM1_cp0_avail = `status_cu0 | !`status_um | `status_exl ;
 
 assign Interrupt_temp =
         ((Cause[15:8] & `status_im) != 8'h00) && `status_ie == 1'b1 && `status_exl == 1'b0;
@@ -200,7 +203,7 @@ assign data_out =
         end
         else if ( EntryHi_Wren )
             EntryHi <= EntryHi_in;
-        else if ( MEM1_TLB_Exc )
+        else if (MEM1_Exception && ( MEM1_ExcCode == `TLBL || MEM1_ExcCode == `TLBS || MEM1_ExcCode == `TLBMod))
             EntryHi[31:13] <= MEM1_badvaddr[31:13];
     end
 
@@ -226,8 +229,9 @@ assign data_out =
 
     //BadVAddr generation
     always @(posedge clk) begin
-        if ( (MEM1_Exception && (MEM1_ExcCode == `AdEL || MEM1_ExcCode == `AdES)) || MEM1_TLB_Exc)
-            BadVAddr <= MEM1_badvaddr;
+        if (MEM1_Exception && (MEM1_ExcCode == `AdEL || MEM1_ExcCode == `AdES || MEM1_ExcCode == `TLBL
+                || MEM1_ExcCode == `TLBS || MEM1_ExcCode == `TLBMod))
+            BadVAddr <= MEM1_badvaddr;  
     end
 
     //Index generation
@@ -298,7 +302,7 @@ assign data_out =
     always @(posedge clk) begin
         if ( !rst )
             Context[3:0] <= 4'b0;
-        else if (MEM1_TLB_Exc)//tlb exception
+        else if (MEM1_Exception && (MEM1_ExcCode == `TLBL || MEM1_ExcCode == `TLBS || MEM1_ExcCode == `TLBMod))//tlb exception
             Context[22:4] <= MEM1_badvaddr[31:13];
         else if (CP0WrEn && addr == `Context_index)
             Context[31:23] <= data_in[31:23];
@@ -435,7 +439,7 @@ assign data_out =
         if (!rst)
             `cause_ce <= 2'b0;
         else if (MEM1_ExcCode == `Cpu)
-             `cause_ce <= 2'b01;
+            `cause_ce <= cp0u ? 2'b00 : 2'b01;
         else if (MEM1_Exception)
             `cause_ce <= 2'b0;
     end

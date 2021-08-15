@@ -127,6 +127,7 @@ module stall(
 	input 			MEM1_WAIT_OP,
 	input 			Interrupt,
 	input			ID_isBL,
+	input     		movz_movn_sign,
 
 	output reg 		PCWr,
 	output reg 		IF_IDWr,
@@ -160,9 +161,9 @@ module stall(
 	//assign stall_2 = (BJOp || ALU2Op==5'b01011) && MEM2_RFWr && (MEM2_DMRd) && ( (MEM2_RT == ID_RS) || (MEM2_RT == ID_RT)  && (MEM2_RT != 5'b0));
 	//assign stall_3 = (BJOp || ALU2Op==5'b01011) && EX_RFWr && !EX_SC_signal && ( (EX_RT == ID_RS) || (EX_RT == ID_RT) ) && (EX_RT != 5'b0);
 
-	assign stall_0 = (EX_DMRd | EX_CP0Rd | BJOp | EX_SC_signal) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & EX_RFWr;
-	assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd | BJOp&MEM1_SC_signal) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
-	assign stall_2 = (BJOp  & MEM2_DMRd ) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
+	assign stall_0 = (EX_DMRd | EX_CP0Rd | (BJOp|movz_movn_sign) | EX_SC_signal) & ((EX_RT == ID_RS) | (EX_RT == ID_RT) ) & EX_RFWr;
+	assign stall_1 = (MEM1_DMRd | MEM1_CP0Rd | MEM1_SC_signal) & ((MEM1_RT == ID_RS) | (MEM1_RT == ID_RT) ) & MEM1_RFWr;
+	assign stall_2 = ((BJOp|movz_movn_sign)& MEM2_DMRd) & ((MEM2_RT == ID_RS) | (MEM2_RT == ID_RT)) & MEM2_RFWr;
 	assign stall_3 = ID_tlb_searchen && EX_CP0WrEn;
 	assign stall_4 = isbusy && RHL_visit;
 

@@ -27,6 +27,8 @@
 
 `define sync    6'b001111
 
+`define cache   6'b101111
+
 //op_trap instr
 /*R_Type*/
 `define teq     6'b110100
